@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionnaire de Rapaces</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><circle cx='100' cy='100' r='95' fill='white' stroke='%23333' stroke-width='10'/><g transform='translate(100,100) scale(0.8)'><path d='M-60,-20 Q-40,-60 0,-40 Q40,-60 60,-20 Q50,-40 20,-30 Q10,-50 0,-35 Q-10,-50 -20,-30 Q-50,-40 -60,-20' fill='%23333'/><circle cx='-25' cy='-25' r='5' fill='%23333'/><path d='M-10,-10 Q0,0 10,-10 Q15,-5 5,-5 Q-5,-5 -10,-10' fill='%23333'/><path d='M-40,10 Q-20,20 0,10 Q20,20 40,10 Q30,30 0,25 Q-30,30 -40,10' fill='%23333'/><path d='M-30,-10 Q-20,0 -10,-10 M10,-10 Q20,0 30,-10' stroke='%23333' stroke-width='2' fill='none'/><path d='M-70,-30 Q-50,-10 -30,-20 M30,-20 Q50,-10 70,-30' stroke='%23333' stroke-width='3' fill='none'/><path d='M-60,20 Q-40,40 -20,30 M20,30 Q40,40 60,20' stroke='%23333' stroke-width='3' fill='none'/><circle cx='45' cy='45' r='2' fill='%23333'/><circle cx='-35' cy='55' r='1.5' fill='%23333'/><rect x='-15' y='35' width='4' height='2' fill='%23333'/></g></svg>" type="image/svg+xml">
+    <meta name="theme-color" content="#2a5298">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Mes Rapaces">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><circle cx='100' cy='100' r='95' fill='white' stroke='%23333' stroke-width='10'/><g transform='translate(100,100) scale(0.8)'><path d='M-60,-20 Q-40,-60 0,-40 Q40,-60 60,-20 Q50,-40 20,-30 Q10,-50 0,-35 Q-10,-50 -20,-30 Q-50,-40 -60,-20' fill='%23333'/><circle cx='-25' cy='-25' r='5' fill='%23333'/><path d='M-10,-10 Q0,0 10,-10 Q15,-5 5,-5 Q-5,-5 -10,-10' fill='%23333'/><path d='M-40,10 Q-20,20 0,10 Q20,20 40,10 Q30,30 0,25 Q-30,30 -40,10' fill='%23333'/><path d='M-30,-10 Q-20,0 -10,-10 M10,-10 Q20,0 30,-10' stroke='%23333' stroke-width='2' fill='none'/><path d='M-70,-30 Q-50,-10 -30,-20 M30,-20 Q50,-10 70,-30' stroke='%23333' stroke-width='3' fill='none'/><path d='M-60,20 Q-40,40 -20,30 M20,30 Q40,40 60,20' stroke='%23333' stroke-width='3' fill='none'/><circle cx='45' cy='45' r='2' fill='%23333'/><circle cx='-35' cy='55' r='1.5' fill='%23333'/><rect x='-15' y='35' width='4' height='2' fill='%23333'/></g></svg>">
     <style>
         * {
             margin: 0;
@@ -267,8 +273,54 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1>🦅 Gestionnaire de Rapaces</h1>
-        <p>Suivi quotidien de vos compagnons ailés</p>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+            <svg width="80" height="80" viewBox="0 0 200 200" style="filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));">
+                <!-- Cercle de fond -->
+                <circle cx="100" cy="100" r="95" fill="white" stroke="#1e3c72" stroke-width="8"/>
+                
+                <!-- Tête d'aigle détaillée -->
+                <g transform="translate(100,100) scale(0.7)">
+                    <!-- Contour principal de la tête -->
+                    <path d="M-70,-30 Q-50,-70 0,-50 Q50,-70 70,-30 Q60,-50 30,-40 Q15,-65 0,-45 Q-15,-65 -30,-40 Q-60,-50 -70,-30" fill="#1e3c72"/>
+                    
+                    <!-- Œil -->
+                    <circle cx="-30" cy="-30" r="8" fill="white"/>
+                    <circle cx="-28" cy="-32" r="5" fill="#1e3c72"/>
+                    <circle cx="-26" cy="-34" r="2" fill="white"/>
+                    
+                    <!-- Bec -->
+                    <path d="M-15,-15 Q5,5 15,-15 Q20,-10 10,-8 Q-10,-8 -15,-15" fill="#2a5298"/>
+                    <path d="M-15,-15 Q-5,-5 5,-15" stroke="#1e3c72" stroke-width="2" fill="none"/>
+                    
+                    <!-- Plumes du cou -->
+                    <path d="M-50,15 Q-30,30 0,15 Q30,30 50,15 Q40,40 0,35 Q-40,40 -50,15" fill="#1e3c72"/>
+                    
+                    <!-- Détails des plumes - gauche -->
+                    <path d="M-80,-40 Q-60,-20 -40,-30" stroke="#2a5298" stroke-width="3" fill="none"/>
+                    <path d="M-75,-35 Q-55,-15 -35,-25" stroke="#2a5298" stroke-width="2" fill="none"/>
+                    <path d="M-70,-30 Q-50,-10 -30,-20" stroke="#2a5298" stroke-width="2" fill="none"/>
+                    
+                    <!-- Détails des plumes - droite -->
+                    <path d="M40,-30 Q60,-20 80,-40" stroke="#2a5298" stroke-width="3" fill="none"/>
+                    <path d="M35,-25 Q55,-15 75,-35" stroke="#2a5298" stroke-width="2" fill="none"/>
+                    <path d="M30,-20 Q50,-10 70,-30" stroke="#2a5298" stroke-width="2" fill="none"/>
+                    
+                    <!-- Plumes du bas -->
+                    <path d="M-60,25 Q-40,45 -20,35" stroke="#2a5298" stroke-width="3" fill="none"/>
+                    <path d="M-40,30 Q-20,50 0,40" stroke="#2a5298" stroke-width="3" fill="none"/>
+                    <path d="M20,35 Q40,45 60,25" stroke="#2a5298" stroke-width="3" fill="none"/>
+                    
+                    <!-- Détails supplémentaires -->
+                    <circle cx="55" cy="55" r="2" fill="#2a5298"/>
+                    <circle cx="-45" cy="65" r="1.5" fill="#2a5298"/>
+                    <rect x="-20" y="45" width="5" height="3" fill="#2a5298"/>
+                </g>
+            </svg>
+            <div>
+                <h1>🦅 Gestionnaire de Rapaces</h1>
+                <p>Suivi quotidien de vos compagnons ailés</p>
+            </div>
+        </div>
         <p id="weather-info" class="weather-info">🌦️ Chargement météo...</p>
     </div>
 
@@ -577,6 +629,121 @@ var currentWeather = null;
 var currentLocation = "Moulidars, Nouvelle-Aquitaine";
 var currentStatsDate = new Date();
 
+// Fonctions de sauvegarde et chargement
+function saveAllData() {
+    try {
+        var data = {
+            rapaces: rapaces,
+            entries: entries,
+            chasseEntries: chasseEntries,
+            affaitageEntries: affaitageEntries,
+            lastSave: new Date().toISOString()
+        };
+        localStorage.setItem('rapaces_data', JSON.stringify(data));
+        console.log('Données sauvegardées avec succès');
+    } catch (e) {
+        console.error('Erreur lors de la sauvegarde:', e);
+    }
+}
+
+function loadAllData() {
+    try {
+        var savedData = localStorage.getItem('rapaces_data');
+        if (savedData) {
+            var data = JSON.parse(savedData);
+            rapaces = data.rapaces || [];
+            entries = data.entries || [];
+            chasseEntries = data.chasseEntries || [];
+            affaitageEntries = data.affaitageEntries || [];
+            
+            console.log('Données chargées:', {
+                rapaces: rapaces.length,
+                entries: entries.length,
+                chasseEntries: chasseEntries.length,
+                affaitageEntries: affaitageEntries.length,
+                lastSave: data.lastSave
+            });
+            
+            // Mettre à jour les interfaces
+            updateRapaceList();
+            updateRapaceSelects();
+            updateEntryList();
+            updatechasseList();
+            updateAffaitageList();
+            
+            return true;
+        }
+    } catch (e) {
+        console.error('Erreur lors du chargement:', e);
+    }
+    return false;
+}
+
+// Fonction pour exporter toutes les données
+function exportAllData() {
+    var allData = {
+        rapaces: rapaces,
+        entries: entries,
+        chasseEntries: chasseEntries,
+        affaitageEntries: affaitageEntries,
+        exportDate: new Date().toISOString(),
+        appVersion: "1.0"
+    };
+    
+    var dataStr = JSON.stringify(allData, null, 2);
+    var blob = new Blob([dataStr], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = 'rapaces_backup_' + new Date().toISOString().split('T')[0] + '.json';
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    alert('Sauvegarde exportée avec succès !');
+}
+
+// Fonction pour importer des données
+function importAllData() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = function(e) {
+        var file = e.target.files[0];
+        if (file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = JSON.parse(e.target.result);
+                    
+                    if (confirm('Voulez-vous vraiment importer ces données ? Cela remplacera toutes les données actuelles.')) {
+                        rapaces = data.rapaces || [];
+                        entries = data.entries || [];
+                        chasseEntries = data.chasseEntries || [];
+                        affaitageEntries = data.affaitageEntries || [];
+                        
+                        saveAllData();
+                        
+                        // Mettre à jour les interfaces
+                        updateRapaceList();
+                        updateRapaceSelects();
+                        updateEntryList();
+                        updatechasseList();
+                        updateAffaitageList();
+                        
+                        alert('Données importées avec succès !');
+                    }
+                } catch (error) {
+                    alert('Erreur lors de l\'import : fichier non valide');
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
+    
+    input.click();
+}
+
 // Fonction météo améliorée
 function loadWeather() {
     var now = new Date();
@@ -677,6 +844,7 @@ function addRapace() {
     };
 
     rapaces.push(rapace);
+    saveAllData(); // Sauvegarder après ajout
     updateRapaceList();
     updateRapaceSelects();
     
@@ -768,6 +936,7 @@ function addEntry() {
     }
 
     entries.push(entry);
+    saveAllData(); // Sauvegarder après ajout
     updateEntryList();
     
     // Vider les champs
@@ -871,6 +1040,7 @@ function addChasse() {
     };
     
     chasseEntries.push(chasse);
+    saveAllData(); // Sauvegarder après ajout
     updatechasseList();
     
     // Remettre à zéro les compteurs et vider les notes
@@ -952,6 +1122,7 @@ function addAffaitage() {
     };
     
     affaitageEntries.push(affaitage);
+    saveAllData(); // Sauvegarder après ajout
     updateAffaitageList();
     
     // Vider les champs
@@ -1184,8 +1355,39 @@ function updateStats() {
     statsContent.appendChild(dayDiv);
 }
 
+// Fonction pour vider toutes les données
+function clearAllData() {
+    if (confirm('Êtes-vous sûr de vouloir effacer TOUTES les données ? Cette action est irréversible.')) {
+        if (confirm('Dernière confirmation : toutes les données seront perdues définitivement !')) {
+            rapaces = [];
+            entries = [];
+            chasseEntries = [];
+            affaitageEntries = [];
+            
+            localStorage.removeItem('rapaces_data');
+            
+            // Mettre à jour les interfaces
+            updateRapaceList();
+            updateRapaceSelects();
+            updateEntryList();
+            updatechasseList();
+            updateAffaitageList();
+            
+            alert('Toutes les données ont été effacées !');
+        }
+    }
+}
+
 // Initialisation
 window.onload = function() {
+    // Charger les données sauvegardées
+    var dataLoaded = loadAllData();
+    if (dataLoaded) {
+        console.log('Données précédentes chargées avec succès');
+    } else {
+        console.log('Aucune donnée précédente trouvée, démarrage avec une base vierge');
+    }
+    
     loadWeather();
     
     var now = new Date();
@@ -1208,12 +1410,19 @@ window.onload = function() {
     
     currentStatsDate = now;
     
-    updateRapaceList();
-    updateRapaceSelects();
-    updateEntryList();
-    updatechasseList();
-    updateAffaitageList();
+    // Ces fonctions ne sont appelées que si les données n'ont pas été chargées
+    if (!dataLoaded) {
+        updateRapaceList();
+        updateRapaceSelects();
+        updateEntryList();
+        updatechasseList();
+        updateAffaitageList();
+    }
+    
     showEventFields();
+    
+    // Sauvegarder automatiquement toutes les 30 secondes
+    setInterval(saveAllData, 30000);
 };
 </script>
 </body>
