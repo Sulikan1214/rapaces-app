@@ -13,7 +13,7 @@
 
         body {
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             padding: 20px;
             color: #333;
@@ -29,7 +29,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
             text-align: center;
             padding: 30px 20px;
@@ -63,8 +63,8 @@
         }
 
         .tab.active {
-            color: #8B4513;
-            border-bottom-color: #8B4513;
+            color: #2a5298;
+            border-bottom-color: #2a5298;
             background: white;
         }
 
@@ -110,11 +110,11 @@
 
         input:focus, select:focus, textarea:focus {
             outline: none;
-            border-color: #8B4513;
+            border-color: #2a5298;
         }
 
         button {
-            background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
             border: none;
             padding: 12px 24px;
@@ -129,11 +129,11 @@
         }
 
         .entry-item {
-            background: #f8f9fa;
+            background: #f0f4f8;
             margin: 15px 0;
             padding: 15px;
             border-radius: 10px;
-            border-left: 4px solid #8B4513;
+            border-left: 4px solid #2a5298;
         }
 
         .entry-item .date {
@@ -154,7 +154,7 @@
         }
 
         .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
             padding: 20px;
             border-radius: 15px;
@@ -172,20 +172,20 @@
         }
 
         .rapace-card {
-            background: #f8f9fa;
+            background: #f0f4f8;
             padding: 20px;
             border-radius: 15px;
             margin: 15px 0;
-            border: 2px solid #e9ecef;
+            border: 2px solid #e3f2fd;
         }
 
         .rapace-card h3 {
-            color: #8B4513;
+            color: #1e3c72;
             margin-bottom: 10px;
         }
 
         .weather-info {
-            color: #555;
+            color: #e3f2fd;
             font-size: 14px;
             margin-top: 10px;
         }
@@ -214,15 +214,15 @@
         }
 
         .day-card {
-            background: #f8f9fa;
+            background: #f0f4f8;
             padding: 15px;
             border-radius: 10px;
             margin: 10px 0;
-            border-left: 4px solid #8B4513;
+            border-left: 4px solid #2a5298;
         }
 
         .day-card h4 {
-            color: #8B4513;
+            color: #1e3c72;
             margin-bottom: 10px;
         }
 
@@ -230,7 +230,7 @@
             display: none;
             margin-top: 15px;
             padding: 15px;
-            background: #f8f9fa;
+            background: #f0f4f8;
             border-radius: 8px;
         }
 
@@ -256,10 +256,11 @@
         }
 
         .hunt-item {
-            background: #f8f9fa;
+            background: #f0f4f8;
             padding: 15px;
             border-radius: 10px;
             text-align: center;
+            border: 1px solid #e3f2fd;
         }
     </style>
 </head>
@@ -576,23 +577,43 @@ var currentWeather = null;
 var currentLocation = "Moulidars, Nouvelle-Aquitaine";
 var currentStatsDate = new Date();
 
-// Fonction météo
+// Fonction météo améliorée
 function loadWeather() {
+    var now = new Date();
     var conditions = [
-        {desc: "Ensoleillé", temp: 22, icon: "☀️"},
-        {desc: "Nuageux", temp: 18, icon: "☁️"},
-        {desc: "Pluvieux", temp: 15, icon: "🌧️"},
-        {desc: "Venteux", temp: 20, icon: "🌪️"},
-        {desc: "Brumeux", temp: 16, icon: "🌫️"}
+        {desc: "Ensoleillé", temp: 18 + Math.floor(Math.random() * 10), icon: "☀️"},
+        {desc: "Nuageux", temp: 15 + Math.floor(Math.random() * 8), icon: "☁️"},
+        {desc: "Pluvieux", temp: 12 + Math.floor(Math.random() * 8), icon: "🌧️"},
+        {desc: "Venteux", temp: 16 + Math.floor(Math.random() * 8), icon: "🌪️"},
+        {desc: "Brumeux", temp: 14 + Math.floor(Math.random() * 6), icon: "🌫️"},
+        {desc: "Partiellement nuageux", temp: 17 + Math.floor(Math.random() * 8), icon: "⛅"},
+        {desc: "Orageux", temp: 19 + Math.floor(Math.random() * 6), icon: "⛈️"}
     ];
     
-    var randomWeather = conditions[Math.floor(Math.random() * conditions.length)];
-    currentWeather = randomWeather.desc + ", " + randomWeather.temp + "°C à " + currentLocation;
+    // Choisir une condition météo en fonction de la saison
+    var month = now.getMonth();
+    var seasonalWeather;
+    
+    if (month >= 2 && month <= 4) { // Printemps
+        seasonalWeather = conditions[Math.floor(Math.random() * conditions.length)];
+    } else if (month >= 5 && month <= 7) { // Été
+        seasonalWeather = conditions[Math.floor(Math.random() * 3)]; // Plus de soleil
+    } else if (month >= 8 && month <= 10) { // Automne
+        seasonalWeather = conditions[1 + Math.floor(Math.random() * 4)]; // Plus de nuages/pluie
+    } else { // Hiver
+        seasonalWeather = conditions[1 + Math.floor(Math.random() * 3)]; // Plus froid
+        seasonalWeather.temp = Math.max(5, seasonalWeather.temp - 5); // Réduire température
+    }
+    
+    currentWeather = seasonalWeather.desc + ", " + seasonalWeather.temp + "°C à " + currentLocation;
     
     var weatherElement = document.getElementById('weather-info');
     if (weatherElement) {
-        weatherElement.textContent = randomWeather.icon + " Météo : " + currentWeather;
+        weatherElement.textContent = seasonalWeather.icon + " Météo : " + currentWeather;
     }
+    
+    // Actualiser la météo toutes les 30 secondes pour simulation
+    setTimeout(loadWeather, 30000);
 }
 
 // Fonction onglets
@@ -1025,7 +1046,22 @@ function showMultipleDays() {
             }
         }
         
-        var content = '<p><strong>Activités quotidiennes:</strong> ' + dayEntries.length + '</p>';
+        // Afficher la météo du jour si disponible
+        var weatherOfDay = '';
+        if (dayEntries.length > 0) {
+            weatherOfDay = dayEntries[0].weather;
+        } else if (dayChasse.length > 0) {
+            weatherOfDay = dayChasse[0].weather;
+        } else if (dayAffaitage.length > 0) {
+            weatherOfDay = dayAffaitage[0].weather;
+        }
+        
+        var content = '';
+        if (weatherOfDay) {
+            content += '<p style="color: #666; font-style: italic; margin-bottom: 10px;">🌤️ ' + weatherOfDay + '</p>';
+        }
+        
+        content += '<p><strong>Activités quotidiennes:</strong> ' + dayEntries.length + '</p>';
         content += '<p><strong>Chasses:</strong> ' + dayChasse.length + '</p>';
         content += '<p><strong>Affaitages:</strong> ' + dayAffaitage.length + '</p>';
         
@@ -1087,7 +1123,22 @@ function updateStats() {
     dayDiv.className = 'day-card';
     dayDiv.innerHTML = '<h4>Récapitulatif du ' + new Date(selectedDate).toLocaleDateString('fr-FR') + '</h4>';
     
-    var content = '<div class="stats-grid">';
+    // Afficher la météo du jour si disponible
+    var weatherOfDay = '';
+    if (dayEntries.length > 0) {
+        weatherOfDay = dayEntries[0].weather;
+    } else if (dayChasse.length > 0) {
+        weatherOfDay = dayChasse[0].weather;
+    } else if (dayAffaitage.length > 0) {
+        weatherOfDay = dayAffaitage[0].weather;
+    }
+    
+    var content = '';
+    if (weatherOfDay) {
+        content += '<p style="color: #666; font-style: italic; margin-bottom: 15px;">🌤️ ' + weatherOfDay + '</p>';
+    }
+    
+    content += '<div class="stats-grid">';
     content += '<div class="stat-card"><h3>Activités</h3><div class="value">' + dayEntries.length + '</div></div>';
     content += '<div class="stat-card"><h3>Chasses</h3><div class="value">' + dayChasse.length + '</div></div>';
     content += '<div class="stat-card"><h3>Affaitages</h3><div class="value">' + dayAffaitage.length + '</div></div>';
