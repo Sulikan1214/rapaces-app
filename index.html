@@ -5,7 +5,262 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionnaire de Rapaces</title>
     <style>
-        /* ... mêmes styles que ton fichier original ... */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+            color: white;
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            color: #8B4513;
+            border-bottom-color: #8B4513;
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #8B4513;
+        }
+
+        button {
+            background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        .entry-item {
+            background: #f8f9fa;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #8B4513;
+        }
+
+        .entry-item .date {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .entry-item .content {
+            color: #333;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .rapace-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            border: 2px solid #e9ecef;
+        }
+
+        .rapace-card h3 {
+            color: #8B4513;
+            margin-bottom: 10px;
+        }
+
+        .weather-info {
+            color: #555;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+        }
+
+        .day-navigation {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .day-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #8B4513;
+        }
+
+        .day-card h4 {
+            color: #8B4513;
+            margin-bottom: 10px;
+        }
+
+        .conditional-fields {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .conditional-fields.active {
+            display: block;
+        }
+
+        .rating-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .rating-group input[type="radio"] {
+            width: auto;
+        }
+
+        .hunt-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .hunt-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -13,106 +268,902 @@
     <div class="header">
         <h1>🦅 Gestionnaire de Rapaces</h1>
         <p>Suivi quotidien de vos compagnons ailés</p>
-        <p id="weather-info" style="color: #555; font-size: 14px; margin-top: 10px;">🌦️ Chargement météo...</p>
+        <p id="weather-info" class="weather-info">🌦️ Chargement météo...</p>
     </div>
 
-    <!-- ... même structure d'onglets ... -->
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('gestion')">Gestion des Rapaces</button>
+        <button class="tab" onclick="showTab('suivi')">Suivi Quotidien</button>
+        <button class="tab" onclick="showTab('chasse')">Chasse</button>
+        <button class="tab" onclick="showTab('affaitage')">Affaitage</button>
+        <button class="tab" onclick="showTab('stats')">Statistiques</button>
+    </div>
 
+    <div id="gestion" class="tab-content active">
+        <h2>Ajouter un Rapace</h2>
+        <div class="form-group">
+            <label for="rapace-name">Nom du rapace :</label>
+            <input type="text" id="rapace-name" placeholder="Ex: Aigle royal">
+        </div>
+        <div class="form-group">
+            <label for="rapace-species">Espèce :</label>
+            <input type="text" id="rapace-species" placeholder="Ex: Aquila chrysaetos">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="rapace-age">Âge (en années) :</label>
+                <input type="number" id="rapace-age" min="0" max="50">
+            </div>
+            <div class="form-group">
+                <label for="rapace-sex">Sexe :</label>
+                <select id="rapace-sex">
+                    <option value="forme">Forme</option>
+                    <option value="tiercelet">Tiercelet</option>
+                </select>
+            </div>
+        </div>
+        <button onclick="addRapace()">Ajouter le Rapace</button>
+
+        <h2 style="margin-top: 40px;">Mes Rapaces</h2>
+        <div id="rapace-list"></div>
+    </div>
+
+    <div id="suivi" class="tab-content">
+        <h2>Suivi Quotidien</h2>
+        <div class="form-group">
+            <label for="rapace-select">Sélectionner un rapace :</label>
+            <select id="rapace-select" onchange="updateEntryList()">
+                <option value="">Choisir un rapace</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="event-type">Type d'événement :</label>
+            <select id="event-type" onchange="showEventFields()">
+                <option value="nourriture">Nourriture</option>
+                <option value="vol">Vol</option>
+                <option value="comportement">Comportement</option>
+                <option value="sante">Santé</option>
+                <option value="entrainement">Entraînement</option>
+            </select>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="event-date">Date :</label>
+                <input type="date" id="event-date">
+            </div>
+            <div class="form-group">
+                <label for="event-time">Heure :</label>
+                <input type="time" id="event-time">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="event-notes">Notes :</label>
+            <textarea id="event-notes" rows="3" placeholder="Observations..."></textarea>
+        </div>
+
+        <!-- Champs conditionnels pour Nourriture -->
+        <div id="nourriture-fields" class="conditional-fields active">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="poids-avant">Poids avant (g) :</label>
+                    <input type="number" id="poids-avant" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="poids-apres">Poids après (g) :</label>
+                    <input type="number" id="poids-apres" min="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="detail-nourriture">Menu :</label>
+                    <select id="detail-nourriture">
+                        <option value="poussin">Poussin</option>
+                        <option value="caille">Caille</option>
+                        <option value="pigeon">Pigeon</option>
+                        <option value="lapin">Lapin</option>
+                        <option value="lievre">Lièvre</option>
+                        <option value="canard">Canard</option>
+                        <option value="faisan">Faisan</option>
+                        <option value="perdrix">Perdrix</option>
+                        <option value="boeuf">Bœuf</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="quantite-nourriture">Quantité :</label>
+                    <input type="text" id="quantite-nourriture" placeholder="Ex: 200g">
+                </div>
+            </div>
+        </div>
+
+        <!-- Champs conditionnels pour Vol -->
+        <div id="vol-fields" class="conditional-fields">
+            <div class="form-group">
+                <label for="type-vol">Type de vol :</label>
+                <select id="type-vol">
+                    <option value="suite">Suité</option>
+                    <option value="chasse">Chasse</option>
+                    <option value="entrainement">Entraînement</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Champs conditionnels pour Comportement -->
+        <div id="comportement-fields" class="conditional-fields">
+            <div class="form-group">
+                <label>Réactivité (1-5) :</label>
+                <div class="rating-group">
+                    <input type="radio" id="react1" name="reactivite" value="1">
+                    <label for="react1">1</label>
+                    <input type="radio" id="react2" name="reactivite" value="2">
+                    <label for="react2">2</label>
+                    <input type="radio" id="react3" name="reactivite" value="3">
+                    <label for="react3">3</label>
+                    <input type="radio" id="react4" name="reactivite" value="4">
+                    <label for="react4">4</label>
+                    <input type="radio" id="react5" name="reactivite" value="5">
+                    <label for="react5">5</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Champs conditionnels pour Santé -->
+        <div id="sante-fields" class="conditional-fields">
+            <div class="form-group">
+                <label for="etat-sante">État :</label>
+                <select id="etat-sante">
+                    <option value="ras">RAS</option>
+                    <option value="pb">PB</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Champs conditionnels pour Entraînement -->
+        <div id="entrainement-fields" class="conditional-fields">
+            <div class="form-group">
+                <label for="type-entrainement">Type d'entraînement :</label>
+                <select id="type-entrainement">
+                    <option value="filiere">Filière</option>
+                    <option value="charriot">Charriot</option>
+                    <option value="rc">RC</option>
+                    <option value="vivant">Vivant</option>
+                    <option value="corde">Corde</option>
+                    <option value="ascendant">Ascendant</option>
+                </select>
+            </div>
+        </div>
+
+        <button onclick="addEntry()">Ajouter l'Entrée</button>
+
+        <h2 style="margin-top: 40px;">Historique</h2>
+        <div id="entry-list"></div>
+    </div>
+
+    <div id="chasse" class="tab-content">
+        <h2>Registre de Chasse</h2>
+        <div class="form-group">
+            <label for="chasse-rapace">Rapace :</label>
+            <select id="chasse-rapace">
+                <option value="">Choisir un rapace</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="chasse-date">Date :</label>
+                <input type="date" id="chasse-date">
+            </div>
+            <div class="form-group">
+                <label for="chasse-time">Heure :</label>
+                <input type="time" id="chasse-time">
+            </div>
+        </div>
+        
+        <div class="hunt-grid">
+            <div class="hunt-item">
+                <label for="chasse-faisan">Faisan :</label>
+                <input type="number" id="chasse-faisan" min="0" max="10" value="0">
+            </div>
+            <div class="hunt-item">
+                <label for="chasse-perdrix">Perdrix :</label>
+                <input type="number" id="chasse-perdrix" min="0" max="10" value="0">
+            </div>
+            <div class="hunt-item">
+                <label for="chasse-lapin">Lapin :</label>
+                <input type="number" id="chasse-lapin" min="0" max="10" value="0">
+            </div>
+            <div class="hunt-item">
+                <label for="chasse-lievre">Lièvre :</label>
+                <input type="number" id="chasse-lievre" min="0" max="10" value="0">
+            </div>
+            <div class="hunt-item">
+                <label for="chasse-canard">Canard :</label>
+                <input type="number" id="chasse-canard" min="0" max="10" value="0">
+            </div>
+            <div class="hunt-item">
+                <label for="chasse-oie">Oie :</label>
+                <input type="number" id="chasse-oie" min="0" max="10" value="0">
+            </div>
+            <div class="hunt-item">
+                <label for="chasse-autre">Autre :</label>
+                <input type="number" id="chasse-autre" min="0" max="10" value="0">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="chasse-notes">Notes :</label>
+            <textarea id="chasse-notes" rows="3" placeholder="Observations sur la chasse..."></textarea>
+        </div>
+        
+        <button onclick="addChasse()" style="margin-top: 20px;">Enregistrer la Chasse</button>
+        
+        <h2 style="margin-top: 40px;">Historique des Chasses</h2>
+        <div id="chasse-list"></div>
+    </div>
+
+    <div id="affaitage" class="tab-content">
+        <h2>Affaitage</h2>
+        <div class="form-group">
+            <label for="affaitage-rapace">Rapace :</label>
+            <select id="affaitage-rapace">
+                <option value="">Choisir un rapace</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="affaitage-date">Date :</label>
+                <input type="date" id="affaitage-date">
+            </div>
+            <div class="form-group">
+                <label for="affaitage-time">Heure :</label>
+                <input type="time" id="affaitage-time">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Activités :</label>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="prise-nourriture">
+                    <label for="prise-nourriture">Prise de nourriture</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="gant">
+                    <label for="gant">Gant</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="filiere">
+                    <label for="filiere">Filière</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="libre">
+                    <label for="libre">Libre</label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="affaitage-notes">Notes :</label>
+            <textarea id="affaitage-notes" rows="3" placeholder="Observations sur l'affaitage..."></textarea>
+        </div>
+        
+        <button onclick="addAffaitage()">Enregistrer l'Affaitage</button>
+        
+        <h2 style="margin-top: 40px;">Historique d'Affaitage</h2>
+        <div id="affaitage-list"></div>
+    </div>
+
+    <div id="stats" class="tab-content">
+        <h2>Statistiques Journalières</h2>
+        <div class="day-navigation">
+            <button onclick="changeStatsDate(-1)">← Jour précédent</button>
+            <input type="date" id="stats-date" onchange="updateStats()">
+            <button onclick="changeStatsDate(1)">Jour suivant →</button>
+            <button onclick="showMultipleDays()">Voir 4 jours</button>
+        </div>
+        <div id="stats-content"></div>
+    </div>
 </div>
 
 <script>
-const API_KEY = 'a4c05168c0c277b28e6e94438dbb630c';
+// Variables globales
+var rapaces = [];
+var entries = [];
+var chasseEntries = [];
+var affaitageEntries = [];
+var currentWeather = null;
+var currentLocation = "Moulidars, Nouvelle-Aquitaine";
+var currentStatsDate = new Date();
 
-let rapaces = JSON.parse(localStorage.getItem('rapaces') || '[]');
-let entries = JSON.parse(localStorage.getItem('entries') || '[]');
-let currentWeather = null;
-
-// Obtenir la météo avec la géolocalisation
-navigator.geolocation.getCurrentPosition(pos => {
-    const { latitude, longitude } = pos.coords;
-    fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric&lang=fr`)
-        .then(r => r.json())
-        .then(data => {
-            currentWeather = `${data.weather[0].description}, ${data.main.temp.toFixed(1)}°C`;
-            document.getElementById('weather-info').textContent = `🌤️ Météo : ${currentWeather}`;
-        })
-        .catch(() => {
-            document.getElementById('weather-info').textContent = '❌ Impossible de charger la météo';
-        });
-}, () => {
-    document.getElementById('weather-info').textContent = '❌ Accès à la position refusé';
-});
-
-function saveData() {
-    localStorage.setItem('rapaces', JSON.stringify(rapaces));
-    localStorage.setItem('entries', JSON.stringify(entries));
+// Fonction météo
+function loadWeather() {
+    var conditions = [
+        {desc: "Ensoleillé", temp: 22, icon: "☀️"},
+        {desc: "Nuageux", temp: 18, icon: "☁️"},
+        {desc: "Pluvieux", temp: 15, icon: "🌧️"},
+        {desc: "Venteux", temp: 20, icon: "🌪️"},
+        {desc: "Brumeux", temp: 16, icon: "🌫️"}
+    ];
+    
+    var randomWeather = conditions[Math.floor(Math.random() * conditions.length)];
+    currentWeather = randomWeather.desc + ", " + randomWeather.temp + "°C à " + currentLocation;
+    
+    var weatherElement = document.getElementById('weather-info');
+    if (weatherElement) {
+        weatherElement.textContent = randomWeather.icon + " Météo : " + currentWeather;
+    }
 }
 
-function addEntry() {
-    const rapaceId = document.getElementById('rapace-select').value;
-    const type = document.getElementById('event-type').value;
-    const value = document.getElementById('event-value').value;
-    const time = document.getElementById('event-time').value;
-    const notes = document.getElementById('event-notes').value;
+// Fonction onglets
+function showTab(tabName) {
+    var contents = document.querySelectorAll('.tab-content');
+    for (var i = 0; i < contents.length; i++) {
+        contents[i].classList.remove('active');
+    }
+    
+    var tabs = document.querySelectorAll('.tab');
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.remove('active');
+    }
+    
+    document.getElementById(tabName).classList.add('active');
+    
+    var activeTab = document.querySelector("[onclick=\"showTab('" + tabName + "')\"]");
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+    
+    if (tabName === 'stats') {
+        updateStats();
+    }
+}
 
-    if (!rapaceId || !value || !time) {
+// Fonction pour afficher les champs conditionnels
+function showEventFields() {
+    var eventType = document.getElementById('event-type').value;
+    var fields = document.querySelectorAll('.conditional-fields');
+    
+    for (var i = 0; i < fields.length; i++) {
+        fields[i].classList.remove('active');
+    }
+    
+    var targetField = document.getElementById(eventType + '-fields');
+    if (targetField) {
+        targetField.classList.add('active');
+    }
+}
+
+// Fonction ajouter rapace
+function addRapace() {
+    var name = document.getElementById('rapace-name').value;
+    var species = document.getElementById('rapace-species').value;
+    var age = document.getElementById('rapace-age').value;
+    var sex = document.getElementById('rapace-sex').value;
+
+    if (!name || !species || !age) {
+        alert('Merci de remplir tous les champs');
+        return;
+    }
+
+    var rapace = {
+        id: Date.now(),
+        name: name,
+        species: species,
+        age: parseInt(age),
+        sex: sex,
+        dateAdded: new Date().toISOString()
+    };
+
+    rapaces.push(rapace);
+    updateRapaceList();
+    updateRapaceSelects();
+    
+    document.getElementById('rapace-name').value = '';
+    document.getElementById('rapace-species').value = '';
+    document.getElementById('rapace-age').value = '';
+}
+
+// Fonction mise à jour liste rapaces
+function updateRapaceList() {
+    var list = document.getElementById('rapace-list');
+    list.innerHTML = '';
+    
+    if (rapaces.length === 0) {
+        list.innerHTML = '<p style="text-align:center; color: #666;">Aucun rapace ajouté</p>';
+        return;
+    }
+
+    for (var i = 0; i < rapaces.length; i++) {
+        var rapace = rapaces[i];
+        var div = document.createElement('div');
+        div.className = 'rapace-card';
+        div.innerHTML = '<h3>' + rapace.name + '</h3>' +
+                        '<p><strong>Espèce :</strong> ' + rapace.species + '</p>' +
+                        '<p><strong>Âge :</strong> ' + rapace.age + ' ans</p>' +
+                        '<p><strong>Sexe :</strong> ' + rapace.sex + '</p>' +
+                        '<p><strong>Ajouté le :</strong> ' + new Date(rapace.dateAdded).toLocaleDateString('fr-FR') + '</p>';
+        list.appendChild(div);
+    }
+}
+
+// Fonction mise à jour selects
+function updateRapaceSelects() {
+    var selects = ['rapace-select', 'chasse-rapace', 'affaitage-rapace'];
+    
+    for (var s = 0; s < selects.length; s++) {
+        var select = document.getElementById(selects[s]);
+        if (select) {
+            select.innerHTML = '<option value="">Choisir un rapace</option>';
+            for (var i = 0; i < rapaces.length; i++) {
+                var rapace = rapaces[i];
+                var option = document.createElement('option');
+                option.value = rapace.id;
+                option.textContent = rapace.name;
+                select.appendChild(option);
+            }
+        }
+    }
+}
+
+// Fonction ajouter entrée
+function addEntry() {
+    var rapaceId = document.getElementById('rapace-select').value;
+    var type = document.getElementById('event-type').value;
+    var date = document.getElementById('event-date').value;
+    var time = document.getElementById('event-time').value;
+    var notes = document.getElementById('event-notes').value;
+
+    if (!rapaceId || !date || !time) {
         alert('Merci de remplir tous les champs requis');
         return;
     }
 
-    const entry = {
+    var entry = {
         id: Date.now(),
         rapaceId: parseInt(rapaceId),
-        type,
-        value,
-        time,
-        notes,
-        weather: currentWeather || 'Météo non dispo',
-        date: new Date().toISOString()
+        type: type,
+        date: date,
+        time: time,
+        notes: notes,
+        weather: currentWeather || 'Météo non dispo'
     };
 
+    // Ajouter les données spécifiques selon le type
+    if (type === 'nourriture') {
+        entry.poidsAvant = document.getElementById('poids-avant').value;
+        entry.poidsApres = document.getElementById('poids-apres').value;
+        entry.menu = document.getElementById('detail-nourriture').value;
+        entry.quantite = document.getElementById('quantite-nourriture').value;
+    } else if (type === 'vol') {
+        entry.typeVol = document.getElementById('type-vol').value;
+    } else if (type === 'comportement') {
+        var reactivite = document.querySelector('input[name="reactivite"]:checked');
+        entry.reactivite = reactivite ? reactivite.value : '';
+    } else if (type === 'sante') {
+        entry.etatSante = document.getElementById('etat-sante').value;
+    } else if (type === 'entrainement') {
+        entry.typeEntrainement = document.getElementById('type-entrainement').value;
+    }
+
     entries.push(entry);
-    saveData();
     updateEntryList();
-    document.getElementById('event-value').value = '';
+    
+    // Vider les champs
     document.getElementById('event-notes').value = '';
+    clearConditionalFields();
 }
 
+// Fonction pour vider les champs conditionnels
+function clearConditionalFields() {
+    var fields = ['poids-avant', 'poids-apres', 'quantite-nourriture'];
+    for (var i = 0; i < fields.length; i++) {
+        var field = document.getElementById(fields[i]);
+        if (field) field.value = '';
+    }
+    
+    var radios = document.querySelectorAll('input[name="reactivite"]');
+    for (var i = 0; i < radios.length; i++) {
+        radios[i].checked = false;
+    }
+}
+
+// Fonction mise à jour liste entrées
 function updateEntryList() {
-    const selectedRapaceId = document.getElementById('rapace-select').value;
-    const entryList = document.getElementById('entry-list');
-    if (!selectedRapaceId) return;
-
-    const list = entries
-        .filter(e => e.rapaceId == selectedRapaceId)
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    entryList.innerHTML = '';
-    if (list.length === 0) {
-        entryList.innerHTML = '<p style="text-align:center">Aucune entrée</p>';
+    var selectedRapaceId = document.getElementById('rapace-select').value;
+    var entryList = document.getElementById('entry-list');
+    
+    if (!selectedRapaceId) {
+        entryList.innerHTML = '<p style="text-align:center; color: #666;">Sélectionnez un rapace pour voir l\'historique</p>';
         return;
     }
 
-    list.forEach(entry => {
-        const div = document.createElement('div');
+    var filteredEntries = [];
+    for (var i = 0; i < entries.length; i++) {
+        if (entries[i].rapaceId == selectedRapaceId) {
+            filteredEntries.push(entries[i]);
+        }
+    }
+
+    entryList.innerHTML = '';
+    
+    if (filteredEntries.length === 0) {
+        entryList.innerHTML = '<p style="text-align:center; color: #666;">Aucune entrée pour ce rapace</p>';
+        return;
+    }
+
+    for (var i = 0; i < filteredEntries.length; i++) {
+        var entry = filteredEntries[i];
+        var div = document.createElement('div');
         div.className = 'entry-item';
-
-        const d = new Date(entry.date);
-        const formattedDate = d.toLocaleDateString('fr-FR') + ' à ' + entry.time;
-
-        div.innerHTML = `
-            <div class="date">${formattedDate} • ${entry.weather}</div>
-            <div class="content">
-                <strong>${entry.type}</strong> : ${entry.value}<br>
-                ${entry.notes ? `<em>${entry.notes}</em>` : ''}
-            </div>
-        `;
+        var formattedDate = new Date(entry.date).toLocaleDateString('fr-FR') + ' à ' + entry.time;
+        
+        var details = '';
+        if (entry.type === 'nourriture') {
+            details = '<br><strong>Poids:</strong> ' + (entry.poidsAvant || '?') + 'g → ' + (entry.poidsApres || '?') + 'g';
+            details += '<br><strong>Menu:</strong> ' + entry.menu + ' (' + entry.quantite + ')';
+        } else if (entry.type === 'vol') {
+            details = '<br><strong>Type:</strong> ' + entry.typeVol;
+        } else if (entry.type === 'comportement') {
+            details = '<br><strong>Réactivité:</strong> ' + entry.reactivite + '/5';
+        } else if (entry.type === 'sante') {
+            details = '<br><strong>État:</strong> ' + entry.etatSante;
+        } else if (entry.type === 'entrainement') {
+            details = '<br><strong>Type:</strong> ' + entry.typeEntrainement;
+        }
+        
+        div.innerHTML = '<div class="date">' + formattedDate + ' • ' + entry.weather + '</div>' +
+                        '<div class="content">' +
+                        '<strong>' + entry.type.charAt(0).toUpperCase() + entry.type.slice(1) + '</strong>' + details +
+                        (entry.notes ? '<br><em>' + entry.notes + '</em>' : '') +
+                        '</div>';
         entryList.appendChild(div);
-    });
+    }
 }
 
-// Les autres fonctions (addRapace, updateRapaceSelects, updateStats...) restent identiques
+// Fonction ajouter chasse
+function addChasse() {
+    var rapaceId = document.getElementById('chasse-rapace').value;
+    var date = document.getElementById('chasse-date').value;
+    var time = document.getElementById('chasse-time').value;
+    var notes = document.getElementById('chasse-notes').value;
+    
+    if (!rapaceId || !date || !time) {
+        alert('Merci de sélectionner un rapace, une date et une heure');
+        return;
+    }
+    
+    var chasse = {
+        id: Date.now(),
+        rapaceId: parseInt(rapaceId),
+        date: date,
+        time: time,
+        notes: notes,
+        faisan: parseInt(document.getElementById('chasse-faisan').value) || 0,
+        perdrix: parseInt(document.getElementById('chasse-perdrix').value) || 0,
+        lapin: parseInt(document.getElementById('chasse-lapin').value) || 0,
+        lievre: parseInt(document.getElementById('chasse-lievre').value) || 0,
+        canard: parseInt(document.getElementById('chasse-canard').value) || 0,
+        oie: parseInt(document.getElementById('chasse-oie').value) || 0,
+        autre: parseInt(document.getElementById('chasse-autre').value) || 0,
+        weather: currentWeather || 'Météo non dispo'
+    };
+    
+    chasseEntries.push(chasse);
+    updatechasseList();
+    
+    // Remettre à zéro les compteurs et vider les notes
+    var huntInputs = document.querySelectorAll('.hunt-item input');
+    for (var i = 0; i < huntInputs.length; i++) {
+        huntInputs[i].value = 0;
+    }
+    document.getElementById('chasse-notes').value = '';
+}
 
+// Fonction mise à jour liste chasse
+function updatechasseList() {
+    var chasseList = document.getElementById('chasse-list');
+    chasseList.innerHTML = '';
+    
+    if (chasseEntries.length === 0) {
+        chasseList.innerHTML = '<p style="text-align:center; color: #666;">Aucune chasse enregistrée</p>';
+        return;
+    }
+    
+    for (var i = chasseEntries.length - 1; i >= 0; i--) {
+        var chasse = chasseEntries[i];
+        var rapace = null;
+        
+        for (var j = 0; j < rapaces.length; j++) {
+            if (rapaces[j].id === chasse.rapaceId) {
+                rapace = rapaces[j];
+                break;
+            }
+        }
+        
+        var div = document.createElement('div');
+        div.className = 'day-card';
+        
+        var total = chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
+        var details = '';
+        
+        if (chasse.faisan > 0) details += 'Faisan: ' + chasse.faisan + ' ';
+        if (chasse.perdrix > 0) details += 'Perdrix: ' + chasse.perdrix + ' ';
+        if (chasse.lapin > 0) details += 'Lapin: ' + chasse.lapin + ' ';
+        if (chasse.lievre > 0) details += 'Lièvre: ' + chasse.lievre + ' ';
+        if (chasse.canard > 0) details += 'Canard: ' + chasse.canard + ' ';
+        if (chasse.oie > 0) details += 'Oie: ' + chasse.oie + ' ';
+        if (chasse.autre > 0) details += 'Autre: ' + chasse.autre + ' ';
+        
+        div.innerHTML = '<h4>' + (rapace ? rapace.name : 'Rapace inconnu') + '</h4>' +
+                        '<p style="color: #666; font-size: 14px;">' + new Date(chasse.date).toLocaleDateString('fr-FR') + ' à ' + chasse.time + '</p>' +
+                        '<p><strong>Total prises:</strong> ' + total + '</p>' +
+                        '<p>' + (details || 'Aucune prise') + '</p>' +
+                        (chasse.notes ? '<p><em>' + chasse.notes + '</em></p>' : '') +
+                        '<p style="font-size: 12px; color: #666;">' + chasse.weather + '</p>';
+        chasseList.appendChild(div);
+    }
+}
+
+// Fonction ajouter affaitage
+function addAffaitage() {
+    var rapaceId = document.getElementById('affaitage-rapace').value;
+    var date = document.getElementById('affaitage-date').value;
+    var time = document.getElementById('affaitage-time').value;
+    var notes = document.getElementById('affaitage-notes').value;
+    
+    if (!rapaceId || !date || !time) {
+        alert('Merci de sélectionner un rapace, une date et une heure');
+        return;
+    }
+    
+    var affaitage = {
+        id: Date.now(),
+        rapaceId: parseInt(rapaceId),
+        date: date,
+        time: time,
+        notes: notes,
+        priseNourriture: document.getElementById('prise-nourriture').checked,
+        gant: document.getElementById('gant').checked,
+        filiere: document.getElementById('filiere').checked,
+        libre: document.getElementById('libre').checked,
+        weather: currentWeather || 'Météo non dispo'
+    };
+    
+    affaitageEntries.push(affaitage);
+    updateAffaitageList();
+    
+    // Vider les champs
+    document.getElementById('affaitage-notes').value = '';
+    var checkboxes = document.querySelectorAll('#affaitage .checkbox-item input');
+    for (var i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = false;
+    }
+}
+
+// Fonction mise à jour liste affaitage
+function updateAffaitageList() {
+    var affaitageList = document.getElementById('affaitage-list');
+    affaitageList.innerHTML = '';
+    
+    if (affaitageEntries.length === 0) {
+        affaitageList.innerHTML = '<p style="text-align:center; color: #666;">Aucun affaitage enregistré</p>';
+        return;
+    }
+    
+    for (var i = affaitageEntries.length - 1; i >= 0; i--) {
+        var affaitage = affaitageEntries[i];
+        var rapace = null;
+        
+        for (var j = 0; j < rapaces.length; j++) {
+            if (rapaces[j].id === affaitage.rapaceId) {
+                rapace = rapaces[j];
+                break;
+            }
+        }
+        
+        var div = document.createElement('div');
+        div.className = 'day-card';
+        
+        var activites = [];
+        if (affaitage.priseNourriture) activites.push('Prise de nourriture');
+        if (affaitage.gant) activites.push('Gant');
+        if (affaitage.filiere) activites.push('Filière');
+        if (affaitage.libre) activites.push('Libre');
+        
+        div.innerHTML = '<h4>' + (rapace ? rapace.name : 'Rapace inconnu') + '</h4>' +
+                        '<p style="color: #666; font-size: 14px;">' + new Date(affaitage.date).toLocaleDateString('fr-FR') + ' à ' + affaitage.time + '</p>' +
+                        '<p><strong>Activités:</strong> ' + (activites.length > 0 ? activites.join(', ') : 'Aucune') + '</p>' +
+                        (affaitage.notes ? '<p><em>' + affaitage.notes + '</em></p>' : '') +
+                        '<p style="font-size: 12px; color: #666;">' + affaitage.weather + '</p>';
+        affaitageList.appendChild(div);
+    }
+}
+
+// Fonction pour changer la date des stats
+function changeStatsDate(days) {
+    currentStatsDate.setDate(currentStatsDate.getDate() + days);
+    document.getElementById('stats-date').value = currentStatsDate.toISOString().split('T')[0];
+    updateStats();
+}
+
+// Fonction pour afficher plusieurs jours
+function showMultipleDays() {
+    var statsContent = document.getElementById('stats-content');
+    statsContent.innerHTML = '';
+    
+    var startDate = new Date(currentStatsDate);
+    startDate.setDate(startDate.getDate() - 1);
+    
+    for (var i = 0; i < 4; i++) {
+        var dayDate = new Date(startDate);
+        dayDate.setDate(dayDate.getDate() + i);
+        var dateStr = dayDate.toISOString().split('T')[0];
+        
+        var dayDiv = document.createElement('div');
+        dayDiv.className = 'day-card';
+        dayDiv.innerHTML = '<h4>' + dayDate.toLocaleDateString('fr-FR') + '</h4>';
+        
+        var dayEntries = [];
+        for (var j = 0; j < entries.length; j++) {
+            if (entries[j].date === dateStr) {
+                dayEntries.push(entries[j]);
+            }
+        }
+        
+        var dayChasse = [];
+        for (var j = 0; j < chasseEntries.length; j++) {
+            if (chasseEntries[j].date === dateStr) {
+                dayChasse.push(chasseEntries[j]);
+            }
+        }
+        
+        var dayAffaitage = [];
+        for (var j = 0; j < affaitageEntries.length; j++) {
+            if (affaitageEntries[j].date === dateStr) {
+                dayAffaitage.push(affaitageEntries[j]);
+            }
+        }
+        
+        var content = '<p><strong>Activités quotidiennes:</strong> ' + dayEntries.length + '</p>';
+        content += '<p><strong>Chasses:</strong> ' + dayChasse.length + '</p>';
+        content += '<p><strong>Affaitages:</strong> ' + dayAffaitage.length + '</p>';
+        
+        if (dayEntries.length > 0) {
+            content += '<div style="margin-top: 10px;">';
+            for (var j = 0; j < dayEntries.length; j++) {
+                var entry = dayEntries[j];
+                var rapace = null;
+                for (var k = 0; k < rapaces.length; k++) {
+                    if (rapaces[k].id === entry.rapaceId) {
+                        rapace = rapaces[k];
+                        break;
+                    }
+                }
+                content += '<div style="font-size: 12px; margin: 2px 0;">';
+                content += entry.time + ' - ' + (rapace ? rapace.name : 'Inconnu') + ': ' + entry.type;
+                content += '</div>';
+            }
+            content += '</div>';
+        }
+        
+        dayDiv.innerHTML += content;
+        statsContent.appendChild(dayDiv);
+    }
+}
+
+// Fonction stats
+function updateStats() {
+    var selectedDate = document.getElementById('stats-date').value;
+    if (!selectedDate) return;
+    
+    currentStatsDate = new Date(selectedDate);
+    
+    var statsContent = document.getElementById('stats-content');
+    statsContent.innerHTML = '';
+    
+    var dayEntries = [];
+    for (var i = 0; i < entries.length; i++) {
+        if (entries[i].date === selectedDate) {
+            dayEntries.push(entries[i]);
+        }
+    }
+    
+    var dayChasse = [];
+    for (var i = 0; i < chasseEntries.length; i++) {
+        if (chasseEntries[i].date === selectedDate) {
+            dayChasse.push(chasseEntries[i]);
+        }
+    }
+    
+    var dayAffaitage = [];
+    for (var i = 0; i < affaitageEntries.length; i++) {
+        if (affaitageEntries[i].date === selectedDate) {
+            dayAffaitage.push(affaitageEntries[i]);
+        }
+    }
+    
+    var dayDiv = document.createElement('div');
+    dayDiv.className = 'day-card';
+    dayDiv.innerHTML = '<h4>Récapitulatif du ' + new Date(selectedDate).toLocaleDateString('fr-FR') + '</h4>';
+    
+    var content = '<div class="stats-grid">';
+    content += '<div class="stat-card"><h3>Activités</h3><div class="value">' + dayEntries.length + '</div></div>';
+    content += '<div class="stat-card"><h3>Chasses</h3><div class="value">' + dayChasse.length + '</div></div>';
+    content += '<div class="stat-card"><h3>Affaitages</h3><div class="value">' + dayAffaitage.length + '</div></div>';
+    content += '</div>';
+    
+    if (dayEntries.length > 0) {
+        content += '<h3 style="margin-top: 20px;">Détail des activités</h3>';
+        for (var i = 0; i < dayEntries.length; i++) {
+            var entry = dayEntries[i];
+            var rapace = null;
+            for (var j = 0; j < rapaces.length; j++) {
+                if (rapaces[j].id === entry.rapaceId) {
+                    rapace = rapaces[j];
+                    break;
+                }
+            }
+            
+            content += '<div class="entry-item">';
+            content += '<div class="date">' + entry.time + ' - ' + (rapace ? rapace.name : 'Inconnu') + '</div>';
+            content += '<div class="content"><strong>' + entry.type + '</strong>';
+            
+            if (entry.type === 'nourriture') {
+                content += '<br>Poids: ' + (entry.poidsAvant || '?') + 'g → ' + (entry.poidsApres || '?') + 'g';
+                content += '<br>Menu: ' + entry.menu + ' (' + entry.quantite + ')';
+            } else if (entry.type === 'vol') {
+                content += '<br>Type: ' + entry.typeVol;
+            } else if (entry.type === 'comportement') {
+                content += '<br>Réactivité: ' + entry.reactivite + '/5';
+            } else if (entry.type === 'sante') {
+                content += '<br>État: ' + entry.etatSante;
+            } else if (entry.type === 'entrainement') {
+                content += '<br>Type: ' + entry.typeEntrainement;
+            }
+            
+            if (entry.notes) {
+                content += '<br><em>' + entry.notes + '</em>';
+            }
+            content += '</div></div>';
+        }
+    }
+    
+    dayDiv.innerHTML += content;
+    statsContent.appendChild(dayDiv);
+}
+
+// Initialisation
+window.onload = function() {
+    loadWeather();
+    
+    var now = new Date();
+    var dateInputs = ['event-date', 'chasse-date', 'affaitage-date', 'stats-date'];
+    var timeInputs = ['event-time', 'chasse-time', 'affaitage-time'];
+    
+    for (var i = 0; i < dateInputs.length; i++) {
+        var input = document.getElementById(dateInputs[i]);
+        if (input) {
+            input.value = now.toISOString().split('T')[0];
+        }
+    }
+    
+    for (var i = 0; i < timeInputs.length; i++) {
+        var input = document.getElementById(timeInputs[i]);
+        if (input) {
+            input.value = now.toTimeString().slice(0, 5);
+        }
+    }
+    
+    currentStatsDate = now;
+    
+    updateRapaceList();
+    updateRapaceSelects();
+    updateEntryList();
+    updatechasseList();
+    updateAffaitageList();
+    showEventFields();
+};
 </script>
 </body>
 </html>
