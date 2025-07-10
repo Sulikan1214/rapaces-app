@@ -5,11 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionnaire de Rapaces</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><circle cx='100' cy='100' r='95' fill='white' stroke='%23333' stroke-width='10'/><g transform='translate(100,100) scale(0.8)'><path d='M-60,-20 Q-40,-60 0,-40 Q40,-60 60,-20 Q50,-40 20,-30 Q10,-50 0,-35 Q-10,-50 -20,-30 Q-50,-40 -60,-20' fill='%23333'/><circle cx='-25' cy='-25' r='5' fill='%23333'/><path d='M-10,-10 Q0,0 10,-10 Q15,-5 5,-5 Q-5,-5 -10,-10' fill='%23333'/><path d='M-40,10 Q-20,20 0,10 Q20,20 40,10 Q30,30 0,25 Q-30,30 -40,10' fill='%23333'/><path d='M-30,-10 Q-20,0 -10,-10 M10,-10 Q20,0 30,-10' stroke='%23333' stroke-width='2' fill='none'/><path d='M-70,-30 Q-50,-10 -30,-20 M30,-20 Q50,-10 70,-30' stroke='%23333' stroke-width='3' fill='none'/><path d='M-60,20 Q-40,40 -20,30 M20,30 Q40,40 60,20' stroke='%23333' stroke-width='3' fill='none'/><circle cx='45' cy='45' r='2' fill='%23333'/><circle cx='-35' cy='55' r='1.5' fill='%23333'/><rect x='-15' y='35' width='4' height='2' fill='%23333'/></g></svg>" type="image/svg+xml">
-    <meta name="theme-color" content="#2a5298">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Mes Rapaces">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><circle cx='100' cy='100' r='95' fill='white' stroke='%23333' stroke-width='10'/><g transform='translate(100,100) scale(0.8)'><path d='M-60,-20 Q-40,-60 0,-40 Q40,-60 60,-20 Q50,-40 20,-30 Q10,-50 0,-35 Q-10,-50 -20,-30 Q-50,-40 -60,-20' fill='%23333'/><circle cx='-25' cy='-25' r='5' fill='%23333'/><path d='M-10,-10 Q0,0 10,-10 Q15,-5 5,-5 Q-5,-5 -10,-10' fill='%23333'/><path d='M-40,10 Q-20,20 0,10 Q20,20 40,10 Q30,30 0,25 Q-30,30 -40,10' fill='%23333'/><path d='M-30,-10 Q-20,0 -10,-10 M10,-10 Q20,0 30,-10' stroke='%23333' stroke-width='2' fill='none'/><path d='M-70,-30 Q-50,-10 -30,-20 M30,-20 Q50,-10 70,-30' stroke='%23333' stroke-width='3' fill='none'/><path d='M-60,20 Q-40,40 -20,30 M20,30 Q40,40 60,20' stroke='%23333' stroke-width='3' fill='none'/><circle cx='45' cy='45' r='2' fill='%23333'/><circle cx='-35' cy='55' r='1.5' fill='%23333'/><rect x='-15' y='35' width='4' height='2' fill='%23333'/></g></svg>">
     <style>
         * {
             margin: 0;
@@ -47,6 +42,14 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
+        .weather-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
         .tabs {
             display: flex;
             background: #f8f9fa;
@@ -56,7 +59,7 @@
 
         .tab {
             flex: 1;
-            min-width: 150px;
+            min-width: 120px;
             padding: 15px;
             background: none;
             border: none;
@@ -134,6 +137,19 @@
             transform: translateY(-2px);
         }
 
+        button.btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        button.btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #545b62 100%);
+        }
+
+        button.btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #212529;
+        }
+
         .entry-item {
             background: #f0f4f8;
             margin: 15px 0;
@@ -152,37 +168,13 @@
             color: #333;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-        }
-
-        .stat-card h3 {
-            margin-bottom: 10px;
-            font-size: 1.2em;
-        }
-
-        .stat-card .value {
-            font-size: 2em;
-            font-weight: bold;
-        }
-
         .rapace-card {
             background: #f0f4f8;
             padding: 20px;
             border-radius: 15px;
             margin: 15px 0;
             border: 2px solid #e3f2fd;
+            position: relative;
         }
 
         .rapace-card h3 {
@@ -190,46 +182,22 @@
             margin-bottom: 10px;
         }
 
+        .rapace-actions {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .rapace-actions button {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
         .weather-info {
             color: #e3f2fd;
             font-size: 14px;
-            margin-top: 10px;
-        }
-
-        .checkbox-group {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .checkbox-item input[type="checkbox"] {
-            width: auto;
-        }
-
-        .day-navigation {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            align-items: center;
-        }
-
-        .day-card {
-            background: #f0f4f8;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 10px 0;
-            border-left: 4px solid #2a5298;
-        }
-
-        .day-card h4 {
-            color: #1e3c72;
-            margin-bottom: 10px;
         }
 
         .conditional-fields {
@@ -268,6 +236,99 @@
             text-align: center;
             border: 1px solid #e3f2fd;
         }
+
+        .checkbox-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+        }
+
+        .day-card {
+            background: #f0f4f8;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #2a5298;
+        }
+
+        .day-card h4 {
+            color: #1e3c72;
+            margin-bottom: 10px;
+        }
+
+        .day-navigation {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
     </style>
 </head>
 <body>
@@ -275,45 +336,14 @@
     <div class="header">
         <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
             <svg width="80" height="80" viewBox="0 0 200 200" style="filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));">
-                <!-- Cercle de fond -->
                 <circle cx="100" cy="100" r="95" fill="white" stroke="#1e3c72" stroke-width="8"/>
-                
-                <!-- Tête d'aigle détaillée -->
                 <g transform="translate(100,100) scale(0.7)">
-                    <!-- Contour principal de la tête -->
                     <path d="M-70,-30 Q-50,-70 0,-50 Q50,-70 70,-30 Q60,-50 30,-40 Q15,-65 0,-45 Q-15,-65 -30,-40 Q-60,-50 -70,-30" fill="#1e3c72"/>
-                    
-                    <!-- Œil -->
                     <circle cx="-30" cy="-30" r="8" fill="white"/>
                     <circle cx="-28" cy="-32" r="5" fill="#1e3c72"/>
                     <circle cx="-26" cy="-34" r="2" fill="white"/>
-                    
-                    <!-- Bec -->
                     <path d="M-15,-15 Q5,5 15,-15 Q20,-10 10,-8 Q-10,-8 -15,-15" fill="#2a5298"/>
-                    <path d="M-15,-15 Q-5,-5 5,-15" stroke="#1e3c72" stroke-width="2" fill="none"/>
-                    
-                    <!-- Plumes du cou -->
                     <path d="M-50,15 Q-30,30 0,15 Q30,30 50,15 Q40,40 0,35 Q-40,40 -50,15" fill="#1e3c72"/>
-                    
-                    <!-- Détails des plumes - gauche -->
-                    <path d="M-80,-40 Q-60,-20 -40,-30" stroke="#2a5298" stroke-width="3" fill="none"/>
-                    <path d="M-75,-35 Q-55,-15 -35,-25" stroke="#2a5298" stroke-width="2" fill="none"/>
-                    <path d="M-70,-30 Q-50,-10 -30,-20" stroke="#2a5298" stroke-width="2" fill="none"/>
-                    
-                    <!-- Détails des plumes - droite -->
-                    <path d="M40,-30 Q60,-20 80,-40" stroke="#2a5298" stroke-width="3" fill="none"/>
-                    <path d="M35,-25 Q55,-15 75,-35" stroke="#2a5298" stroke-width="2" fill="none"/>
-                    <path d="M30,-20 Q50,-10 70,-30" stroke="#2a5298" stroke-width="2" fill="none"/>
-                    
-                    <!-- Plumes du bas -->
-                    <path d="M-60,25 Q-40,45 -20,35" stroke="#2a5298" stroke-width="3" fill="none"/>
-                    <path d="M-40,30 Q-20,50 0,40" stroke="#2a5298" stroke-width="3" fill="none"/>
-                    <path d="M20,35 Q40,45 60,25" stroke="#2a5298" stroke-width="3" fill="none"/>
-                    
-                    <!-- Détails supplémentaires -->
-                    <circle cx="55" cy="55" r="2" fill="#2a5298"/>
-                    <circle cx="-45" cy="65" r="1.5" fill="#2a5298"/>
-                    <rect x="-20" y="45" width="5" height="3" fill="#2a5298"/>
                 </g>
             </svg>
             <div>
@@ -321,12 +351,16 @@
                 <p>Suivi quotidien de vos compagnons ailés</p>
             </div>
         </div>
-        <p id="weather-info" class="weather-info">🌦️ Chargement météo...</p>
+        <div class="weather-controls">
+            <p id="weather-info" class="weather-info">🌦️ Chargement météo...</p>
+            <button onclick="refreshWeather()" style="padding: 8px 16px; font-size: 12px;">🔄</button>
+            <button onclick="changeLocation()" style="padding: 8px 16px; font-size: 12px;">📍</button>
+        </div>
     </div>
 
     <div class="tabs">
-        <button class="tab active" onclick="showTab('gestion')">Gestion des Rapaces</button>
-        <button class="tab" onclick="showTab('suivi')">Suivi Quotidien</button>
+        <button class="tab active" onclick="showTab('gestion')">Gestion</button>
+        <button class="tab" onclick="showTab('suivi')">Suivi</button>
         <button class="tab" onclick="showTab('chasse')">Chasse</button>
         <button class="tab" onclick="showTab('affaitage')">Affaitage</button>
         <button class="tab" onclick="showTab('stats')">Statistiques</button>
@@ -344,8 +378,8 @@
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label for="rapace-age">Âge (en années) :</label>
-                <input type="number" id="rapace-age" min="0" max="50">
+                <label for="rapace-birthdate">Date de naissance :</label>
+                <input type="date" id="rapace-birthdate">
             </div>
             <div class="form-group">
                 <label for="rapace-sex">Sexe :</label>
@@ -480,7 +514,8 @@
                 <select id="type-entrainement">
                     <option value="filiere">Filière</option>
                     <option value="charriot">Charriot</option>
-                    <option value="rc">RC</option>
+                    <option value="rc-voiture">RC Voiture</option>
+                    <option value="drone">Drone</option>
                     <option value="vivant">Vivant</option>
                     <option value="corde">Corde</option>
                     <option value="ascendant">Ascendant</option>
@@ -490,7 +525,7 @@
 
         <button onclick="addEntry()">Ajouter l'Entrée</button>
 
-        <h2 style="margin-top: 40px;">Historique</h2>
+        <h2 style="margin-top: 40px;">Historique Récent</h2>
         <div id="entry-list"></div>
     </div>
 
@@ -549,7 +584,7 @@
             <textarea id="chasse-notes" rows="3" placeholder="Observations sur la chasse..."></textarea>
         </div>
         
-        <button onclick="addChasse()" style="margin-top: 20px;">Enregistrer la Chasse</button>
+        <button onclick="addChasse()">Enregistrer la Chasse</button>
         
         <h2 style="margin-top: 40px;">Historique des Chasses</h2>
         <div id="chasse-list"></div>
@@ -608,14 +643,52 @@
     </div>
 
     <div id="stats" class="tab-content">
-        <h2>Statistiques Journalières</h2>
-        <div class="day-navigation">
-            <button onclick="changeStatsDate(-1)">← Jour précédent</button>
-            <input type="date" id="stats-date" onchange="updateStats()">
-            <button onclick="changeStatsDate(1)">Jour suivant →</button>
-            <button onclick="showMultipleDays()">Voir 4 jours</button>
+        <h2>Statistiques</h2>
+        <div style="margin-bottom: 20px;">
+            <div class="day-navigation">
+                <button onclick="changeStatsDate(-1)">← Jour précédent</button>
+                <input type="date" id="stats-date" onchange="updateStats()">
+                <button onclick="changeStatsDate(1)">Jour suivant →</button>
+                <button onclick="showMultipleDays()">Voir 4 jours</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button onclick="exportAllData()">💾 Exporter</button>
+                <button onclick="importAllData()" style="margin-left: 10px;">📁 Importer</button>
+                <button onclick="clearAllData()" class="btn-danger" style="margin-left: 10px;">🗑️ Vider</button>
+            </div>
         </div>
         <div id="stats-content"></div>
+    </div>
+</div>
+
+<!-- Modal pour édition -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditModal()">&times;</span>
+        <h2>Modifier le Rapace</h2>
+        <div class="form-group">
+            <label for="edit-name">Nom :</label>
+            <input type="text" id="edit-name">
+        </div>
+        <div class="form-group">
+            <label for="edit-species">Espèce :</label>
+            <input type="text" id="edit-species">
+        </div>
+        <div class="form-group">
+            <label for="edit-birthdate">Date de naissance :</label>
+            <input type="date" id="edit-birthdate">
+        </div>
+        <div class="form-group">
+            <label for="edit-sex">Sexe :</label>
+            <select id="edit-sex">
+                <option value="forme">Forme</option>
+                <option value="tiercelet">Tiercelet</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button onclick="saveRapaceEdit()">💾 Sauvegarder</button>
+            <button onclick="closeEditModal()" class="btn-secondary">❌ Annuler</button>
+        </div>
     </div>
 </div>
 
@@ -626,10 +699,11 @@ var entries = [];
 var chasseEntries = [];
 var affaitageEntries = [];
 var currentWeather = null;
-var currentLocation = "Moulidars, Nouvelle-Aquitaine";
+var currentLocation = "Orthez (64300)";
 var currentStatsDate = new Date();
+var editingRapaceId = null;
 
-// Fonctions de sauvegarde et chargement
+// Sauvegarde et chargement
 function saveAllData() {
     try {
         var data = {
@@ -637,12 +711,12 @@ function saveAllData() {
             entries: entries,
             chasseEntries: chasseEntries,
             affaitageEntries: affaitageEntries,
+            currentLocation: currentLocation,
             lastSave: new Date().toISOString()
         };
         localStorage.setItem('rapaces_data', JSON.stringify(data));
-        console.log('Données sauvegardées avec succès');
     } catch (e) {
-        console.error('Erreur lors de la sauvegarde:', e);
+        console.error('Erreur sauvegarde:', e);
     }
 }
 
@@ -655,135 +729,245 @@ function loadAllData() {
             entries = data.entries || [];
             chasseEntries = data.chasseEntries || [];
             affaitageEntries = data.affaitageEntries || [];
-            
-            console.log('Données chargées:', {
-                rapaces: rapaces.length,
-                entries: entries.length,
-                chasseEntries: chasseEntries.length,
-                affaitageEntries: affaitageEntries.length,
-                lastSave: data.lastSave
-            });
-            
-            // Mettre à jour les interfaces
-            updateRapaceList();
-            updateRapaceSelects();
-            updateEntryList();
-            updatechasseList();
-            updateAffaitageList();
-            
+            currentLocation = data.currentLocation || "Orthez (64300)";
             return true;
         }
     } catch (e) {
-        console.error('Erreur lors du chargement:', e);
+        console.error('Erreur chargement:', e);
     }
     return false;
 }
 
-// Fonction pour exporter toutes les données
-function exportAllData() {
-    var allData = {
-        rapaces: rapaces,
-        entries: entries,
-        chasseEntries: chasseEntries,
-        affaitageEntries: affaitageEntries,
-        exportDate: new Date().toISOString(),
-        appVersion: "1.0"
-    };
-    
-    var dataStr = JSON.stringify(allData, null, 2);
-    var blob = new Blob([dataStr], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement('a');
-    link.href = url;
-    link.download = 'rapaces_backup_' + new Date().toISOString().split('T')[0] + '.json';
-    link.click();
-    URL.revokeObjectURL(url);
-    
-    alert('Sauvegarde exportée avec succès !');
-}
-
-// Fonction pour importer des données
-function importAllData() {
-    var input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    
-    input.onchange = function(e) {
-        var file = e.target.files[0];
-        if (file) {
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    var data = JSON.parse(e.target.result);
-                    
-                    if (confirm('Voulez-vous vraiment importer ces données ? Cela remplacera toutes les données actuelles.')) {
-                        rapaces = data.rapaces || [];
-                        entries = data.entries || [];
-                        chasseEntries = data.chasseEntries || [];
-                        affaitageEntries = data.affaitageEntries || [];
-                        
-                        saveAllData();
-                        
-                        // Mettre à jour les interfaces
-                        updateRapaceList();
-                        updateRapaceSelects();
-                        updateEntryList();
-                        updatechasseList();
-                        updateAffaitageList();
-                        
-                        alert('Données importées avec succès !');
-                    }
-                } catch (error) {
-                    alert('Erreur lors de l\'import : fichier non valide');
-                }
-            };
-            reader.readAsText(file);
-        }
-    };
-    
-    input.click();
-}
-
-// Fonction météo améliorée
+// Météo avec OpenWeatherMap API
 function loadWeather() {
-    var now = new Date();
-    var conditions = [
-        {desc: "Ensoleillé", temp: 18 + Math.floor(Math.random() * 10), icon: "☀️"},
-        {desc: "Nuageux", temp: 15 + Math.floor(Math.random() * 8), icon: "☁️"},
-        {desc: "Pluvieux", temp: 12 + Math.floor(Math.random() * 8), icon: "🌧️"},
-        {desc: "Venteux", temp: 16 + Math.floor(Math.random() * 8), icon: "🌪️"},
-        {desc: "Brumeux", temp: 14 + Math.floor(Math.random() * 6), icon: "🌫️"},
-        {desc: "Partiellement nuageux", temp: 17 + Math.floor(Math.random() * 8), icon: "⛅"},
-        {desc: "Orageux", temp: 19 + Math.floor(Math.random() * 6), icon: "⛈️"}
-    ];
+    // Essayer d'abord de géolocaliser automatiquement
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                loadWeatherByCoords(position.coords.latitude, position.coords.longitude);
+            },
+            function(error) {
+                // Si géolocalisation échoue, utiliser la ville configurée
+                loadWeatherByCity(currentLocation);
+            },
+            { timeout: 5000, maximumAge: 300000 } // 5 min cache
+        );
+    } else {
+        // Pas de géolocalisation, utiliser la ville
+        loadWeatherByCity(currentLocation);
+    }
+}
+
+function loadWeatherByCoords(lat, lon) {
+    // Votre clé API OpenWeatherMap
+    var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
+    var url = "https://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&appid=" + apiKey + "&units=metric&lang=fr";
     
-    // Choisir une condition météo en fonction de la saison
-    var month = now.getMonth();
-    var seasonalWeather;
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('API Error');
+            return response.json();
+        })
+        .then(data => {
+            processWeatherData(data);
+            // Mettre à jour la localisation détectée
+            currentLocation = data.name + " (" + data.sys.country + ")";
+            saveAllData();
+        })
+        .catch(error => {
+            console.log("Erreur API coords:", error);
+            loadWeatherFallback();
+        });
+}
+
+function loadWeatherByCity(cityName) {
+    // Extraire juste le nom de ville (enlever le code postal)
+    var city = cityName.split("(")[0].trim();
     
-    if (month >= 2 && month <= 4) { // Printemps
-        seasonalWeather = conditions[Math.floor(Math.random() * conditions.length)];
-    } else if (month >= 5 && month <= 7) { // Été
-        seasonalWeather = conditions[Math.floor(Math.random() * 3)]; // Plus de soleil
-    } else if (month >= 8 && month <= 10) { // Automne
-        seasonalWeather = conditions[1 + Math.floor(Math.random() * 4)]; // Plus de nuages/pluie
-    } else { // Hiver
-        seasonalWeather = conditions[1 + Math.floor(Math.random() * 3)]; // Plus froid
-        seasonalWeather.temp = Math.max(5, seasonalWeather.temp - 5); // Réduire température
+    // Votre clé API OpenWeatherMap
+    var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
+    var url = "https://api.openweathermap.org/data/2.5/weather?q=" + encodeURIComponent(city) + ",FR&appid=" + apiKey + "&units=metric&lang=fr";
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('API Error');
+            return response.json();
+        })
+        .then(data => {
+            processWeatherData(data);
+        })
+        .catch(error => {
+            console.log("Erreur API ville:", error);
+            loadWeatherFallback();
+        });
+}
+
+function processWeatherData(data) {
+    // Extraire les données de l'API OpenWeatherMap
+    var temp = Math.round(data.main.temp);
+    var description = data.weather[0].description;
+    var humidity = data.main.humidity;
+    var windSpeed = Math.round(data.wind.speed * 3.6); // Convertir m/s en km/h
+    var precipitation = 0;
+    
+    // Calculer les précipitations si disponibles
+    if (data.rain && data.rain["1h"]) {
+        precipitation = Math.round((data.rain["1h"] / 1) * 100); // Approximation
+    } else if (data.snow && data.snow["1h"]) {
+        precipitation = Math.round((data.snow["1h"] / 1) * 100);
+    } else if (data.clouds && data.clouds.all > 80) {
+        precipitation = Math.floor(data.clouds.all / 4); // Estimation basée sur la couverture nuageuse
     }
     
-    currentWeather = seasonalWeather.desc + ", " + seasonalWeather.temp + "°C à " + currentLocation;
+    // Limiter les précipitations à 100%
+    precipitation = Math.min(precipitation, 100);
+    
+    // Choisir l'icône selon les conditions
+    var icon = getWeatherIcon(data.weather[0].main, data.weather[0].id);
+    
+    // Formatter la météo complète
+    var detailedWeather = temp + "°C\n" +
+                         "Précipitations : " + precipitation + "%\n" +
+                         "Humidité : " + humidity + "%\n" +
+                         "Vent : " + windSpeed + " km/h";
+    
+    currentWeather = description + ", " + detailedWeather + " à " + currentLocation;
     
     var weatherElement = document.getElementById('weather-info');
     if (weatherElement) {
-        weatherElement.textContent = seasonalWeather.icon + " Météo : " + currentWeather;
+        weatherElement.innerHTML = icon + " <strong>" + description.charAt(0).toUpperCase() + description.slice(1) + "</strong><br>" +
+                                  "<span style='font-size: 12px; line-height: 1.4;'>" +
+                                  temp + "°C<br>" +
+                                  "Précipitations : " + precipitation + "%<br>" +
+                                  "Humidité : " + humidity + "%<br>" +
+                                  "Vent : " + windSpeed + " km/h<br>" +
+                                  "<em>" + currentLocation + "</em>" +
+                                  "</span>";
     }
-    
-    // Actualiser la météo toutes les 30 secondes pour simulation
-    setTimeout(loadWeather, 30000);
 }
 
-// Fonction onglets
+function getWeatherIcon(main, id) {
+    // Mapper les conditions OpenWeatherMap vers des emojis
+    switch (main) {
+        case "Clear":
+            return "☀️";
+        case "Clouds":
+            return id < 803 ? "⛅" : "☁️";
+        case "Rain":
+            return "🌧️";
+        case "Drizzle":
+            return "🌦️";
+        case "Thunderstorm":
+            return "⛈️";
+        case "Snow":
+            return "❄️";
+        case "Mist":
+        case "Fog":
+            return "🌫️";
+        case "Haze":
+            return "🌤️";
+        default:
+            return "🌤️";
+    }
+}
+
+function loadWeatherFallback() {
+    // Météo simulée si l'API ne fonctionne pas
+    var now = new Date();
+    var month = now.getMonth();
+    var hour = now.getHours();
+    
+    var conditions;
+    
+    if (month >= 2 && month <= 4) { // Printemps
+        conditions = [
+            {desc: "ensoleillé", temp: 15 + Math.floor(Math.random() * 8), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 20), humidity: 45 + Math.floor(Math.random() * 20)},
+            {desc: "partiellement nuageux", temp: 12 + Math.floor(Math.random() * 7), icon: "⛅", precipitation: 10 + Math.floor(Math.random() * 30), humidity: 50 + Math.floor(Math.random() * 25)},
+            {desc: "nuageux", temp: 10 + Math.floor(Math.random() * 6), icon: "☁️", precipitation: 20 + Math.floor(Math.random() * 40), humidity: 60 + Math.floor(Math.random() * 25)},
+            {desc: "pluvieux", temp: 8 + Math.floor(Math.random() * 8), icon: "🌧️", precipitation: 70 + Math.floor(Math.random() * 30), humidity: 75 + Math.floor(Math.random() * 20)}
+        ];
+    } else if (month >= 5 && month <= 7) { // Été
+        conditions = [
+            {desc: "ensoleillé", temp: 20 + Math.floor(Math.random() * 10), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 10), humidity: 35 + Math.floor(Math.random() * 20)},
+            {desc: "très ensoleillé", temp: 25 + Math.floor(Math.random() * 8), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 5), humidity: 30 + Math.floor(Math.random() * 15)},
+            {desc: "chaud", temp: 28 + Math.floor(Math.random() * 7), icon: "🌡️", precipitation: 0 + Math.floor(Math.random() * 15), humidity: 25 + Math.floor(Math.random() * 20)},
+            {desc: "orageux", temp: 22 + Math.floor(Math.random() * 6), icon: "⛈️", precipitation: 60 + Math.floor(Math.random() * 40), humidity: 70 + Math.floor(Math.random() * 25)}
+        ];
+    } else if (month >= 8 && month <= 10) { // Automne
+        conditions = [
+            {desc: "doux", temp: 12 + Math.floor(Math.random() * 10), icon: "🍂", precipitation: 10 + Math.floor(Math.random() * 30), humidity: 50 + Math.floor(Math.random() * 25)},
+            {desc: "nuageux", temp: 8 + Math.floor(Math.random() * 8), icon: "☁️", precipitation: 25 + Math.floor(Math.random() * 45), humidity: 65 + Math.floor(Math.random() * 25)},
+            {desc: "pluvieux", temp: 6 + Math.floor(Math.random() * 10), icon: "🌧️", precipitation: 70 + Math.floor(Math.random() * 30), humidity: 80 + Math.floor(Math.random() * 15)},
+            {desc: "brumeux", temp: 5 + Math.floor(Math.random() * 8), icon: "🌫️", precipitation: 30 + Math.floor(Math.random() * 40), humidity: 85 + Math.floor(Math.random() * 10)}
+        ];
+    } else { // Hiver
+        conditions = [
+            {desc: "frais", temp: 2 + Math.floor(Math.random() * 8), icon: "🌤️", precipitation: 15 + Math.floor(Math.random() * 35), humidity: 65 + Math.floor(Math.random() * 25)},
+            {desc: "nuageux", temp: 0 + Math.floor(Math.random() * 10), icon: "☁️", precipitation: 30 + Math.floor(Math.random() * 50), humidity: 70 + Math.floor(Math.random() * 25)},
+            {desc: "pluvieux", temp: 3 + Math.floor(Math.random() * 8), icon: "🌧️", precipitation: 75 + Math.floor(Math.random() * 25), humidity: 85 + Math.floor(Math.random() * 10)},
+            {desc: "froid", temp: -2 + Math.floor(Math.random() * 8), icon: "❄️", precipitation: 40 + Math.floor(Math.random() * 40), humidity: 80 + Math.floor(Math.random() * 15)}
+        ];
+    }
+    
+    var weather = conditions[Math.floor(Math.random() * conditions.length)];
+    
+    // Ajuster selon l'heure
+    if (hour < 8 || hour > 20) {
+        weather.temp = Math.max(weather.temp - 3, -5);
+        weather.humidity = Math.min(weather.humidity + 10, 95);
+    }
+    
+    // Générer vitesse du vent
+    var windSpeed = 3 + Math.floor(Math.random() * 15);
+    
+    var detailedWeather = weather.temp + "°C\n" +
+                         "Précipitations : " + weather.precipitation + "%\n" +
+                         "Humidité : " + weather.humidity + "%\n" +
+                         "Vent : " + windSpeed + " km/h";
+    
+    currentWeather = weather.desc + ", " + detailedWeather + " à " + currentLocation;
+    
+    var weatherElement = document.getElementById('weather-info');
+    if (weatherElement) {
+        weatherElement.innerHTML = weather.icon + " <strong>" + weather.desc.charAt(0).toUpperCase() + weather.desc.slice(1) + "</strong><br>" +
+                                  "<span style='font-size: 12px; line-height: 1.4;'>" +
+                                  weather.temp + "°C<br>" +
+                                  "Précipitations : " + weather.precipitation + "%<br>" +
+                                  "Humidité : " + weather.humidity + "%<br>" +
+                                  "Vent : " + windSpeed + " km/h<br>" +
+                                  "<em>" + currentLocation + " (simulé)</em>" +
+                                  "</span>";
+    }
+}
+
+function refreshWeather() {
+    loadWeather();
+}
+
+function changeLocation() {
+    var newLocation = prompt("Entrez votre localisation :", currentLocation);
+    if (newLocation && newLocation.trim()) {
+        currentLocation = newLocation.trim();
+        saveAllData();
+        loadWeather();
+    }
+}
+
+// Calcul de l'âge
+function calculateAge(birthDate) {
+    var today = new Date();
+    var birth = new Date(birthDate);
+    var age = today.getFullYear() - birth.getFullYear();
+    var monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    
+    return age;
+}
+
+// Onglets
 function showTab(tabName) {
     var contents = document.querySelectorAll('.tab-content');
     for (var i = 0; i < contents.length; i++) {
@@ -796,7 +980,6 @@ function showTab(tabName) {
     }
     
     document.getElementById(tabName).classList.add('active');
-    
     var activeTab = document.querySelector("[onclick=\"showTab('" + tabName + "')\"]");
     if (activeTab) {
         activeTab.classList.add('active');
@@ -807,7 +990,7 @@ function showTab(tabName) {
     }
 }
 
-// Fonction pour afficher les champs conditionnels
+// Champs conditionnels
 function showEventFields() {
     var eventType = document.getElementById('event-type').value;
     var fields = document.querySelectorAll('.conditional-fields');
@@ -822,38 +1005,41 @@ function showEventFields() {
     }
 }
 
-// Fonction ajouter rapace
+// Ajouter rapace
 function addRapace() {
     var name = document.getElementById('rapace-name').value;
     var species = document.getElementById('rapace-species').value;
-    var age = document.getElementById('rapace-age').value;
+    var birthdate = document.getElementById('rapace-birthdate').value;
     var sex = document.getElementById('rapace-sex').value;
 
-    if (!name || !species || !age) {
+    if (!name || !species || !birthdate) {
         alert('Merci de remplir tous les champs');
         return;
     }
+
+    var age = calculateAge(birthdate);
 
     var rapace = {
         id: Date.now(),
         name: name,
         species: species,
-        age: parseInt(age),
+        birthdate: birthdate,
+        age: age,
         sex: sex,
         dateAdded: new Date().toISOString()
     };
 
     rapaces.push(rapace);
-    saveAllData(); // Sauvegarder après ajout
+    saveAllData();
     updateRapaceList();
     updateRapaceSelects();
     
     document.getElementById('rapace-name').value = '';
     document.getElementById('rapace-species').value = '';
-    document.getElementById('rapace-age').value = '';
+    document.getElementById('rapace-birthdate').value = '';
 }
 
-// Fonction mise à jour liste rapaces
+// Liste rapaces
 function updateRapaceList() {
     var list = document.getElementById('rapace-list');
     list.innerHTML = '';
@@ -867,23 +1053,102 @@ function updateRapaceList() {
         var rapace = rapaces[i];
         var div = document.createElement('div');
         div.className = 'rapace-card';
-        div.innerHTML = '<h3>' + rapace.name + '</h3>' +
+        
+        rapace.age = calculateAge(rapace.birthdate);
+        
+        div.innerHTML = '<div class="rapace-actions">' +
+                        '<button onclick="editRapace(' + rapace.id + ')" class="btn-warning">✏️</button>' +
+                        '<button onclick="deleteRapace(' + rapace.id + ')" class="btn-danger">🗑️</button>' +
+                        '</div>' +
+                        '<h3>' + rapace.name + '</h3>' +
                         '<p><strong>Espèce :</strong> ' + rapace.species + '</p>' +
                         '<p><strong>Âge :</strong> ' + rapace.age + ' ans</p>' +
                         '<p><strong>Sexe :</strong> ' + rapace.sex + '</p>' +
-                        '<p><strong>Ajouté le :</strong> ' + new Date(rapace.dateAdded).toLocaleDateString('fr-FR') + '</p>';
+                        '<p><strong>Né le :</strong> ' + new Date(rapace.birthdate).toLocaleDateString('fr-FR') + '</p>';
         list.appendChild(div);
     }
 }
 
-// Fonction mise à jour selects
+// Édition rapace
+function editRapace(rapaceId) {
+    var rapace = rapaces.find(r => r.id === rapaceId);
+    if (!rapace) return;
+    
+    editingRapaceId = rapaceId;
+    document.getElementById('edit-name').value = rapace.name;
+    document.getElementById('edit-species').value = rapace.species;
+    document.getElementById('edit-birthdate').value = rapace.birthdate;
+    document.getElementById('edit-sex').value = rapace.sex;
+    
+    document.getElementById('editModal').style.display = 'block';
+}
+
+function saveRapaceEdit() {
+    if (!editingRapaceId) return;
+    
+    var rapace = rapaces.find(r => r.id === editingRapaceId);
+    if (!rapace) return;
+    
+    var name = document.getElementById('edit-name').value;
+    var species = document.getElementById('edit-species').value;
+    var birthdate = document.getElementById('edit-birthdate').value;
+    var sex = document.getElementById('edit-sex').value;
+    
+    if (!name || !species || !birthdate) {
+        alert('Merci de remplir tous les champs');
+        return;
+    }
+    
+    rapace.name = name;
+    rapace.species = species;
+    rapace.birthdate = birthdate;
+    rapace.age = calculateAge(birthdate);
+    rapace.sex = sex;
+    
+    saveAllData();
+    updateRapaceList();
+    updateRapaceSelects();
+    closeEditModal();
+    
+    alert('Rapace modifié !');
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+    editingRapaceId = null;
+}
+
+function deleteRapace(rapaceId) {
+    var rapace = rapaces.find(r => r.id === rapaceId);
+    if (!rapace) return;
+    
+    if (confirm('Supprimer ' + rapace.name + ' et tout son historique ?')) {
+        rapaces = rapaces.filter(r => r.id !== rapaceId);
+        entries = entries.filter(e => e.rapaceId !== rapaceId);
+        chasseEntries = chasseEntries.filter(c => c.rapaceId !== rapaceId);
+        affaitageEntries = affaitageEntries.filter(a => a.rapaceId !== rapaceId);
+        
+        saveAllData();
+        updateRapaceList();
+        updateRapaceSelects();
+        updateEntryList();
+        updatechasseList();
+        updateAffaitageList();
+        
+        alert('Rapace supprimé !');
+    }
+}
+
+// Mise à jour selects
 function updateRapaceSelects() {
     var selects = ['rapace-select', 'chasse-rapace', 'affaitage-rapace'];
     
     for (var s = 0; s < selects.length; s++) {
         var select = document.getElementById(selects[s]);
         if (select) {
+            var currentValue = select.value;
             select.innerHTML = '<option value="">Choisir un rapace</option>';
+            
             for (var i = 0; i < rapaces.length; i++) {
                 var rapace = rapaces[i];
                 var option = document.createElement('option');
@@ -891,11 +1156,13 @@ function updateRapaceSelects() {
                 option.textContent = rapace.name;
                 select.appendChild(option);
             }
+            
+            select.value = currentValue;
         }
     }
 }
 
-// Fonction ajouter entrée
+// Ajouter entrée
 function addEntry() {
     var rapaceId = document.getElementById('rapace-select').value;
     var type = document.getElementById('event-type').value;
@@ -918,7 +1185,7 @@ function addEntry() {
         weather: currentWeather || 'Météo non dispo'
     };
 
-    // Ajouter les données spécifiques selon le type
+    // Données spécifiques selon le type
     if (type === 'nourriture') {
         entry.poidsAvant = document.getElementById('poids-avant').value;
         entry.poidsApres = document.getElementById('poids-apres').value;
@@ -936,7 +1203,7 @@ function addEntry() {
     }
 
     entries.push(entry);
-    saveAllData(); // Sauvegarder après ajout
+    saveAllData();
     updateEntryList();
     
     // Vider les champs
@@ -944,7 +1211,6 @@ function addEntry() {
     clearConditionalFields();
 }
 
-// Fonction pour vider les champs conditionnels
 function clearConditionalFields() {
     var fields = ['poids-avant', 'poids-apres', 'quantite-nourriture'];
     for (var i = 0; i < fields.length; i++) {
@@ -958,13 +1224,13 @@ function clearConditionalFields() {
     }
 }
 
-// Fonction mise à jour liste entrées
+// Liste entrées
 function updateEntryList() {
     var selectedRapaceId = document.getElementById('rapace-select').value;
     var entryList = document.getElementById('entry-list');
     
     if (!selectedRapaceId) {
-        entryList.innerHTML = '<p style="text-align:center; color: #666;">Sélectionnez un rapace pour voir l\'historique</p>';
+        entryList.innerHTML = '<p style="text-align:center; color: #666;">Sélectionnez un rapace</p>';
         return;
     }
 
@@ -978,9 +1244,13 @@ function updateEntryList() {
     entryList.innerHTML = '';
     
     if (filteredEntries.length === 0) {
-        entryList.innerHTML = '<p style="text-align:center; color: #666;">Aucune entrée pour ce rapace</p>';
+        entryList.innerHTML = '<p style="text-align:center; color: #666;">Aucune entrée</p>';
         return;
     }
+
+    // Trier et prendre les 10 dernières
+    filteredEntries.sort((a, b) => new Date(b.date + ' ' + b.time) - new Date(a.date + ' ' + a.time));
+    filteredEntries = filteredEntries.slice(0, 10);
 
     for (var i = 0; i < filteredEntries.length; i++) {
         var entry = filteredEntries[i];
@@ -1011,7 +1281,7 @@ function updateEntryList() {
     }
 }
 
-// Fonction ajouter chasse
+// Chasse
 function addChasse() {
     var rapaceId = document.getElementById('chasse-rapace').value;
     var date = document.getElementById('chasse-date').value;
@@ -1019,7 +1289,7 @@ function addChasse() {
     var notes = document.getElementById('chasse-notes').value;
     
     if (!rapaceId || !date || !time) {
-        alert('Merci de sélectionner un rapace, une date et une heure');
+        alert('Merci de remplir tous les champs requis');
         return;
     }
     
@@ -1040,10 +1310,10 @@ function addChasse() {
     };
     
     chasseEntries.push(chasse);
-    saveAllData(); // Sauvegarder après ajout
+    saveAllData();
     updatechasseList();
     
-    // Remettre à zéro les compteurs et vider les notes
+    // Vider
     var huntInputs = document.querySelectorAll('.hunt-item input');
     for (var i = 0; i < huntInputs.length; i++) {
         huntInputs[i].value = 0;
@@ -1051,27 +1321,18 @@ function addChasse() {
     document.getElementById('chasse-notes').value = '';
 }
 
-// Fonction mise à jour liste chasse
 function updatechasseList() {
     var chasseList = document.getElementById('chasse-list');
     chasseList.innerHTML = '';
     
     if (chasseEntries.length === 0) {
-        chasseList.innerHTML = '<p style="text-align:center; color: #666;">Aucune chasse enregistrée</p>';
+        chasseList.innerHTML = '<p style="text-align:center; color: #666;">Aucune chasse</p>';
         return;
     }
     
     for (var i = chasseEntries.length - 1; i >= 0; i--) {
         var chasse = chasseEntries[i];
-        var rapace = null;
-        
-        for (var j = 0; j < rapaces.length; j++) {
-            if (rapaces[j].id === chasse.rapaceId) {
-                rapace = rapaces[j];
-                break;
-            }
-        }
-        
+        var rapace = rapaces.find(r => r.id === chasse.rapaceId);
         var div = document.createElement('div');
         div.className = 'day-card';
         
@@ -1086,7 +1347,7 @@ function updatechasseList() {
         if (chasse.oie > 0) details += 'Oie: ' + chasse.oie + ' ';
         if (chasse.autre > 0) details += 'Autre: ' + chasse.autre + ' ';
         
-        div.innerHTML = '<h4>' + (rapace ? rapace.name : 'Rapace inconnu') + '</h4>' +
+        div.innerHTML = '<h4>' + (rapace ? rapace.name : 'Inconnu') + '</h4>' +
                         '<p style="color: #666; font-size: 14px;">' + new Date(chasse.date).toLocaleDateString('fr-FR') + ' à ' + chasse.time + '</p>' +
                         '<p><strong>Total prises:</strong> ' + total + '</p>' +
                         '<p>' + (details || 'Aucune prise') + '</p>' +
@@ -1096,7 +1357,7 @@ function updatechasseList() {
     }
 }
 
-// Fonction ajouter affaitage
+// Affaitage
 function addAffaitage() {
     var rapaceId = document.getElementById('affaitage-rapace').value;
     var date = document.getElementById('affaitage-date').value;
@@ -1104,7 +1365,7 @@ function addAffaitage() {
     var notes = document.getElementById('affaitage-notes').value;
     
     if (!rapaceId || !date || !time) {
-        alert('Merci de sélectionner un rapace, une date et une heure');
+        alert('Merci de remplir tous les champs requis');
         return;
     }
     
@@ -1122,10 +1383,10 @@ function addAffaitage() {
     };
     
     affaitageEntries.push(affaitage);
-    saveAllData(); // Sauvegarder après ajout
+    saveAllData();
     updateAffaitageList();
     
-    // Vider les champs
+    // Vider
     document.getElementById('affaitage-notes').value = '';
     var checkboxes = document.querySelectorAll('#affaitage .checkbox-item input');
     for (var i = 0; i < checkboxes.length; i++) {
@@ -1133,27 +1394,18 @@ function addAffaitage() {
     }
 }
 
-// Fonction mise à jour liste affaitage
 function updateAffaitageList() {
     var affaitageList = document.getElementById('affaitage-list');
     affaitageList.innerHTML = '';
     
     if (affaitageEntries.length === 0) {
-        affaitageList.innerHTML = '<p style="text-align:center; color: #666;">Aucun affaitage enregistré</p>';
+        affaitageList.innerHTML = '<p style="text-align:center; color: #666;">Aucun affaitage</p>';
         return;
     }
     
     for (var i = affaitageEntries.length - 1; i >= 0; i--) {
         var affaitage = affaitageEntries[i];
-        var rapace = null;
-        
-        for (var j = 0; j < rapaces.length; j++) {
-            if (rapaces[j].id === affaitage.rapaceId) {
-                rapace = rapaces[j];
-                break;
-            }
-        }
-        
+        var rapace = rapaces.find(r => r.id === affaitage.rapaceId);
         var div = document.createElement('div');
         div.className = 'day-card';
         
@@ -1163,7 +1415,7 @@ function updateAffaitageList() {
         if (affaitage.filiere) activites.push('Filière');
         if (affaitage.libre) activites.push('Libre');
         
-        div.innerHTML = '<h4>' + (rapace ? rapace.name : 'Rapace inconnu') + '</h4>' +
+        div.innerHTML = '<h4>' + (rapace ? rapace.name : 'Inconnu') + '</h4>' +
                         '<p style="color: #666; font-size: 14px;">' + new Date(affaitage.date).toLocaleDateString('fr-FR') + ' à ' + affaitage.time + '</p>' +
                         '<p><strong>Activités:</strong> ' + (activites.length > 0 ? activites.join(', ') : 'Aucune') + '</p>' +
                         (affaitage.notes ? '<p><em>' + affaitage.notes + '</em></p>' : '') +
@@ -1172,193 +1424,318 @@ function updateAffaitageList() {
     }
 }
 
-// Fonction pour changer la date des stats
+// Stats
 function changeStatsDate(days) {
     currentStatsDate.setDate(currentStatsDate.getDate() + days);
     document.getElementById('stats-date').value = currentStatsDate.toISOString().split('T')[0];
     updateStats();
 }
 
-// Fonction pour afficher plusieurs jours
 function showMultipleDays() {
     var statsContent = document.getElementById('stats-content');
-    statsContent.innerHTML = '';
-    
-    var startDate = new Date(currentStatsDate);
-    startDate.setDate(startDate.getDate() - 1);
+    statsContent.innerHTML = '<div class="stats-grid">';
     
     for (var i = 0; i < 4; i++) {
-        var dayDate = new Date(startDate);
-        dayDate.setDate(dayDate.getDate() + i);
+        var dayDate = new Date(currentStatsDate);
+        dayDate.setDate(dayDate.getDate() - 1 + i);
         var dateStr = dayDate.toISOString().split('T')[0];
         
-        var dayDiv = document.createElement('div');
-        dayDiv.className = 'day-card';
-        dayDiv.innerHTML = '<h4>' + dayDate.toLocaleDateString('fr-FR') + '</h4>';
+        var dayEntries = entries.filter(e => e.date === dateStr);
+        var dayChasse = chasseEntries.filter(c => c.date === dateStr);
+        var dayAffaitage = affaitageEntries.filter(a => a.date === dateStr);
         
-        var dayEntries = [];
-        for (var j = 0; j < entries.length; j++) {
-            if (entries[j].date === dateStr) {
-                dayEntries.push(entries[j]);
-            }
-        }
-        
-        var dayChasse = [];
-        for (var j = 0; j < chasseEntries.length; j++) {
-            if (chasseEntries[j].date === dateStr) {
-                dayChasse.push(chasseEntries[j]);
-            }
-        }
-        
-        var dayAffaitage = [];
-        for (var j = 0; j < affaitageEntries.length; j++) {
-            if (affaitageEntries[j].date === dateStr) {
-                dayAffaitage.push(affaitageEntries[j]);
-            }
-        }
-        
-        // Afficher la météo du jour si disponible
-        var weatherOfDay = '';
-        if (dayEntries.length > 0) {
-            weatherOfDay = dayEntries[0].weather;
-        } else if (dayChasse.length > 0) {
-            weatherOfDay = dayChasse[0].weather;
-        } else if (dayAffaitage.length > 0) {
-            weatherOfDay = dayAffaitage[0].weather;
-        }
-        
-        var content = '';
-        if (weatherOfDay) {
-            content += '<p style="color: #666; font-style: italic; margin-bottom: 10px;">🌤️ ' + weatherOfDay + '</p>';
-        }
-        
-        content += '<p><strong>Activités quotidiennes:</strong> ' + dayEntries.length + '</p>';
-        content += '<p><strong>Chasses:</strong> ' + dayChasse.length + '</p>';
-        content += '<p><strong>Affaitages:</strong> ' + dayAffaitage.length + '</p>';
-        
-        if (dayEntries.length > 0) {
-            content += '<div style="margin-top: 10px;">';
-            for (var j = 0; j < dayEntries.length; j++) {
-                var entry = dayEntries[j];
-                var rapace = null;
-                for (var k = 0; k < rapaces.length; k++) {
-                    if (rapaces[k].id === entry.rapaceId) {
-                        rapace = rapaces[k];
-                        break;
-                    }
-                }
-                content += '<div style="font-size: 12px; margin: 2px 0;">';
-                content += entry.time + ' - ' + (rapace ? rapace.name : 'Inconnu') + ': ' + entry.type;
-                content += '</div>';
-            }
-            content += '</div>';
-        }
-        
-        dayDiv.innerHTML += content;
-        statsContent.appendChild(dayDiv);
+        statsContent.innerHTML += '<div class="stat-card">' +
+                                  '<h3>' + dayDate.toLocaleDateString('fr-FR') + '</h3>' +
+                                  '<div class="value">' + (dayEntries.length + dayChasse.length + dayAffaitage.length) + '</div>' +
+                                  '<p>activités</p>' +
+                                  '</div>';
     }
+    
+    statsContent.innerHTML += '</div>';
 }
 
-// Fonction stats
 function updateStats() {
     var selectedDate = document.getElementById('stats-date').value;
     if (!selectedDate) return;
     
     currentStatsDate = new Date(selectedDate);
     
-    var statsContent = document.getElementById('stats-content');
-    statsContent.innerHTML = '';
+    var dayEntries = entries.filter(e => e.date === selectedDate);
+    var dayChasse = chasseEntries.filter(c => c.date === selectedDate);
+    var dayAffaitage = affaitageEntries.filter(a => a.date === selectedDate);
     
-    var dayEntries = [];
-    for (var i = 0; i < entries.length; i++) {
-        if (entries[i].date === selectedDate) {
-            dayEntries.push(entries[i]);
-        }
-    }
-    
-    var dayChasse = [];
-    for (var i = 0; i < chasseEntries.length; i++) {
-        if (chasseEntries[i].date === selectedDate) {
-            dayChasse.push(chasseEntries[i]);
-        }
-    }
-    
-    var dayAffaitage = [];
-    for (var i = 0; i < affaitageEntries.length; i++) {
-        if (affaitageEntries[i].date === selectedDate) {
-            dayAffaitage.push(affaitageEntries[i]);
-        }
-    }
-    
-    var dayDiv = document.createElement('div');
-    dayDiv.className = 'day-card';
-    dayDiv.innerHTML = '<h4>Récapitulatif du ' + new Date(selectedDate).toLocaleDateString('fr-FR') + '</h4>';
-    
-    // Afficher la météo du jour si disponible
     var weatherOfDay = '';
-    if (dayEntries.length > 0) {
-        weatherOfDay = dayEntries[0].weather;
-    } else if (dayChasse.length > 0) {
-        weatherOfDay = dayChasse[0].weather;
-    } else if (dayAffaitage.length > 0) {
-        weatherOfDay = dayAffaitage[0].weather;
-    }
+    if (dayEntries.length > 0) weatherOfDay = dayEntries[0].weather;
+    else if (dayChasse.length > 0) weatherOfDay = dayChasse[0].weather;
+    else if (dayAffaitage.length > 0) weatherOfDay = dayAffaitage[0].weather;
     
-    var content = '';
+    var content = '<div class="day-card">';
+    content += '<h4>📅 Récapitulatif détaillé du ' + new Date(selectedDate).toLocaleDateString('fr-FR') + '</h4>';
+    
     if (weatherOfDay) {
         content += '<p style="color: #666; font-style: italic; margin-bottom: 15px;">🌤️ ' + weatherOfDay + '</p>';
     }
     
+    // Résumé rapide
     content += '<div class="stats-grid">';
-    content += '<div class="stat-card"><h3>Activités</h3><div class="value">' + dayEntries.length + '</div></div>';
+    content += '<div class="stat-card"><h3>Activités quotidiennes</h3><div class="value">' + dayEntries.length + '</div></div>';
     content += '<div class="stat-card"><h3>Chasses</h3><div class="value">' + dayChasse.length + '</div></div>';
     content += '<div class="stat-card"><h3>Affaitages</h3><div class="value">' + dayAffaitage.length + '</div></div>';
+    var totalActivities = dayEntries.length + dayChasse.length + dayAffaitage.length;
+    content += '<div class="stat-card"><h3>Total</h3><div class="value">' + totalActivities + '</div></div>';
     content += '</div>';
     
-    if (dayEntries.length > 0) {
-        content += '<h3 style="margin-top: 20px;">Détail des activités</h3>';
+    // Détail complet des activités par rapace
+    if (totalActivities > 0) {
+        content += '<h3 style="margin-top: 30px;">📋 Détail complet des activités</h3>';
+        
+        // Grouper par rapace
+        var activitiesByRapace = {};
+        
+        // Ajouter les activités quotidiennes
         for (var i = 0; i < dayEntries.length; i++) {
             var entry = dayEntries[i];
-            var rapace = null;
-            for (var j = 0; j < rapaces.length; j++) {
-                if (rapaces[j].id === entry.rapaceId) {
-                    rapace = rapaces[j];
-                    break;
-                }
+            var rapace = rapaces.find(r => r.id === entry.rapaceId);
+            var rapaceName = rapace ? rapace.name : 'Rapace inconnu';
+            
+            if (!activitiesByRapace[rapaceName]) {
+                activitiesByRapace[rapaceName] = [];
             }
             
-            content += '<div class="entry-item">';
-            content += '<div class="date">' + entry.time + ' - ' + (rapace ? rapace.name : 'Inconnu') + '</div>';
-            content += '<div class="content"><strong>' + entry.type + '</strong>';
-            
-            if (entry.type === 'nourriture') {
-                content += '<br>Poids: ' + (entry.poidsAvant || '?') + 'g → ' + (entry.poidsApres || '?') + 'g';
-                content += '<br>Menu: ' + entry.menu + ' (' + entry.quantite + ')';
-            } else if (entry.type === 'vol') {
-                content += '<br>Type: ' + entry.typeVol;
-            } else if (entry.type === 'comportement') {
-                content += '<br>Réactivité: ' + entry.reactivite + '/5';
-            } else if (entry.type === 'sante') {
-                content += '<br>État: ' + entry.etatSante;
-            } else if (entry.type === 'entrainement') {
-                content += '<br>Type: ' + entry.typeEntrainement;
-            }
-            
-            if (entry.notes) {
-                content += '<br><em>' + entry.notes + '</em>';
-            }
-            content += '</div></div>';
+            activitiesByRapace[rapaceName].push({
+                type: 'Suivi',
+                icon: '📝',
+                time: entry.time,
+                detail: entry,
+                category: 'entry'
+            });
         }
+        
+        // Ajouter les chasses
+        for (var i = 0; i < dayChasse.length; i++) {
+            var chasse = dayChasse[i];
+            var rapace = rapaces.find(r => r.id === chasse.rapaceId);
+            var rapaceName = rapace ? rapace.name : 'Rapace inconnu';
+            
+            if (!activitiesByRapace[rapaceName]) {
+                activitiesByRapace[rapaceName] = [];
+            }
+            
+            activitiesByRapace[rapaceName].push({
+                type: 'Chasse',
+                icon: '🏹',
+                time: chasse.time,
+                detail: chasse,
+                category: 'chasse'
+            });
+        }
+        
+        // Ajouter les affaitages
+        for (var i = 0; i < dayAffaitage.length; i++) {
+            var affaitage = dayAffaitage[i];
+            var rapace = rapaces.find(r => r.id === affaitage.rapaceId);
+            var rapaceName = rapace ? rapace.name : 'Rapace inconnu';
+            
+            if (!activitiesByRapace[rapaceName]) {
+                activitiesByRapace[rapaceName] = [];
+            }
+            
+            activitiesByRapace[rapaceName].push({
+                type: 'Affaitage',
+                icon: '🦅',
+                time: affaitage.time,
+                detail: affaitage,
+                category: 'affaitage'
+            });
+        }
+        
+        // Afficher par rapace
+        var rapaceNames = Object.keys(activitiesByRapace).sort();
+        for (var r = 0; r < rapaceNames.length; r++) {
+            var rapaceName = rapaceNames[r];
+            var activities = activitiesByRapace[rapaceName];
+            
+            // Trier les activités par heure
+            activities.sort(function(a, b) {
+                return a.time.localeCompare(b.time);
+            });
+            
+            content += '<div style="background: #f8f9fa; margin: 15px 0; padding: 20px; border-radius: 15px; border-left: 5px solid #2a5298;">';
+            content += '<h4 style="color: #1e3c72; margin-bottom: 15px;">🦅 ' + rapaceName + ' (' + activities.length + ' activités)</h4>';
+            
+            for (var a = 0; a < activities.length; a++) {
+                var activity = activities[a];
+                var detail = activity.detail;
+                
+                content += '<div class="entry-item" style="margin: 10px 0;">';
+                content += '<div class="date">' + activity.time + ' • ' + activity.icon + ' ' + activity.type + '</div>';
+                content += '<div class="content">';
+                
+                if (activity.category === 'entry') {
+                    content += '<strong>' + detail.type.charAt(0).toUpperCase() + detail.type.slice(1) + '</strong>';
+                    
+                    if (detail.type === 'nourriture') {
+                        content += '<br>• Poids: ' + (detail.poidsAvant || '?') + 'g → ' + (detail.poidsApres || '?') + 'g';
+                        content += '<br>• Menu: ' + detail.menu + ' (' + detail.quantite + ')';
+                    } else if (detail.type === 'vol') {
+                        content += '<br>• Type de vol: ' + detail.typeVol;
+                    } else if (detail.type === 'comportement') {
+                        content += '<br>• Réactivité: ' + detail.reactivite + '/5';
+                    } else if (detail.type === 'sante') {
+                        content += '<br>• État de santé: ' + detail.etatSante;
+                    } else if (detail.type === 'entrainement') {
+                        content += '<br>• Type d\'entraînement: ' + detail.typeEntrainement;
+                    }
+                    
+                } else if (activity.category === 'chasse') {
+                    var totalPrises = detail.faisan + detail.perdrix + detail.lapin + detail.lievre + detail.canard + detail.oie + detail.autre;
+                    content += '<strong>Session de chasse - ' + totalPrises + ' prise(s)</strong>';
+                    
+                    var prises = [];
+                    if (detail.faisan > 0) prises.push('Faisan: ' + detail.faisan);
+                    if (detail.perdrix > 0) prises.push('Perdrix: ' + detail.perdrix);
+                    if (detail.lapin > 0) prises.push('Lapin: ' + detail.lapin);
+                    if (detail.lievre > 0) prises.push('Lièvre: ' + detail.lievre);
+                    if (detail.canard > 0) prises.push('Canard: ' + detail.canard);
+                    if (detail.oie > 0) prises.push('Oie: ' + detail.oie);
+                    if (detail.autre > 0) prises.push('Autre: ' + detail.autre);
+                    
+                    if (prises.length > 0) {
+                        content += '<br>• Détail: ' + prises.join(', ');
+                    } else {
+                        content += '<br>• Aucune prise';
+                    }
+                    
+                } else if (activity.category === 'affaitage') {
+                    content += '<strong>Séance d\'affaitage</strong>';
+                    
+                    var activitesAffaitage = [];
+                    if (detail.priseNourriture) activitesAffaitage.push('Prise de nourriture');
+                    if (detail.gant) activitesAffaitage.push('Travail au gant');
+                    if (detail.filiere) activitesAffaitage.push('Filière');
+                    if (detail.libre) activitesAffaitage.push('Vol libre');
+                    
+                    if (activitesAffaitage.length > 0) {
+                        content += '<br>• Activités: ' + activitesAffaitage.join(', ');
+                    } else {
+                        content += '<br>• Aucune activité spécifique';
+                    }
+                }
+                
+                // Notes
+                if (detail.notes && detail.notes.trim()) {
+                    content += '<br>• <em>Notes: ' + detail.notes + '</em>';
+                }
+                
+                content += '</div></div>';
+            }
+            
+            content += '</div>';
+        }
+        
+        // Résumé de fin
+        content += '<div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin-top: 20px;">';
+        content += '<h4 style="color: #1e3c72;">📊 Résumé de la journée</h4>';
+        content += '<p><strong>• ' + rapaceNames.length + '</strong> rapace(s) ont eu des activités</p>';
+        content += '<p><strong>• ' + dayEntries.length + '</strong> activité(s) de suivi quotidien</p>';
+        content += '<p><strong>• ' + dayChasse.length + '</strong> session(s) de chasse</p>';
+        content += '<p><strong>• ' + dayAffaitage.length + '</strong> séance(s) d\'affaitage</p>';
+        
+        // Calcul total des prises de chasse
+        var totalPrisesJour = 0;
+        for (var i = 0; i < dayChasse.length; i++) {
+            var chasse = dayChasse[i];
+            totalPrisesJour += chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
+        }
+        if (totalPrisesJour > 0) {
+            content += '<p><strong>• ' + totalPrisesJour + '</strong> prise(s) de chasse au total</p>';
+        }
+        
+        if (weatherOfDay) {
+            content += '<p><strong>• Conditions météo:</strong> ' + weatherOfDay + '</p>';
+        }
+        
+        content += '</div>';
+        
+    } else {
+        content += '<div style="text-align: center; color: #666; margin: 40px 0;">';
+        content += '<h3>😴 Journée de repos</h3>';
+        content += '<p>Aucune activité enregistrée pour cette date.</p>';
+        content += '</div>';
     }
     
-    dayDiv.innerHTML += content;
-    statsContent.appendChild(dayDiv);
+    content += '</div>';
+    
+    document.getElementById('stats-content').innerHTML = content;
 }
 
-// Fonction pour vider toutes les données
+// Export/Import/Clear
+function exportAllData() {
+    var allData = {
+        rapaces: rapaces,
+        entries: entries,
+        chasseEntries: chasseEntries,
+        affaitageEntries: affaitageEntries,
+        currentLocation: currentLocation,
+        exportDate: new Date().toISOString()
+    };
+    
+    var dataStr = JSON.stringify(allData, null, 2);
+    var blob = new Blob([dataStr], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = 'rapaces_backup.json';
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    alert('Sauvegarde exportée !');
+}
+
+function importAllData() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = function(e) {
+        var file = e.target.files[0];
+        if (file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = JSON.parse(e.target.result);
+                    
+                    if (confirm('Importer ces données ? (remplace tout)')) {
+                        rapaces = data.rapaces || [];
+                        entries = data.entries || [];
+                        chasseEntries = data.chasseEntries || [];
+                        affaitageEntries = data.affaitageEntries || [];
+                        currentLocation = data.currentLocation || "Orthez (64300)";
+                        
+                        saveAllData();
+                        updateRapaceList();
+                        updateRapaceSelects();
+                        updateEntryList();
+                        updatechasseList();
+                        updateAffaitageList();
+                        loadWeather();
+                        
+                        alert('Données importées !');
+                    }
+                } catch (error) {
+                    alert('Erreur : fichier non valide');
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
+    
+    input.click();
+}
+
 function clearAllData() {
-    if (confirm('Êtes-vous sûr de vouloir effacer TOUTES les données ? Cette action est irréversible.')) {
-        if (confirm('Dernière confirmation : toutes les données seront perdues définitivement !')) {
+    if (confirm('Effacer TOUTES les données ?')) {
+        if (confirm('Dernière confirmation - tout sera perdu !')) {
             rapaces = [];
             entries = [];
             chasseEntries = [];
@@ -1366,28 +1743,20 @@ function clearAllData() {
             
             localStorage.removeItem('rapaces_data');
             
-            // Mettre à jour les interfaces
             updateRapaceList();
             updateRapaceSelects();
             updateEntryList();
             updatechasseList();
             updateAffaitageList();
             
-            alert('Toutes les données ont été effacées !');
+            alert('Données effacées !');
         }
     }
 }
 
 // Initialisation
 window.onload = function() {
-    // Charger les données sauvegardées
-    var dataLoaded = loadAllData();
-    if (dataLoaded) {
-        console.log('Données précédentes chargées avec succès');
-    } else {
-        console.log('Aucune donnée précédente trouvée, démarrage avec une base vierge');
-    }
-    
+    loadAllData();
     loadWeather();
     
     var now = new Date();
@@ -1410,19 +1779,23 @@ window.onload = function() {
     
     currentStatsDate = now;
     
-    // Ces fonctions ne sont appelées que si les données n'ont pas été chargées
-    if (!dataLoaded) {
-        updateRapaceList();
-        updateRapaceSelects();
-        updateEntryList();
-        updatechasseList();
-        updateAffaitageList();
-    }
-    
+    updateRapaceList();
+    updateRapaceSelects();
+    updateEntryList();
+    updatechasseList();
+    updateAffaitageList();
     showEventFields();
     
-    // Sauvegarder automatiquement toutes les 30 secondes
+    // Sauvegarder toutes les 30 secondes
     setInterval(saveAllData, 30000);
+};
+
+// Fermer modal en cliquant à côté
+window.onclick = function(event) {
+    var modal = document.getElementById('editModal');
+    if (event.target == modal) {
+        closeEditModal();
+    }
 };
 </script>
 </body>
