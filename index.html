@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestionnaire de Rapaces</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'><circle cx='100' cy='100' r='95' fill='white' stroke='%23333' stroke-width='10'/><g transform='translate(100,100) scale(0.8)'><path d='M-60,-20 Q-40,-60 0,-40 Q40,-60 60,-20 Q50,-40 20,-30 Q10,-50 0,-35 Q-10,-50 -20,-30 Q-50,-40 -60,-20' fill='%23333'/><circle cx='-25' cy='-25' r='5' fill='%23333'/><path d='M-10,-10 Q0,0 10,-10 Q15,-5 5,-5 Q-5,-5 -10,-10' fill='%23333'/><path d='M-40,10 Q-20,20 0,10 Q20,20 40,10 Q30,30 0,25 Q-30,30 -40,10' fill='%23333'/><path d='M-30,-10 Q-20,0 -10,-10 M10,-10 Q20,0 30,-10' stroke='%23333' stroke-width='2' fill='none'/><path d='M-70,-30 Q-50,-10 -30,-20 M30,-20 Q50,-10 70,-30' stroke='%23333' stroke-width='3' fill='none'/><path d='M-60,20 Q-40,40 -20,30 M20,30 Q40,40 60,20' stroke='%23333' stroke-width='3' fill='none'/><circle cx='45' cy='45' r='2' fill='%23333'/><circle cx='-35' cy='55' r='1.5' fill='%23333'/><rect x='-15' y='35' width='4' height='2' fill='%23333'/></g></svg>" type="image/svg+xml">
     <style>
         * {
             margin: 0;
@@ -39,6 +40,14 @@
             font-size: 2.5em;
             margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .weather-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
         }
 
         .tabs {
@@ -132,8 +141,8 @@
             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
         }
 
-        button.btn-success {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        button.btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #545b62 100%);
         }
 
         button.btn-warning {
@@ -184,6 +193,11 @@
         .rapace-actions button {
             padding: 8px 12px;
             font-size: 12px;
+        }
+
+        .weather-info {
+            color: #e3f2fd;
+            font-size: 14px;
         }
 
         .conditional-fields {
@@ -252,6 +266,13 @@
             margin-bottom: 10px;
         }
 
+        .day-navigation {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -275,25 +296,6 @@
         .stat-card .value {
             font-size: 2em;
             font-weight: bold;
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #4285f4;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            z-index: 10000;
-            font-size: 14px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
         }
 
         .modal {
@@ -327,18 +329,6 @@
         .close:hover {
             color: #000;
         }
-
-        @media (max-width: 768px) {
-            .form-row {
-                flex-direction: column;
-            }
-            .hunt-grid {
-                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            }
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-        }
     </style>
 </head>
 <body>
@@ -358,8 +348,13 @@
             </svg>
             <div>
                 <h1>🦅 Gestionnaire de Rapaces</h1>
-                <p>Version locale - Sauvegarde automatique</p>
+                <p>Suivi quotidien de vos compagnons ailés</p>
             </div>
+        </div>
+        <div class="weather-controls">
+            <p id="weather-info" class="weather-info">🌦️ Chargement météo...</p>
+            <button onclick="refreshWeather()" style="padding: 8px 16px; font-size: 12px;">🔄</button>
+            <button onclick="changeLocation()" style="padding: 8px 16px; font-size: 12px;">📍</button>
         </div>
     </div>
 
@@ -369,7 +364,6 @@
         <button class="tab" onclick="showTab('chasse')">Chasse</button>
         <button class="tab" onclick="showTab('affaitage')">Affaitage</button>
         <button class="tab" onclick="showTab('stats')">Statistiques</button>
-        <button class="tab" onclick="showTab('demo')">Démo</button>
     </div>
 
     <div id="gestion" class="tab-content active">
@@ -471,6 +465,7 @@
             </div>
         </div>
 
+        <!-- Champs conditionnels pour Vol -->
         <div id="vol-fields" class="conditional-fields">
             <div class="form-group">
                 <label for="type-vol">Type de vol :</label>
@@ -482,6 +477,7 @@
             </div>
         </div>
 
+        <!-- Champs conditionnels pour Comportement -->
         <div id="comportement-fields" class="conditional-fields">
             <div class="form-group">
                 <label>Réactivité (1-5) :</label>
@@ -500,6 +496,7 @@
             </div>
         </div>
 
+        <!-- Champs conditionnels pour Santé -->
         <div id="sante-fields" class="conditional-fields">
             <div class="form-group">
                 <label for="etat-sante">État :</label>
@@ -510,6 +507,7 @@
             </div>
         </div>
 
+        <!-- Champs conditionnels pour Entraînement -->
         <div id="entrainement-fields" class="conditional-fields">
             <div class="form-group">
                 <label for="type-entrainement">Type d'entraînement :</label>
@@ -647,45 +645,90 @@
     <div id="stats" class="tab-content">
         <h2>Statistiques</h2>
         <div style="margin-bottom: 20px;">
-            <div style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center;">
+            <div class="day-navigation">
+                <button onclick="changeStatsDate(-1)">← Jour précédent</button>
                 <input type="date" id="stats-date" onchange="updateStats()">
-                <button onclick="showTodayStats()">Aujourd'hui</button>
+                <button onclick="changeStatsDate(1)">Jour suivant →</button>
+                <button onclick="showMultipleDays()">Voir 4 jours</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button onclick="exportAllData()">💾 Exporter</button>
+                <button onclick="importAllData()" style="margin-left: 10px;">📁 Importer</button>
+                <button onclick="clearAllData()" class="btn-danger" style="margin-left: 10px;">🗑️ Vider</button>
             </div>
         </div>
         <div id="stats-content"></div>
     </div>
 
-    <div id="demo" class="tab-content">
-        <h2>🎯 Démonstration</h2>
+    <div id="sync" class="tab-content">
+        <h2>🌐 Synchronisation Google Drive</h2>
         
-        <div class="day-card" style="background: #e8f5e8;">
-            <h4>✨ Test rapide de l'application</h4>
-            <p>Utilisez cette section pour tester rapidement les fonctionnalités</p>
-        </div>
-        
-        <h3>➕ Ajouter un rapace de test</h3>
-        <div class="form-group">
-            <label for="demo-name">Nom du rapace :</label>
-            <input type="text" id="demo-name" value="Faucon pèlerin">
-        </div>
-        <div class="form-group">
-            <label for="demo-species">Espèce :</label>
-            <input type="text" id="demo-species" value="Falco peregrinus">
-        </div>
-        <button onclick="addDemoRapace()">➕ Ajouter rapace de démo</button>
-
-        <h3 style="margin-top: 30px;">🎲 Générer des données de test</h3>
-        <p>Créez automatiquement plusieurs rapaces avec des données d'exemple</p>
-        <button onclick="generateDemoData()">🎲 Générer données complètes</button>
-        <button onclick="clearAllDemoData()" class="btn-danger" style="margin-left: 10px;">🗑️ Vider toutes les données</button>
-
-        <h3 style="margin-top: 30px;">📊 État actuel des données</h3>
-        <div id="demo-data" style="background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 14px;">
-            Chargement des données...
+        <div class="day-card">
+            <h4 id="sync-status">📊 État de la synchronisation</h4>
+            <p id="sync-details">🔄 Non configuré</p>
+            <p id="last-sync-time">Dernière sync : Jamais</p>
         </div>
 
-        <div style="margin-top: 20px;">
-            <button onclick="showCurrentData()">🔍 Actualiser l'affichage</button>
+        <div style="margin: 20px 0;">
+            <h3>🔧 Configuration</h3>
+            <div style="display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
+                <button onclick="initGoogleDriveSync()" id="connect-drive-btn">🔗 Connecter Google Drive</button>
+                <button onclick="manualSync()" id="manual-sync-btn" style="display: none;">⚡ Synchroniser maintenant</button>
+                <button onclick="disconnectDrive()" id="disconnect-drive-btn" style="display: none;" class="btn-secondary">❌ Déconnecter</button>
+            </div>
+            <p style="font-size: 14px; color: #666;">
+                La synchronisation Google Drive permet de garder vos données à jour sur tous vos appareils automatiquement.
+            </p>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <h3>⚙️ Paramètres de synchronisation</h3>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="auto-sync-enabled" checked>
+                    <label for="auto-sync-enabled">Synchronisation automatique (toutes les 2 minutes)</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="sync-on-change-enabled" checked>
+                    <label for="sync-on-change-enabled">Synchroniser à chaque modification</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="sync-notifications" checked>
+                    <label for="sync-notifications">Notifications de synchronisation</label>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <h3>📱 Instructions multi-appareils</h3>
+            <div class="day-card" style="background: #e8f4fd;">
+                <p><strong>1. Sur cet appareil :</strong></p>
+                <p>• Cliquez "🔗 Connecter Google Drive"</p>
+                <p>• Autorisez l'accès à votre Google Drive</p>
+                <p>• Vos données seront sauvegardées automatiquement</p>
+                
+                <p><strong>2. Sur vos autres appareils :</strong></p>
+                <p>• Ouvrez cette application</p>
+                <p>• Allez dans l'onglet "Sync"</p>
+                <p>• Connectez-vous avec le MÊME compte Google</p>
+                <p>• Vos données se synchroniseront automatiquement !</p>
+            </div>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <h3>📊 Historique de synchronisation</h3>
+            <div id="sync-history" style="max-height: 200px; overflow-y: auto;">
+                <p style="color: #666; font-style: italic;">Aucune synchronisation effectuée</p>
+            </div>
+        </div>
+
+        <div class="day-card" style="background: #e3f2fd;">
+            <h4>ℹ️ Comment ça marche</h4>
+            <p>• Vos données sont chiffrées et stockées dans votre Google Drive personnel</p>
+            <p>• Seuls vos appareils connectés avec le même compte Google peuvent y accéder</p>
+            <p>• La synchronisation est bidirectionnelle : les modifications sur n'importe quel appareil se propagent partout</p>
+            <p>• En cas de conflit, la version la plus récente est conservée</p>
+            <p>• Vous gardez le contrôle total : déconnexion possible à tout moment</p>
         </div>
     </div>
 </div>
@@ -703,791 +746,1457 @@
             <label for="edit-species">Espèce :</label>
             <input type="text" id="edit-species">
         </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="edit-birthdate">Date de naissance :</label>
-                <input type="date" id="edit-birthdate">
-            </div>
-            <div class="form-group">
-                <label for="edit-sex">Sexe :</label>
-                <select id="edit-sex">
-                    <option value="forme">Forme</option>
-                    <option value="tiercelet">Tiercelet</option>
-                </select>
-            </div>
+        <div class="form-group">
+            <label for="edit-birthdate">Date de naissance :</label>
+            <input type="date" id="edit-birthdate">
         </div>
-        <button onclick="saveEdit()">Sauvegarder</button>
-        <button onclick="closeEditModal()" style="margin-left: 10px;">Annuler</button>
+        <div class="form-group">
+            <label for="edit-sex">Sexe :</label>
+            <select id="edit-sex">
+                <option value="forme">Forme</option>
+                <option value="tiercelet">Tiercelet</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button onclick="saveRapaceEdit()">💾 Sauvegarder</button>
+            <button onclick="closeEditModal()" class="btn-secondary">❌ Annuler</button>
+        </div>
     </div>
 </div>
 
 <script>
 // Variables globales
-let rapaces = [];
-let entries = [];
-let chasses = [];
-let affaitages = [];
-let currentEditId = null;
+var rapaces = [];
+var entries = [];
+var chasseEntries = [];
+var affaitageEntries = [];
+var currentWeather = null;
+var currentLocation = "Orthez (64300)";
+var currentStatsDate = new Date();
+var editingRapaceId = null;
 
-// Initialisation
-document.addEventListener('DOMContentLoaded', function() {
-    loadData();
-    updateRapaceSelects();
-    updateRapaceList();
-    updateEntryList();
-    updateChasseList();
-    updateAffaitageList();
-    showCurrentData();
-    
-    // Définir les dates par défaut
-    const today = new Date();
-    const dateInputs = document.querySelectorAll('input[type="date"]');
-    dateInputs.forEach(input => {
-        if (input.id !== 'rapace-birthdate' && input.id !== 'edit-birthdate') {
-            input.value = today.toISOString().split('T')[0];
-        }
-    });
-    
-    // Définir l'heure par défaut
-    const timeInputs = document.querySelectorAll('input[type="time"]');
-    timeInputs.forEach(input => {
-        const now = new Date();
-        const hours = now.getHours().toString().padStart(2, '0');
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        input.value = `${hours}:${minutes}`;
-    });
-});
+// Variables pour Google Drive synchronisation
+var gapi = null;
+var isGoogleDriveConnected = false;
+var syncIntervalId = null;
+var lastSyncTime = null;
+var googleDriveFileId = null;
+var syncHistory = [];
 
-// Gestion des données
-function loadData() {
+// Sauvegarder avec sync Google Drive
+function saveAllData() {
     try {
-        const savedRapaces = localStorage.getItem('rapaces');
-        const savedEntries = localStorage.getItem('entries');
-        const savedChasses = localStorage.getItem('chasses');
-        const savedAffaitages = localStorage.getItem('affaitages');
+        var data = {
+            rapaces: rapaces,
+            entries: entries,
+            chasseEntries: chasseEntries,
+            affaitageEntries: affaitageEntries,
+            currentLocation: currentLocation,
+            lastSave: new Date().toISOString()
+        };
+        localStorage.setItem('rapaces_data', JSON.stringify(data));
         
-        if (savedRapaces) rapaces = JSON.parse(savedRapaces);
-        if (savedEntries) entries = JSON.parse(savedEntries);
-        if (savedChasses) chasses = JSON.parse(savedChasses);
-        if (savedAffaitages) affaitages = JSON.parse(savedAffaitages);
-    } catch (error) {
-        console.error('Erreur lors du chargement des données:', error);
-        showNotification('Erreur lors du chargement des données', 'error');
+        // Synchroniser avec Google Drive si connecté et activé
+        if (isGoogleDriveConnected && document.getElementById('sync-on-change-enabled') && document.getElementById('sync-on-change-enabled').checked) {
+            syncToGoogleDrive(false); // false = pas de notification pour les auto-sync
+        }
+    } catch (e) {
+        console.error('Erreur sauvegarde:', e);
     }
 }
 
-function saveData() {
-    try {
-        localStorage.setItem('rapaces', JSON.stringify(rapaces));
-        localStorage.setItem('entries', JSON.stringify(entries));
-        localStorage.setItem('chasses', JSON.stringify(chasses));
-        localStorage.setItem('affaitages', JSON.stringify(affaitages));
-    } catch (error) {
-        console.error('Erreur lors de la sauvegarde:', error);
-        showNotification('Erreur lors de la sauvegarde', 'error');
-    }
-}
+// ===== GOOGLE DRIVE SYNCHRONISATION RÉELLE =====
 
-// Gestion des onglets
-function showTab(tabName) {
-    // Masquer tous les onglets
-    const tabs = document.querySelectorAll('.tab-content');
-    tabs.forEach(tab => tab.classList.remove('active'));
-    
-    // Désactiver tous les boutons d'onglets
-    const tabButtons = document.querySelectorAll('.tab');
-    tabButtons.forEach(btn => btn.classList.remove('active'));
-    
-    // Activer l'onglet sélectionné
-    document.getElementById(tabName).classList.add('active');
-    event.target.classList.add('active');
-}
-
-// Gestion des rapaces
-function addRapace() {
-    const name = document.getElementById('rapace-name').value.trim();
-    const species = document.getElementById('rapace-species').value.trim();
-    const birthdate = document.getElementById('rapace-birthdate').value;
-    const sex = document.getElementById('rapace-sex').value;
-    
-    if (!name || !species) {
-        showNotification('Veuillez remplir tous les champs obligatoires', 'error');
+// Charger et initialiser Google Drive API
+function loadGoogleDriveAPI() {
+    if (typeof gapi !== 'undefined') {
+        initGoogleDriveAPI();
         return;
     }
     
-    const rapace = {
-        id: Date.now(),
-        name: name,
-        species: species,
-        birthdate: birthdate,
-        sex: sex,
-        created: new Date().toISOString()
+    var script = document.createElement('script');
+    script.src = 'https://apis.google.com/js/api.js';
+    script.onload = function() {
+        gapi.load('auth2:client:drive', initGoogleDriveAPI);
+    };
+    document.head.appendChild(script);
+}
+
+function initGoogleDriveAPI() {
+    gapi.load('auth2:client', function() {
+        gapi.client.init({
+            apiKey: 'b4d68d2dedd2d6d43f81f804010b0673', // Votre clé API
+            clientId: '464618923115-m4h8hf5gkqmfhg2oqm6vr9sj5h0f4nq9.apps.googleusercontent.com',
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+            scope: 'https://www.googleapis.com/auth/drive.file'
+        }).then(function() {
+            // Vérifier si déjà connecté
+            var authInstance = gapi.auth2.getAuthInstance();
+            if (authInstance.isSignedIn.get()) {
+                isGoogleDriveConnected = true;
+                updateSyncUI();
+                addSyncHistoryEntry('Reconnexion automatique réussie');
+                startAutoSync();
+            }
+        }).catch(function(error) {
+            console.error('Erreur initialisation Google Drive:', error);
+        });
+    });
+}
+
+function initGoogleDriveSync() {
+    if (!gapi || !gapi.auth2) {
+        addSyncHistoryEntry('Chargement de l\'API Google Drive...');
+        loadGoogleDriveAPI();
+        setTimeout(initGoogleDriveSync, 2000);
+        return;
+    }
+    
+    var authInstance = gapi.auth2.getAuthInstance();
+    authInstance.signIn().then(function() {
+        isGoogleDriveConnected = true;
+        addSyncHistoryEntry('✅ Connexion réussie à Google Drive');
+        updateSyncUI();
+        
+        // Première synchronisation
+        syncToGoogleDrive(true);
+        startAutoSync();
+        
+        if (document.getElementById('sync-notifications').checked) {
+            alert('✅ Connecté à Google Drive !\nSynchronisation automatique activée.');
+        }
+    }).catch(function(error) {
+        console.error('Erreur connexion:', error);
+        addSyncHistoryEntry('❌ Erreur de connexion : ' + error.error);
+        alert('❌ Erreur de connexion à Google Drive');
+    });
+}
+
+function disconnectDrive() {
+    if (gapi && gapi.auth2) {
+        gapi.auth2.getAuthInstance().signOut().then(function() {
+            isGoogleDriveConnected = false;
+            stopAutoSync();
+            addSyncHistoryEntry('❌ Déconnexion de Google Drive');
+            updateSyncUI();
+            
+            if (document.getElementById('sync-notifications').checked) {
+                alert('❌ Déconnecté de Google Drive');
+            }
+        });
+    }
+}
+
+function syncToGoogleDrive(showNotification) {
+    if (!isGoogleDriveConnected) return;
+    
+    var data = {
+        rapaces: rapaces,
+        entries: entries,
+        chasseEntries: chasseEntries,
+        affaitageEntries: affaitageEntries,
+        currentLocation: currentLocation,
+        lastSync: new Date().toISOString(),
+        deviceInfo: {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            timestamp: new Date().toISOString()
+        }
     };
     
-    rapaces.push(rapace);
-    saveData();
-    updateRapaceList();
-    updateRapaceSelects();
+    var fileContent = JSON.stringify(data, null, 2);
+    var fileName = 'rapaces_data_sync.json';
     
-    // Réinitialiser le formulaire
-    document.getElementById('rapace-name').value = '';
-    document.getElementById('rapace-species').value = '';
-    document.getElementById('rapace-birthdate').value = '';
-    document.getElementById('rapace-sex').value = 'forme';
+    // Créer ou mettre à jour le fichier sur Google Drive
+    var fileMetadata = {
+        name: fileName,
+        parents: ['appDataFolder'] // Dossier privé de l'application
+    };
     
-    showNotification('Rapace ajouté avec succès');
+    var form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(fileMetadata)], {type: 'application/json'}));
+    form.append('file', new Blob([fileContent], {type: 'application/json'}));
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'https://www.googleapis.com/upload/drive/v3/files' + (googleDriveFileId ? '/' + googleDriveFileId : ''));
+    xhr.setRequestHeader('Authorization', 'Bearer ' + gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token);
+    
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            var response = JSON.parse(xhr.responseText);
+            googleDriveFileId = response.id;
+            lastSyncTime = new Date();
+            
+            addSyncHistoryEntry('📤 Synchronisation vers Google Drive réussie');
+            updateSyncUI();
+            
+            if (showNotification && document.getElementById('sync-notifications').checked) {
+                // Mini notification non-intrusive
+                showMiniNotification('✅ Données synchronisées');
+            }
+        }
+    };
+    
+    xhr.onerror = function() {
+        addSyncHistoryEntry('❌ Erreur lors de la synchronisation');
+    };
+    
+    xhr.send(form);
 }
 
-function updateRapaceList() {
-    const list = document.getElementById('rapace-list');
-    if (!list) return;
+function loadFromGoogleDrive() {
+    if (!isGoogleDriveConnected) return;
     
-    if (rapaces.length === 0) {
-        list.innerHTML = '<p>Aucun rapace enregistré</p>';
-        return;
-    }
-    
-    list.innerHTML = rapaces.map(rapace => `
-        <div class="rapace-card">
-            <div class="rapace-actions">
-                <button onclick="editRapace(${rapace.id})" class="btn-warning">Modifier</button>
-                <button onclick="deleteRapace(${rapace.id})" class="btn-danger">Supprimer</button>
-            </div>
-            <h3>${rapace.name}</h3>
-            <p><strong>Espèce:</strong> ${rapace.species}</p>
-            <p><strong>Sexe:</strong> ${rapace.sex}</p>
-            ${rapace.birthdate ? `<p><strong>Né le:</strong> ${formatDate(rapace.birthdate)}</p>` : ''}
-            <p><strong>Ajouté le:</strong> ${formatDate(rapace.created)}</p>
-        </div>
-    `).join('');
-}
-
-function updateRapaceSelects() {
-    const selects = ['rapace-select', 'chasse-rapace', 'affaitage-rapace'];
-    selects.forEach(selectId => {
-        const select = document.getElementById(selectId);
-        if (select) {
-            const currentValue = select.value;
-            select.innerHTML = '<option value="">Choisir un rapace</option>';
-            rapaces.forEach(rapace => {
-                const option = document.createElement('option');
-                option.value = rapace.id;
-                option.textContent = rapace.name;
-                if (currentValue == rapace.id) option.selected = true;
-                select.appendChild(option);
+    // Rechercher le fichier de synchronisation
+    gapi.client.drive.files.list({
+        q: "name='rapaces_data_sync.json' and parents in 'appDataFolder'",
+        spaces: 'appDataFolder'
+    }).then(function(response) {
+        var files = response.result.files;
+        if (files && files.length > 0) {
+            googleDriveFileId = files[0].id;
+            
+            // Télécharger le contenu du fichier
+            gapi.client.drive.files.get({
+                fileId: googleDriveFileId,
+                alt: 'media'
+            }).then(function(response) {
+                try {
+                    var data = JSON.parse(response.body);
+                    
+                    // Fusionner les données (prendre les plus récentes)
+                    var localLastSave = localStorage.getItem('rapaces_data') ? 
+                        JSON.parse(localStorage.getItem('rapaces_data')).lastSave : null;
+                    
+                    if (!localLastSave || data.lastSync > localLastSave) {
+                        rapaces = data.rapaces || [];
+                        entries = data.entries || [];
+                        chasseEntries = data.chasseEntries || [];
+                        affaitageEntries = data.affaitageEntries || [];
+                        currentLocation = data.currentLocation || currentLocation;
+                        
+                        // Mettre à jour l'interface
+                        updateRapaceList();
+                        updateRapaceSelects();
+                        updateEntryList();
+                        updatechasseList();
+                        updateAffaitageList();
+                        
+                        // Sauvegarder localement
+                        saveAllData();
+                        
+                        addSyncHistoryEntry('📥 Données chargées depuis Google Drive');
+                        showMiniNotification('📥 Données synchronisées depuis le cloud');
+                    } else {
+                        addSyncHistoryEntry('📊 Données locales plus récentes, pas de changement');
+                    }
+                } catch (error) {
+                    addSyncHistoryEntry('❌ Erreur de lecture des données cloud');
+                }
             });
+        } else {
+            addSyncHistoryEntry('📊 Aucun fichier de sauvegarde trouvé sur Google Drive');
         }
     });
 }
 
-function editRapace(id) {
-    const rapace = rapaces.find(r => r.id === id);
-    if (!rapace) return;
-    
-    currentEditId = id;
-    document.getElementById('edit-name').value = rapace.name;
-    document.getElementById('edit-species').value = rapace.species;
-    document.getElementById('edit-birthdate').value = rapace.birthdate || '';
-    document.getElementById('edit-sex').value = rapace.sex;
-    
-    document.getElementById('editModal').style.display = 'block';
-}
-
-function saveEdit() {
-    if (!currentEditId) return;
-    
-    const name = document.getElementById('edit-name').value.trim();
-    const species = document.getElementById('edit-species').value.trim();
-    const birthdate = document.getElementById('edit-birthdate').value;
-    const sex = document.getElementById('edit-sex').value;
-    
-    if (!name || !species) {
-        showNotification('Veuillez remplir tous les champs obligatoires', 'error');
+function manualSync() {
+    if (!isGoogleDriveConnected) {
+        alert('❌ Connectez-vous d\'abord à Google Drive');
         return;
     }
     
-    const rapaceIndex = rapaces.findIndex(r => r.id === currentEditId);
-    if (rapaceIndex !== -1) {
-        rapaces[rapaceIndex] = {
-            ...rapaces[rapaceIndex],
-            name: name,
-            species: species,
-            birthdate: birthdate,
-            sex: sex
-        };
+    addSyncHistoryEntry('🔄 Synchronisation manuelle lancée...');
+    updateSyncUI();
+    
+    // D'abord charger depuis Google Drive
+    loadFromGoogleDrive();
+    
+    // Puis sauvegarder vers Google Drive
+    setTimeout(function() {
+        syncToGoogleDrive(true);
+    }, 1000);
+}
+
+function startAutoSync() {
+    stopAutoSync(); // Arrêter l'ancien timer
+    
+    if (isGoogleDriveConnected && document.getElementById('auto-sync-enabled') && document.getElementById('auto-sync-enabled').checked) {
+        syncIntervalId = setInterval(function() {
+            loadFromGoogleDrive(); // Vérifier les mises à jour
+            syncToGoogleDrive(false); // Sauvegarder sans notification
+        }, 2 * 60 * 1000); // Toutes les 2 minutes
         
-        saveData();
-        updateRapaceList();
-        updateRapaceSelects();
-        closeEditModal();
-        showNotification('Rapace modifié avec succès');
+        addSyncHistoryEntry('🔄 Synchronisation automatique activée (2 min)');
     }
 }
 
-function closeEditModal() {
-    document.getElementById('editModal').style.display = 'none';
-    currentEditId = null;
-}
-
-function deleteRapace(id) {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce rapace ? Toutes les données associées seront également supprimées.')) {
-        rapaces = rapaces.filter(r => r.id !== id);
-        entries = entries.filter(e => e.rapaceId !== id);
-        chasses = chasses.filter(c => c.rapaceId !== id);
-        affaitages = affaitages.filter(a => a.rapaceId !== id);
-        
-        saveData();
-        updateRapaceList();
-        updateRapaceSelects();
-        updateEntryList();
-        updateChasseList();
-        updateAffaitageList();
-        showNotification('Rapace supprimé avec succès');
+function stopAutoSync() {
+    if (syncIntervalId) {
+        clearInterval(syncIntervalId);
+        syncIntervalId = null;
+        addSyncHistoryEntry('⏹️ Synchronisation automatique arrêtée');
     }
 }
 
-// Gestion du suivi
+function updateSyncUI() {
+    var statusEl = document.getElementById('sync-status');
+    var detailsEl = document.getElementById('sync-details');
+    var lastSyncEl = document.getElementById('last-sync-time');
+    var connectBtn = document.getElementById('connect-drive-btn');
+    var syncBtn = document.getElementById('manual-sync-btn');
+    var disconnectBtn = document.getElementById('disconnect-drive-btn');
+    
+    if (!statusEl) return; // Pas sur l'onglet sync
+    
+    if (isGoogleDriveConnected) {
+        statusEl.textContent = '✅ Google Drive connecté';
+        statusEl.style.color = 'green';
+        detailsEl.textContent = '🔄 Synchronisation active';
+        detailsEl.style.color = 'green';
+        
+        if (lastSyncTime) {
+            lastSyncEl.textContent = 'Dernière sync : ' + lastSyncTime.toLocaleString('fr-FR');
+        }
+        
+        connectBtn.style.display = 'none';
+        syncBtn.style.display = 'inline-block';
+        disconnectBtn.style.display = 'inline-block';
+    } else {
+        statusEl.textContent = '❌ Google Drive non connecté';
+        statusEl.style.color = 'red';
+        detailsEl.textContent = 'Connectez-vous pour synchroniser automatiquement vos données';
+        detailsEl.style.color = '#666';
+        lastSyncEl.textContent = 'Dernière sync : Jamais';
+        
+        connectBtn.style.display = 'inline-block';
+        syncBtn.style.display = 'none';
+        disconnectBtn.style.display = 'none';
+    }
+}
+
+function addSyncHistoryEntry(message) {
+    var now = new Date();
+    var timeStr = now.toLocaleTimeString('fr-FR');
+    syncHistory.unshift(timeStr + ' - ' + message);
+    
+    // Garder seulement les 10 dernières entrées
+    if (syncHistory.length > 10) {
+        syncHistory = syncHistory.slice(0, 10);
+    }
+    
+    var historyEl = document.getElementById('sync-history');
+    if (historyEl) {
+        historyEl.innerHTML = syncHistory.map(entry => 
+            '<p style="margin: 5px 0; font-size: 14px;">' + entry + '</p>'
+        ).join('');
+    }
+}
+
+function showMiniNotification(message) {
+    if (!document.getElementById('sync-notifications').checked) return;
+    
+    var notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4285f4;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        z-index: 10000;
+        font-size: 14px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(function() {
+        notification.remove();
+    }, 3000);
+}
+
+function loadAllData() {
+    try {
+        var savedData = localStorage.getItem('rapaces_data');
+        if (savedData) {
+            var data = JSON.parse(savedData);
+            rapaces = data.rapaces || [];
+            entries = data.entries || [];
+            chasseEntries = data.chasseEntries || [];
+            affaitageEntries = data.affaitageEntries || [];
+            currentLocation = data.currentLocation || "Orthez (64300)";
+            return true;
+        }
+    } catch (e) {
+        console.error('Erreur chargement:', e);
+    }
+    return false;
+}
+
+// Météo avec OpenWeatherMap API
+function loadWeather() {
+    // Essayer d'abord de géolocaliser automatiquement
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                loadWeatherByCoords(position.coords.latitude, position.coords.longitude);
+            },
+            function(error) {
+                // Si géolocalisation échoue, utiliser la ville configurée
+                loadWeatherByCity(currentLocation);
+            },
+            { timeout: 5000, maximumAge: 300000 } // 5 min cache
+        );
+    } else {
+        // Pas de géolocalisation, utiliser la ville
+        loadWeatherByCity(currentLocation);
+    }
+}
+
+function loadWeatherByCoords(lat, lon) {
+    // Votre clé API OpenWeatherMap
+    var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
+    var url = "https://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&appid=" + apiKey + "&units=metric&lang=fr";
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('API Error');
+            return response.json();
+        })
+        .then(data => {
+            processWeatherData(data);
+            // Mettre à jour la localisation détectée
+            currentLocation = data.name + " (" + data.sys.country + ")";
+            saveAllData();
+        })
+        .catch(error => {
+            console.log("Erreur API coords:", error);
+            loadWeatherFallback();
+        });
+}
+
+function loadWeatherByCity(cityName) {
+    // Extraire juste le nom de ville (enlever le code postal)
+    var city = cityName.split("(")[0].trim();
+    
+    // Votre clé API OpenWeatherMap
+    var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
+    var url = "https://api.openweathermap.org/data/2.5/weather?q=" + encodeURIComponent(city) + ",FR&appid=" + apiKey + "&units=metric&lang=fr";
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('API Error');
+            return response.json();
+        })
+        .then(data => {
+            processWeatherData(data);
+        })
+        .catch(error => {
+            console.log("Erreur API ville:", error);
+            loadWeatherFallback();
+        });
+}
+
+function processWeatherData(data) {
+    // Extraire les données de l'API OpenWeatherMap
+    var temp = Math.round(data.main.temp);
+    var description = data.weather[0].description;
+    var humidity = data.main.humidity;
+    var windSpeed = Math.round(data.wind.speed * 3.6); // Convertir m/s en km/h
+    var precipitation = 0;
+    
+    // Calculer les précipitations si disponibles
+    if (data.rain && data.rain["1h"]) {
+        precipitation = Math.round((data.rain["1h"] / 1) * 100); // Approximation
+    } else if (data.snow && data.snow["1h"]) {
+        precipitation = Math.round((data.snow["1h"] / 1) * 100);
+    } else if (data.clouds && data.clouds.all > 80) {
+        precipitation = Math.floor(data.clouds.all / 4); // Estimation basée sur la couverture nuageuse
+    }
+    
+    // Limiter les précipitations à 100%
+    precipitation = Math.min(precipitation, 100);
+    
+    // Choisir l'icône selon les conditions
+    var icon = getWeatherIcon(data.weather[0].main, data.weather[0].id);
+    
+    // Formatter la météo complète
+    var detailedWeather = temp + "°C\n" +
+                         "Précipitations : " + precipitation + "%\n" +
+                         "Humidité : " + humidity + "%\n" +
+                         "Vent : " + windSpeed + " km/h";
+    
+    currentWeather = description + ", " + detailedWeather + " à " + currentLocation;
+    
+    var weatherElement = document.getElementById('weather-info');
+    if (weatherElement) {
+        weatherElement.innerHTML = icon + " <strong>" + description.charAt(0).toUpperCase() + description.slice(1) + "</strong><br>" +
+                                  "<span style='font-size: 12px; line-height: 1.4;'>" +
+                                  temp + "°C<br>" +
+                                  "Précipitations : " + precipitation + "%<br>" +
+                                  "Humidité : " + humidity + "%<br>" +
+                                  "Vent : " + windSpeed + " km/h<br>" +
+                                  "<em>" + currentLocation + "</em>" +
+                                  "</span>";
+    }
+}
+
+function getWeatherIcon(main, id) {
+    // Mapper les conditions OpenWeatherMap vers des emojis
+    switch (main) {
+        case "Clear":
+            return "☀️";
+        case "Clouds":
+            return id < 803 ? "⛅" : "☁️";
+        case "Rain":
+            return "🌧️";
+        case "Drizzle":
+            return "🌦️";
+        case "Thunderstorm":
+            return "⛈️";
+        case "Snow":
+            return "❄️";
+        case "Mist":
+        case "Fog":
+            return "🌫️";
+        case "Haze":
+            return "🌤️";
+        default:
+            return "🌤️";
+    }
+}
+
+function loadWeatherFallback() {
+    // Météo simulée si l'API ne fonctionne pas
+    var now = new Date();
+    var month = now.getMonth();
+    var hour = now.getHours();
+    
+    var conditions;
+    
+    if (month >= 2 && month <= 4) { // Printemps
+        conditions = [
+            {desc: "ensoleillé", temp: 15 + Math.floor(Math.random() * 8), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 20), humidity: 45 + Math.floor(Math.random() * 20)},
+            {desc: "partiellement nuageux", temp: 12 + Math.floor(Math.random() * 7), icon: "⛅", precipitation: 10 + Math.floor(Math.random() * 30), humidity: 50 + Math.floor(Math.random() * 25)},
+            {desc: "nuageux", temp: 10 + Math.floor(Math.random() * 6), icon: "☁️", precipitation: 20 + Math.floor(Math.random() * 40), humidity: 60 + Math.floor(Math.random() * 25)},
+            {desc: "pluvieux", temp: 8 + Math.floor(Math.random() * 8), icon: "🌧️", precipitation: 70 + Math.floor(Math.random() * 30), humidity: 75 + Math.floor(Math.random() * 20)}
+        ];
+    } else if (month >= 5 && month <= 7) { // Été
+        conditions = [
+            {desc: "ensoleillé", temp: 20 + Math.floor(Math.random() * 10), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 10), humidity: 35 + Math.floor(Math.random() * 20)},
+            {desc: "très ensoleillé", temp: 25 + Math.floor(Math.random() * 8), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 5), humidity: 30 + Math.floor(Math.random() * 15)},
+            {desc: "chaud", temp: 28 + Math.floor(Math.random() * 7), icon: "🌡️", precipitation: 0 + Math.floor(Math.random() * 15), humidity: 25 + Math.floor(Math.random() * 20)},
+            {desc: "orageux", temp: 22 + Math.floor(Math.random() * 6), icon: "⛈️", precipitation: 60 + Math.floor(Math.random() * 40), humidity: 70 + Math.floor(Math.random() * 25)}
+        ];
+    } else if (month >= 8 && month <= 10) { // Automne
+        conditions = [
+            {desc: "doux", temp: 12 + Math.floor(Math.random() * 10), icon: "🍂", precipitation: 10 + Math.floor(Math.random() * 30), humidity: 50 + Math.floor(Math.random() * 25)},
+            {desc: "nuageux", temp: 8 + Math.floor(Math.random() * 8), icon: "☁️", precipitation: 25 + Math.floor(Math.random() * 45), humidity: 65 + Math.floor(Math.random() * 25)},
+            {desc: "pluvieux", temp: 6 + Math.floor(Math.random() * 10), icon: "🌧️", precipitation: 70 + Math.floor(Math.random() * 30), humidity: 80 + Math.floor(Math.random() * 15)},
+            {desc: "brumeux", temp: 5 + Math.floor(Math.random() * 8), icon: "🌫️", precipitation: 30 + Math.floor(Math.random() * 40), humidity: 85 + Math.floor(Math.random() * 10)}
+        ];
+    } else { // Hiver
+        conditions = [
+            {desc: "frais", temp: 2 + Math.floor(Math.random() * 8), icon: "🌤️", precipitation: 15 + Math.floor(Math.random() * 35), humidity: 65 + Math.floor(Math.random() * 25)},
+            {desc: "nuageux", temp: 0 + Math.floor(Math.random() * 10), icon: "☁️", precipitation: 30 + Math.floor(Math.random() * 50), humidity: 70 + Math.floor(Math.random() * 25)},
+            {desc: "pluvieux", temp: 3 + Math.floor(Math.random() * 8), icon: "🌧️", precipitation: 75 + Math.floor(Math.random() * 25), humidity: 85 + Math.floor(Math.random() * 10)},
+            {desc: "froid", temp: -2 + Math.floor(Math.random() * 8), icon: "❄️", precipitation: 40 + Math.floor(Math.random() * 40), humidity: 80 + Math.floor(Math.random() * 15)}
+        ];
+    }
+    
+    var weather = conditions[Math.floor(Math.random() * conditions.length)];
+    
+    // Ajuster selon l'heure
+    if (hour < 8 || hour > 20) {
+        weather.temp = Math.max(weather.temp - 3, -5);
+        weather.humidity = Math.min(weather.humidity + 10, 95);
+    }
+    
+    // Générer vitesse du vent
+    var windSpeed = 3 + Math.floor(Math.random() * 15);
+    
+    var detailedWeather = weather.temp + "°C\n" +
+                         "Précipitations : " + weather.precipitation + "%\n" +
+                         "Humidité : " + weather.humidity + "%\n" +
+                         "Vent : " + windSpeed + " km/h";
+    
+    currentWeather = weather.desc + ", " + detailedWeather + " à " + currentLocation;
+    
+    var weatherElement = document.getElementById('weather-info');
+    if (weatherElement) {
+        weatherElement.innerHTML = weather.icon + " <strong>" + weather.desc.charAt(0).toUpperCase() + weather.desc.slice(1) + "</strong><br>" +
+                                  "<span style='font-size: 12px; line-height: 1.4;'>" +
+                                  weather.temp + "°C<br>" +
+                                  "Précipitations : " + weather.precipitation + "%<br>" +
+                                  "Humidité : " + weather.humidity + "%<br>" +
+                                  "Vent : " + windSpeed + " km/h<br>" +
+                                  "<em>" + currentLocation + " (simulé)</em>" +
+                                  "</span>";
+    }
+}
+
+function refreshWeather() {
+    loadWeather();
+}
+
+function changeLocation() {
+    var newLocation = prompt("Entrez votre localisation :", currentLocation);
+    if (newLocation && newLocation.trim()) {
+        currentLocation = newLocation.trim();
+        saveAllData();
+        loadWeather();
+    }
+}
+
+// Calcul de l'âge
+function calculateAge(birthDate) {
+    var today = new Date();
+    var birth = new Date(birthDate);
+    var age = today.getFullYear() - birth.getFullYear();
+    var monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    
+    return age;
+}
+
+// Onglets
+function showTab(tabName) {
+    var contents = document.querySelectorAll('.tab-content');
+    for (var i = 0; i < contents.length; i++) {
+        contents[i].classList.remove('active');
+    }
+    
+    var tabs = document.querySelectorAll('.tab');
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.remove('active');
+    }
+    
+    document.getElementById(tabName).classList.add('active');
+    var activeTab = document.querySelector("[onclick=\"showTab('" + tabName + "')\"]");
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+    
+    if (tabName === 'stats') {
+        updateStats();
+    } else if (tabName === 'sync') {
+        updateSyncUI();
+    }
+}
+
+// Champs conditionnels
 function showEventFields() {
-    const eventType = document.getElementById('event-type').value;
-    const fields = document.querySelectorAll('.conditional-fields');
+    var eventType = document.getElementById('event-type').value;
+    var fields = document.querySelectorAll('.conditional-fields');
     
-    fields.forEach(field => field.classList.remove('active'));
+    for (var i = 0; i < fields.length; i++) {
+        fields[i].classList.remove('active');
+    }
     
-    const targetField = document.getElementById(eventType + '-fields');
+    var targetField = document.getElementById(eventType + '-fields');
     if (targetField) {
         targetField.classList.add('active');
     }
 }
 
-function addEntry() {
-    const rapaceId = document.getElementById('rapace-select').value;
-    const eventType = document.getElementById('event-type').value;
-    const eventDate = document.getElementById('event-date').value;
-    const eventTime = document.getElementById('event-time').value;
-    const notes = document.getElementById('event-notes').value.trim();
-    
-    if (!rapaceId || !eventDate || !eventTime) {
-        showNotification('Veuillez remplir tous les champs obligatoires', 'error');
+// Ajouter rapace
+function addRapace() {
+    var name = document.getElementById('rapace-name').value;
+    var species = document.getElementById('rapace-species').value;
+    var birthdate = document.getElementById('rapace-birthdate').value;
+    var sex = document.getElementById('rapace-sex').value;
+
+    if (!name || !species || !birthdate) {
+        alert('Merci de remplir tous les champs');
         return;
     }
-    
-    const entry = {
-        id: Date.now(),
-        rapaceId: parseInt(rapaceId),
-        type: eventType,
-        date: eventDate,
-        time: eventTime,
-        notes: notes,
-        created: new Date().toISOString()
-    };
-    
-    // Ajouter des champs spécifiques selon le type
-    switch(eventType) {
-        case 'nourriture':
-            entry.poidsAvant = document.getElementById('poids-avant').value;
-            entry.poidsApres = document.getElementById('poids-apres').value;
-            entry.menu = document.getElementById('detail-nourriture').value;
-            entry.quantite = document.getElementById('quantite-nourriture').value;
-            break;
-        case 'vol':
-            entry.typeVol = document.getElementById('type-vol').value;
-            break;
-        case 'comportement':
-            const reactivite = document.querySelector('input[name="reactivite"]:checked');
-            entry.reactivite = reactivite ? reactivite.value : '';
-            break;
-        case 'sante':
-            entry.etatSante = document.getElementById('etat-sante').value;
-            break;
-        case 'entrainement':
-            entry.typeEntrainement = document.getElementById('type-entrainement').value;
-            break;
-    }
-    
-    entries.push(entry);
-    saveData();
-    updateEntryList();
-    clearEntryForm();
-    showNotification('Entrée ajoutée avec succès');
-}
 
-function clearEntryForm() {
-    document.getElementById('event-notes').value = '';
-    document.getElementById('poids-avant').value = '';
-    document.getElementById('poids-apres').value = '';
-    document.getElementById('quantite-nourriture').value = '';
-    
-    // Réinitialiser les radio buttons
-    const radios = document.querySelectorAll('input[name="reactivite"]');
-    radios.forEach(radio => radio.checked = false);
-    
-    // Réinitialiser les dates et heures
-    const today = new Date();
-    const timeInputs = document.querySelectorAll('input[type="time"]');
-    timeInputs.forEach(input => {
-        const now = new Date();
-        const hours = now.getHours().toString().padStart(2, '0');
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        input.value = `${hours}:${minutes}`;
-    });
-}
+    var age = calculateAge(birthdate);
 
-function updateEntryList() {
-    const list = document.getElementById('entry-list');
-    if (!list) return;
-    
-    const selectedRapaceId = document.getElementById('rapace-select').value;
-    let filteredEntries = entries;
-    
-    if (selectedRapaceId) {
-        filteredEntries = entries.filter(e => e.rapaceId == selectedRapaceId);
-    }
-    
-    if (filteredEntries.length === 0) {
-        list.innerHTML = '<p>Aucune entrée trouvée</p>';
-        return;
-    }
-    
-    // Trier par date et heure décroissante
-    filteredEntries.sort((a, b) => {
-        const dateA = new Date(a.date + 'T' + a.time);
-        const dateB = new Date(b.date + 'T' + b.time);
-        return dateB - dateA;
-    });
-    
-    list.innerHTML = filteredEntries.slice(0, 10).map(entry => {
-        const rapace = rapaces.find(r => r.id === entry.rapaceId);
-        const rapaceName = rapace ? rapace.name : 'Rapace inconnu';
-        
-        let details = '';
-        switch(entry.type) {
-            case 'nourriture':
-                details = `<br><strong>Menu:</strong> ${entry.menu || 'Non précisé'}`;
-                if (entry.quantite) details += ` (${entry.quantite})`;
-                if (entry.poidsAvant && entry.poidsApres) {
-                    details += `<br><strong>Poids:</strong> ${entry.poidsAvant}g → ${entry.poidsApres}g`;
-                }
-                break;
-            case 'vol':
-                details = `<br><strong>Type:</strong> ${entry.typeVol || 'Non précisé'}`;
-                break;
-            case 'comportement':
-                if (entry.reactivite) details = `<br><strong>Réactivité:</strong> ${entry.reactivite}/5`;
-                break;
-            case 'sante':
-                details = `<br><strong>État:</strong> ${entry.etatSante || 'Non précisé'}`;
-                break;
-            case 'entrainement':
-                details = `<br><strong>Type:</strong> ${entry.typeEntrainement || 'Non précisé'}`;
-                break;
-        }
-        
-        return `
-            <div class="entry-item">
-                <div class="date">${formatDate(entry.date)} à ${entry.time} - ${rapaceName}</div>
-                <div class="content">
-                    <strong>${capitalizeFirst(entry.type)}</strong>
-                    ${details}
-                    ${entry.notes ? `<br><strong>Notes:</strong> ${entry.notes}` : ''}
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// Gestion de la chasse
-function addChasse() {
-    const rapaceId = document.getElementById('chasse-rapace').value;
-    const date = document.getElementById('chasse-date').value;
-    const time = document.getElementById('chasse-time').value;
-    const notes = document.getElementById('chasse-notes').value.trim();
-    
-    if (!rapaceId || !date || !time) {
-        showNotification('Veuillez remplir tous les champs obligatoires', 'error');
-        return;
-    }
-    
-    const chasse = {
-        id: Date.now(),
-        rapaceId: parseInt(rapaceId),
-        date: date,
-        time: time,
-        notes: notes,
-        captures: {
-            faisan: parseInt(document.getElementById('chasse-faisan').value) || 0,
-            perdrix: parseInt(document.getElementById('chasse-perdrix').value) || 0,
-            lapin: parseInt(document.getElementById('chasse-lapin').value) || 0,
-            lievre: parseInt(document.getElementById('chasse-lievre').value) || 0,
-            canard: parseInt(document.getElementById('chasse-canard').value) || 0,
-            oie: parseInt(document.getElementById('chasse-oie').value) || 0,
-            autre: parseInt(document.getElementById('chasse-autre').value) || 0
-        },
-        created: new Date().toISOString()
-    };
-    
-    chasses.push(chasse);
-    saveData();
-    updateChasseList();
-    clearChasseForm();
-    showNotification('Chasse enregistrée avec succès');
-}
-
-function clearChasseForm() {
-    document.getElementById('chasse-notes').value = '';
-    const inputs = document.querySelectorAll('.hunt-item input[type="number"]');
-    inputs.forEach(input => input.value = '0');
-}
-
-function updateChasseList() {
-    const list = document.getElementById('chasse-list');
-    if (!list) return;
-    
-    if (chasses.length === 0) {
-        list.innerHTML = '<p>Aucune chasse enregistrée</p>';
-        return;
-    }
-    
-    // Trier par date décroissante
-    const sortedChasses = chasses.sort((a, b) => {
-        const dateA = new Date(a.date + 'T' + a.time);
-        const dateB = new Date(b.date + 'T' + b.time);
-        return dateB - dateA;
-    });
-    
-    list.innerHTML = sortedChasses.map(chasse => {
-        const rapace = rapaces.find(r => r.id === chasse.rapaceId);
-        const rapaceName = rapace ? rapace.name : 'Rapace inconnu';
-        
-        const totalCaptures = Object.values(chasse.captures).reduce((sum, val) => sum + val, 0);
-        const captureDetails = Object.entries(chasse.captures)
-            .filter(([_, count]) => count > 0)
-            .map(([animal, count]) => `${animal}: ${count}`)
-            .join(', ');
-        
-        return `
-            <div class="entry-item">
-                <div class="date">${formatDate(chasse.date)} à ${chasse.time} - ${rapaceName}</div>
-                <div class="content">
-                    <strong>Total captures: ${totalCaptures}</strong>
-                    ${captureDetails ? `<br>Détail: ${captureDetails}` : ''}
-                    ${chasse.notes ? `<br><strong>Notes:</strong> ${chasse.notes}` : ''}
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// Gestion de l'affaitage
-function addAffaitage() {
-    const rapaceId = document.getElementById('affaitage-rapace').value;
-    const date = document.getElementById('affaitage-date').value;
-    const time = document.getElementById('affaitage-time').value;
-    const notes = document.getElementById('affaitage-notes').value.trim();
-    
-    if (!rapaceId || !date || !time) {
-        showNotification('Veuillez remplir tous les champs obligatoires', 'error');
-        return;
-    }
-    
-    const activites = [];
-    const checkboxes = ['prise-nourriture', 'gant', 'filiere', 'libre'];
-    checkboxes.forEach(id => {
-        const checkbox = document.getElementById(id);
-        if (checkbox && checkbox.checked) {
-            activites.push(checkbox.nextElementSibling.textContent);
-        }
-    });
-    
-    const affaitage = {
-        id: Date.now(),
-        rapaceId: parseInt(rapaceId),
-        date: date,
-        time: time,
-        notes: notes,
-        activites: activites,
-        created: new Date().toISOString()
-    };
-    
-    affaitages.push(affaitage);
-    saveData();
-    updateAffaitageList();
-    clearAffaitageForm();
-    showNotification('Affaitage enregistré avec succès');
-}
-
-function clearAffaitageForm() {
-    document.getElementById('affaitage-notes').value = '';
-    const checkboxes = ['prise-nourriture', 'gant', 'filiere', 'libre'];
-    checkboxes.forEach(id => {
-        const checkbox = document.getElementById(id);
-        if (checkbox) checkbox.checked = false;
-    });
-}
-
-function updateAffaitageList() {
-    const list = document.getElementById('affaitage-list');
-    if (!list) return;
-    
-    if (affaitages.length === 0) {
-        list.innerHTML = '<p>Aucun affaitage enregistré</p>';
-        return;
-    }
-    
-    // Trier par date décroissante
-    const sortedAffaitages = affaitages.sort((a, b) => {
-        const dateA = new Date(a.date + 'T' + a.time);
-        const dateB = new Date(b.date + 'T' + b.time);
-        return dateB - dateA;
-    });
-    
-    list.innerHTML = sortedAffaitages.map(affaitage => {
-        const rapace = rapaces.find(r => r.id === affaitage.rapaceId);
-        const rapaceName = rapace ? rapace.name : 'Rapace inconnu';
-        
-        return `
-            <div class="entry-item">
-                <div class="date">${formatDate(affaitage.date)} à ${affaitage.time} - ${rapaceName}</div>
-                <div class="content">
-                    <strong>Activités:</strong> ${affaitage.activites.join(', ') || 'Aucune'}
-                    ${affaitage.notes ? `<br><strong>Notes:</strong> ${affaitage.notes}` : ''}
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// Gestion des statistiques
-function showTodayStats() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('stats-date').value = today;
-    updateStats();
-}
-
-function updateStats() {
-    const selectedDate = document.getElementById('stats-date').value;
-    const statsContent = document.getElementById('stats-content');
-    
-    if (!selectedDate) {
-        statsContent.innerHTML = '<p>Veuillez sélectionner une date</p>';
-        return;
-    }
-    
-    const dayEntries = entries.filter(e => e.date === selectedDate);
-    const dayChasses = chasses.filter(c => c.date === selectedDate);
-    const dayAffaitages = affaitages.filter(a => a.date === selectedDate);
-    
-    const stats = {
-        totalEntries: dayEntries.length,
-        totalChasses: dayChasses.length,
-        totalAffaitages: dayAffaitages.length,
-        totalCaptures: dayChasses.reduce((sum, chasse) => 
-            sum + Object.values(chasse.captures).reduce((s, v) => s + v, 0), 0),
-        rapacesActifs: [...new Set([
-            ...dayEntries.map(e => e.rapaceId),
-            ...dayChasses.map(c => c.rapaceId),
-            ...dayAffaitages.map(a => a.rapaceId)
-        ])].length
-    };
-    
-    statsContent.innerHTML = `
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Entrées de suivi</h3>
-                <div class="value">${stats.totalEntries}</div>
-            </div>
-            <div class="stat-card">
-                <h3>Sorties de chasse</h3>
-                <div class="value">${stats.totalChasses}</div>
-            </div>
-            <div class="stat-card">
-                <h3>Séances d'affaitage</h3>
-                <div class="value">${stats.totalAffaitages}</div>
-            </div>
-            <div class="stat-card">
-                <h3>Captures totales</h3>
-                <div class="value">${stats.totalCaptures}</div>
-            </div>
-            <div class="stat-card">
-                <h3>Rapaces actifs</h3>
-                <div class="value">${stats.rapacesActifs}</div>
-            </div>
-        </div>
-    `;
-    
-    if (dayEntries.length > 0 || dayChasses.length > 0 || dayAffaitages.length > 0) {
-        statsContent.innerHTML += `
-            <div class="day-card">
-                <h4>Détails pour le ${formatDate(selectedDate)}</h4>
-                ${dayEntries.length > 0 ? `<p><strong>Suivi:</strong> ${dayEntries.length} entrées</p>` : ''}
-                ${dayChasses.length > 0 ? `<p><strong>Chasse:</strong> ${dayChasses.length} sorties</p>` : ''}
-                ${dayAffaitages.length > 0 ? `<p><strong>Affaitage:</strong> ${dayAffaitages.length} séances</p>` : ''}
-            </div>
-        `;
-    }
-}
-
-// Fonctions de démonstration
-function addDemoRapace() {
-    const name = document.getElementById('demo-name').value.trim();
-    const species = document.getElementById('demo-species').value.trim();
-    
-    if (!name || !species) {
-        showNotification('Veuillez remplir les champs', 'error');
-        return;
-    }
-    
-    const rapace = {
+    var rapace = {
         id: Date.now(),
         name: name,
         species: species,
-        birthdate: '2022-05-15',
-        sex: 'forme',
-        created: new Date().toISOString()
+        birthdate: birthdate,
+        age: age,
+        sex: sex,
+        dateAdded: new Date().toISOString()
     };
-    
+
     rapaces.push(rapace);
-    saveData();
+    saveAllData();
     updateRapaceList();
     updateRapaceSelects();
-    showCurrentData();
-    showNotification('Rapace de démo ajouté');
+    
+    document.getElementById('rapace-name').value = '';
+    document.getElementById('rapace-species').value = '';
+    document.getElementById('rapace-birthdate').value = '';
 }
 
-function generateDemoData() {
-    const demoRapaces = [
-        { name: 'Aigle Royal', species: 'Aquila chrysaetos', sex: 'forme', birthdate: '2021-03-20' },
-        { name: 'Faucon Pèlerin', species: 'Falco peregrinus', sex: 'tiercelet', birthdate: '2022-04-15' },
-        { name: 'Buse de Harris', species: 'Parabuteo unicinctus', sex: 'forme', birthdate: '2022-06-10' },
-        { name: 'Épervier d\'Europe', species: 'Accipiter nisus', sex: 'tiercelet', birthdate: '2023-05-05' }
-    ];
+// Liste rapaces
+function updateRapaceList() {
+    var list = document.getElementById('rapace-list');
+    list.innerHTML = '';
     
-    demoRapaces.forEach((rapaceData, index) => {
-        const rapace = {
-            id: Date.now() + index,
-            name: rapaceData.name,
-            species: rapaceData.species,
-            birthdate: rapaceData.birthdate,
-            sex: rapaceData.sex,
-            created: new Date().toISOString()
-        };
-        rapaces.push(rapace);
-    });
+    if (rapaces.length === 0) {
+        list.innerHTML = '<p style="text-align:center; color: #666;">Aucun rapace ajouté</p>';
+        return;
+    }
+
+    for (var i = 0; i < rapaces.length; i++) {
+        var rapace = rapaces[i];
+        var div = document.createElement('div');
+        div.className = 'rapace-card';
+        
+        rapace.age = calculateAge(rapace.birthdate);
+        
+        div.innerHTML = '<div class="rapace-actions">' +
+                        '<button onclick="editRapace(' + rapace.id + ')" class="btn-warning">✏️</button>' +
+                        '<button onclick="deleteRapace(' + rapace.id + ')" class="btn-danger">🗑️</button>' +
+                        '</div>' +
+                        '<h3>' + rapace.name + '</h3>' +
+                        '<p><strong>Espèce :</strong> ' + rapace.species + '</p>' +
+                        '<p><strong>Âge :</strong> ' + rapace.age + ' ans</p>' +
+                        '<p><strong>Sexe :</strong> ' + rapace.sex + '</p>' +
+                        '<p><strong>Né le :</strong> ' + new Date(rapace.birthdate).toLocaleDateString('fr-FR') + '</p>';
+        list.appendChild(div);
+    }
+}
+
+// Édition rapace
+function editRapace(rapaceId) {
+    var rapace = rapaces.find(r => r.id === rapaceId);
+    if (!rapace) return;
     
-    // Ajouter des entrées de démonstration
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+    editingRapaceId = rapaceId;
+    document.getElementById('edit-name').value = rapace.name;
+    document.getElementById('edit-species').value = rapace.species;
+    document.getElementById('edit-birthdate').value = rapace.birthdate;
+    document.getElementById('edit-sex').value = rapace.sex;
     
-    const demoEntries = [
-        {
-            id: Date.now() + 1000,
-            rapaceId: rapaces[rapaces.length - 1].id,
-            type: 'nourriture',
-            date: today.toISOString().split('T')[0],
-            time: '08:00',
-            notes: 'Repas du matin',
-            poidsAvant: '850',
-            poidsApres: '920',
-            menu: 'poussin',
-            quantite: '150g',
-            created: new Date().toISOString()
-        },
-        {
-            id: Date.now() + 1001,
-            rapaceId: rapaces[rapaces.length - 2].id,
-            type: 'vol',
-            date: yesterday.toISOString().split('T')[0],
-            time: '14:30',
-            notes: 'Excellent vol, très réactif',
-            typeVol: 'entrainement',
-            created: new Date().toISOString()
-        }
-    ];
+    document.getElementById('editModal').style.display = 'block';
+}
+
+function saveRapaceEdit() {
+    if (!editingRapaceId) return;
     
-    entries.push(...demoEntries);
+    var rapace = rapaces.find(r => r.id === editingRapaceId);
+    if (!rapace) return;
     
-    saveData();
+    var name = document.getElementById('edit-name').value;
+    var species = document.getElementById('edit-species').value;
+    var birthdate = document.getElementById('edit-birthdate').value;
+    var sex = document.getElementById('edit-sex').value;
+    
+    if (!name || !species || !birthdate) {
+        alert('Merci de remplir tous les champs');
+        return;
+    }
+    
+    rapace.name = name;
+    rapace.species = species;
+    rapace.birthdate = birthdate;
+    rapace.age = calculateAge(birthdate);
+    rapace.sex = sex;
+    
+    saveAllData();
     updateRapaceList();
     updateRapaceSelects();
-    updateEntryList();
-    showCurrentData();
-    showNotification('Données de démonstration générées');
+    closeEditModal();
+    
+    alert('Rapace modifié !');
 }
 
-function clearAllDemoData() {
-    if (confirm('Êtes-vous sûr de vouloir supprimer toutes les données ?')) {
-        rapaces = [];
-        entries = [];
-        chasses = [];
-        affaitages = [];
-        saveData();
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+    editingRapaceId = null;
+}
+
+function deleteRapace(rapaceId) {
+    var rapace = rapaces.find(r => r.id === rapaceId);
+    if (!rapace) return;
+    
+    if (confirm('Supprimer ' + rapace.name + ' et tout son historique ?')) {
+        rapaces = rapaces.filter(r => r.id !== rapaceId);
+        entries = entries.filter(e => e.rapaceId !== rapaceId);
+        chasseEntries = chasseEntries.filter(c => c.rapaceId !== rapaceId);
+        affaitageEntries = affaitageEntries.filter(a => a.rapaceId !== rapaceId);
+        
+        saveAllData();
         updateRapaceList();
         updateRapaceSelects();
         updateEntryList();
-        updateChasseList();
+        updatechasseList();
         updateAffaitageList();
-        showCurrentData();
-        showNotification('Toutes les données ont été supprimées');
-    }
-}
-
-function showCurrentData() {
-    const demoData = document.getElementById('demo-data');
-    if (!demoData) return;
-    
-    demoData.innerHTML = `
-        📊 Rapaces: ${rapaces.length}
-        📝 Entrées de suivi: ${entries.length}
-        🎯 Chasses: ${chasses.length}
-        🏹 Affaitages: ${affaitages.length}
         
-        📅 Dernière sauvegarde: ${new Date().toLocaleString()}
-    `;
+        alert('Rapace supprimé !');
+    }
 }
 
-// Fonctions utilitaires
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('fr-FR');
-}
-
-function capitalizeFirst(string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
-}
-
-function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.className = 'notification';
-    notification.textContent = message;
+// Mise à jour selects
+function updateRapaceSelects() {
+    var selects = ['rapace-select', 'chasse-rapace', 'affaitage-rapace'];
     
-    if (type === 'error') {
-        notification.style.background = '#dc3545';
+    for (var s = 0; s < selects.length; s++) {
+        var select = document.getElementById(selects[s]);
+        if (select) {
+            var currentValue = select.value;
+            select.innerHTML = '<option value="">Choisir un rapace</option>';
+            
+            for (var i = 0; i < rapaces.length; i++) {
+                var rapace = rapaces[i];
+                var option = document.createElement('option');
+                option.value = rapace.id;
+                option.textContent = rapace.name;
+                select.appendChild(option);
+            }
+            
+            select.value = currentValue;
+        }
+    }
+}
+
+// Ajouter entrée
+function addEntry() {
+    var rapaceId = document.getElementById('rapace-select').value;
+    var type = document.getElementById('event-type').value;
+    var date = document.getElementById('event-date').value;
+    var time = document.getElementById('event-time').value;
+    var notes = document.getElementById('event-notes').value;
+
+    if (!rapaceId || !date || !time) {
+        alert('Merci de remplir tous les champs requis');
+        return;
+    }
+
+    var entry = {
+        id: Date.now(),
+        rapaceId: parseInt(rapaceId),
+        type: type,
+        date: date,
+        time: time,
+        notes: notes,
+        weather: currentWeather || 'Météo non dispo'
+    };
+
+    // Données spécifiques selon le type
+    if (type === 'nourriture') {
+        entry.poidsAvant = document.getElementById('poids-avant').value;
+        entry.poidsApres = document.getElementById('poids-apres').value;
+        entry.menu = document.getElementById('detail-nourriture').value;
+        entry.quantite = document.getElementById('quantite-nourriture').value;
+    } else if (type === 'vol') {
+        entry.typeVol = document.getElementById('type-vol').value;
+    } else if (type === 'comportement') {
+        var reactivite = document.querySelector('input[name="reactivite"]:checked');
+        entry.reactivite = reactivite ? reactivite.value : '';
+    } else if (type === 'sante') {
+        entry.etatSante = document.getElementById('etat-sante').value;
+    } else if (type === 'entrainement') {
+        entry.typeEntrainement = document.getElementById('type-entrainement').value;
+    }
+
+    entries.push(entry);
+    saveAllData();
+    updateEntryList();
+    
+    // Vider les champs
+    document.getElementById('event-notes').value = '';
+    clearConditionalFields();
+}
+
+function clearConditionalFields() {
+    var fields = ['poids-avant', 'poids-apres', 'quantite-nourriture'];
+    for (var i = 0; i < fields.length; i++) {
+        var field = document.getElementById(fields[i]);
+        if (field) field.value = '';
     }
     
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
+    var radios = document.querySelectorAll('input[name="reactivite"]');
+    for (var i = 0; i < radios.length; i++) {
+        radios[i].checked = false;
+    }
 }
 
-// Sauvegarde automatique toutes les 30 secondes
-setInterval(saveData, 30000);
+// Liste entrées
+function updateEntryList() {
+    var selectedRapaceId = document.getElementById('rapace-select').value;
+    var entryList = document.getElementById('entry-list');
+    
+    if (!selectedRapaceId) {
+        entryList.innerHTML = '<p style="text-align:center; color: #666;">Sélectionnez un rapace</p>';
+        return;
+    }
 
-// Gestion des clics sur la modal
+    var filteredEntries = [];
+    for (var i = 0; i < entries.length; i++) {
+        if (entries[i].rapaceId == selectedRapaceId) {
+            filteredEntries.push(entries[i]);
+        }
+    }
+
+    entryList.innerHTML = '';
+    
+    if (filteredEntries.length === 0) {
+        entryList.innerHTML = '<p style="text-align:center; color: #666;">Aucune entrée</p>';
+        return;
+    }
+
+    // Trier et prendre les 10 dernières
+    filteredEntries.sort((a, b) => new Date(b.date + ' ' + b.time) - new Date(a.date + ' ' + a.time));
+    filteredEntries = filteredEntries.slice(0, 10);
+
+    for (var i = 0; i < filteredEntries.length; i++) {
+        var entry = filteredEntries[i];
+        var div = document.createElement('div');
+        div.className = 'entry-item';
+        var formattedDate = new Date(entry.date).toLocaleDateString('fr-FR') + ' à ' + entry.time;
+        
+        var details = '';
+        if (entry.type === 'nourriture') {
+            details = '<br><strong>Poids:</strong> ' + (entry.poidsAvant || '?') + 'g → ' + (entry.poidsApres || '?') + 'g';
+            details += '<br><strong>Menu:</strong> ' + entry.menu + ' (' + entry.quantite + ')';
+        } else if (entry.type === 'vol') {
+            details = '<br><strong>Type:</strong> ' + entry.typeVol;
+        } else if (entry.type === 'comportement') {
+            details = '<br><strong>Réactivité:</strong> ' + entry.reactivite + '/5';
+        } else if (entry.type === 'sante') {
+            details = '<br><strong>État:</strong> ' + entry.etatSante;
+        } else if (entry.type === 'entrainement') {
+            details = '<br><strong>Type:</strong> ' + entry.typeEntrainement;
+        }
+        
+        div.innerHTML = '<div class="date">' + formattedDate + ' • ' + entry.weather + '</div>' +
+                        '<div class="content">' +
+                        '<strong>' + entry.type.charAt(0).toUpperCase() + entry.type.slice(1) + '</strong>' + details +
+                        (entry.notes ? '<br><em>' + entry.notes + '</em>' : '') +
+                        '</div>';
+        entryList.appendChild(div);
+    }
+}
+
+// Chasse
+function addChasse() {
+    var rapaceId = document.getElementById('chasse-rapace').value;
+    var date = document.getElementById('chasse-date').value;
+    var time = document.getElementById('chasse-time').value;
+    var notes = document.getElementById('chasse-notes').value;
+    
+    if (!rapaceId || !date || !time) {
+        alert('Merci de remplir tous les champs requis');
+        return;
+    }
+    
+    var chasse = {
+        id: Date.now(),
+        rapaceId: parseInt(rapaceId),
+        date: date,
+        time: time,
+        notes: notes,
+        faisan: parseInt(document.getElementById('chasse-faisan').value) || 0,
+        perdrix: parseInt(document.getElementById('chasse-perdrix').value) || 0,
+        lapin: parseInt(document.getElementById('chasse-lapin').value) || 0,
+        lievre: parseInt(document.getElementById('chasse-lievre').value) || 0,
+        canard: parseInt(document.getElementById('chasse-canard').value) || 0,
+        oie: parseInt(document.getElementById('chasse-oie').value) || 0,
+        autre: parseInt(document.getElementById('chasse-autre').value) || 0,
+        weather: currentWeather || 'Météo non dispo'
+    };
+    
+    chasseEntries.push(chasse);
+    saveAllData();
+    updatechasseList();
+    
+    // Vider
+    var huntInputs = document.querySelectorAll('.hunt-item input');
+    for (var i = 0; i < huntInputs.length; i++) {
+        huntInputs[i].value = 0;
+    }
+    document.getElementById('chasse-notes').value = '';
+}
+
+function updatechasseList() {
+    var chasseList = document.getElementById('chasse-list');
+    chasseList.innerHTML = '';
+    
+    if (chasseEntries.length === 0) {
+        chasseList.innerHTML = '<p style="text-align:center; color: #666;">Aucune chasse</p>';
+        return;
+    }
+    
+    for (var i = chasseEntries.length - 1; i >= 0; i--) {
+        var chasse = chasseEntries[i];
+        var rapace = rapaces.find(r => r.id === chasse.rapaceId);
+        var div = document.createElement('div');
+        div.className = 'day-card';
+        
+        var total = chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
+        var details = '';
+        
+        if (chasse.faisan > 0) details += 'Faisan: ' + chasse.faisan + ' ';
+        if (chasse.perdrix > 0) details += 'Perdrix: ' + chasse.perdrix + ' ';
+        if (chasse.lapin > 0) details += 'Lapin: ' + chasse.lapin + ' ';
+        if (chasse.lievre > 0) details += 'Lièvre: ' + chasse.lievre + ' ';
+        if (chasse.canard > 0) details += 'Canard: ' + chasse.canard + ' ';
+        if (chasse.oie > 0) details += 'Oie: ' + chasse.oie + ' ';
+        if (chasse.autre > 0) details += 'Autre: ' + chasse.autre + ' ';
+        
+        div.innerHTML = '<h4>' + (rapace ? rapace.name : 'Inconnu') + '</h4>' +
+                        '<p style="color: #666; font-size: 14px;">' + new Date(chasse.date).toLocaleDateString('fr-FR') + ' à ' + chasse.time + '</p>' +
+                        '<p><strong>Total prises:</strong> ' + total + '</p>' +
+                        '<p>' + (details || 'Aucune prise') + '</p>' +
+                        (chasse.notes ? '<p><em>' + chasse.notes + '</em></p>' : '') +
+                        '<p style="font-size: 12px; color: #666;">' + chasse.weather + '</p>';
+        chasseList.appendChild(div);
+    }
+}
+
+// Affaitage
+function addAffaitage() {
+    var rapaceId = document.getElementById('affaitage-rapace').value;
+    var date = document.getElementById('affaitage-date').value;
+    var time = document.getElementById('affaitage-time').value;
+    var notes = document.getElementById('affaitage-notes').value;
+    
+    if (!rapaceId || !date || !time) {
+        alert('Merci de remplir tous les champs requis');
+        return;
+    }
+    
+    var affaitage = {
+        id: Date.now(),
+        rapaceId: parseInt(rapaceId),
+        date: date,
+        time: time,
+        notes: notes,
+        priseNourriture: document.getElementById('prise-nourriture').checked,
+        gant: document.getElementById('gant').checked,
+        filiere: document.getElementById('filiere').checked,
+        libre: document.getElementById('libre').checked,
+        weather: currentWeather || 'Météo non dispo'
+    };
+    
+    affaitageEntries.push(affaitage);
+    saveAllData();
+    updateAffaitageList();
+    
+    // Vider
+    document.getElementById('affaitage-notes').value = '';
+    var checkboxes = document.querySelectorAll('#affaitage .checkbox-item input');
+    for (var i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = false;
+    }
+}
+
+function updateAffaitageList() {
+    var affaitageList = document.getElementById('affaitage-list');
+    affaitageList.innerHTML = '';
+    
+    if (affaitageEntries.length === 0) {
+        affaitageList.innerHTML = '<p style="text-align:center; color: #666;">Aucun affaitage</p>';
+        return;
+    }
+    
+    for (var i = affaitageEntries.length - 1; i >= 0; i--) {
+        var affaitage = affaitageEntries[i];
+        var rapace = rapaces.find(r => r.id === affaitage.rapaceId);
+        var div = document.createElement('div');
+        div.className = 'day-card';
+        
+        var activites = [];
+        if (affaitage.priseNourriture) activites.push('Prise de nourriture');
+        if (affaitage.gant) activites.push('Gant');
+        if (affaitage.filiere) activites.push('Filière');
+        if (affaitage.libre) activites.push('Libre');
+        
+        div.innerHTML = '<h4>' + (rapace ? rapace.name : 'Inconnu') + '</h4>' +
+                        '<p style="color: #666; font-size: 14px;">' + new Date(affaitage.date).toLocaleDateString('fr-FR') + ' à ' + affaitage.time + '</p>' +
+                        '<p><strong>Activités:</strong> ' + (activites.length > 0 ? activites.join(', ') : 'Aucune') + '</p>' +
+                        (affaitage.notes ? '<p><em>' + affaitage.notes + '</em></p>' : '') +
+                        '<p style="font-size: 12px; color: #666;">' + affaitage.weather + '</p>';
+        affaitageList.appendChild(div);
+    }
+}
+
+// Stats
+function changeStatsDate(days) {
+    currentStatsDate.setDate(currentStatsDate.getDate() + days);
+    document.getElementById('stats-date').value = currentStatsDate.toISOString().split('T')[0];
+    updateStats();
+}
+
+function showMultipleDays() {
+    var statsContent = document.getElementById('stats-content');
+    statsContent.innerHTML = '<div class="stats-grid">';
+    
+    for (var i = 0; i < 4; i++) {
+        var dayDate = new Date(currentStatsDate);
+        dayDate.setDate(dayDate.getDate() - 1 + i);
+        var dateStr = dayDate.toISOString().split('T')[0];
+        
+        var dayEntries = entries.filter(e => e.date === dateStr);
+        var dayChasse = chasseEntries.filter(c => c.date === dateStr);
+        var dayAffaitage = affaitageEntries.filter(a => a.date === dateStr);
+        
+        statsContent.innerHTML += '<div class="stat-card">' +
+                                  '<h3>' + dayDate.toLocaleDateString('fr-FR') + '</h3>' +
+                                  '<div class="value">' + (dayEntries.length + dayChasse.length + dayAffaitage.length) + '</div>' +
+                                  '<p>activités</p>' +
+                                  '</div>';
+    }
+    
+    statsContent.innerHTML += '</div>';
+}
+
+function updateStats() {
+    var selectedDate = document.getElementById('stats-date').value;
+    if (!selectedDate) return;
+    
+    currentStatsDate = new Date(selectedDate);
+    
+    var dayEntries = entries.filter(e => e.date === selectedDate);
+    var dayChasse = chasseEntries.filter(c => c.date === selectedDate);
+    var dayAffaitage = affaitageEntries.filter(a => a.date === selectedDate);
+    
+    var weatherOfDay = '';
+    if (dayEntries.length > 0) weatherOfDay = dayEntries[0].weather;
+    else if (dayChasse.length > 0) weatherOfDay = dayChasse[0].weather;
+    else if (dayAffaitage.length > 0) weatherOfDay = dayAffaitage[0].weather;
+    
+    var content = '<div class="day-card">';
+    content += '<h4>📅 Récapitulatif détaillé du ' + new Date(selectedDate).toLocaleDateString('fr-FR') + '</h4>';
+    
+    if (weatherOfDay) {
+        content += '<p style="color: #666; font-style: italic; margin-bottom: 15px;">🌤️ ' + weatherOfDay + '</p>';
+    }
+    
+    // Résumé rapide
+    content += '<div class="stats-grid">';
+    content += '<div class="stat-card"><h3>Activités quotidiennes</h3><div class="value">' + dayEntries.length + '</div></div>';
+    content += '<div class="stat-card"><h3>Chasses</h3><div class="value">' + dayChasse.length + '</div></div>';
+    content += '<div class="stat-card"><h3>Affaitages</h3><div class="value">' + dayAffaitage.length + '</div></div>';
+    var totalActivities = dayEntries.length + dayChasse.length + dayAffaitage.length;
+    content += '<div class="stat-card"><h3>Total</h3><div class="value">' + totalActivities + '</div></div>';
+    content += '</div>';
+    
+    // Détail complet des activités par rapace
+    if (totalActivities > 0) {
+        content += '<h3 style="margin-top: 30px;">📋 Détail complet des activités</h3>';
+        
+        // Grouper par rapace
+        var activitiesByRapace = {};
+        
+        // Ajouter les activités quotidiennes
+        for (var i = 0; i < dayEntries.length; i++) {
+            var entry = dayEntries[i];
+            var rapace = rapaces.find(r => r.id === entry.rapaceId);
+            var rapaceName = rapace ? rapace.name : 'Rapace inconnu';
+            
+            if (!activitiesByRapace[rapaceName]) {
+                activitiesByRapace[rapaceName] = [];
+            }
+            
+            activitiesByRapace[rapaceName].push({
+                type: 'Suivi',
+                icon: '📝',
+                time: entry.time,
+                detail: entry,
+                category: 'entry'
+            });
+        }
+        
+        // Ajouter les chasses
+        for (var i = 0; i < dayChasse.length; i++) {
+            var chasse = dayChasse[i];
+            var rapace = rapaces.find(r => r.id === chasse.rapaceId);
+            var rapaceName = rapace ? rapace.name : 'Rapace inconnu';
+            
+            if (!activitiesByRapace[rapaceName]) {
+                activitiesByRapace[rapaceName] = [];
+            }
+            
+            activitiesByRapace[rapaceName].push({
+                type: 'Chasse',
+                icon: '🏹',
+                time: chasse.time,
+                detail: chasse,
+                category: 'chasse'
+            });
+        }
+        
+        // Ajouter les affaitages
+        for (var i = 0; i < dayAffaitage.length; i++) {
+            var affaitage = dayAffaitage[i];
+            var rapace = rapaces.find(r => r.id === affaitage.rapaceId);
+            var rapaceName = rapace ? rapace.name : 'Rapace inconnu';
+            
+            if (!activitiesByRapace[rapaceName]) {
+                activitiesByRapace[rapaceName] = [];
+            }
+            
+            activitiesByRapace[rapaceName].push({
+                type: 'Affaitage',
+                icon: '🦅',
+                time: affaitage.time,
+                detail: affaitage,
+                category: 'affaitage'
+            });
+        }
+        
+        // Afficher par rapace
+        var rapaceNames = Object.keys(activitiesByRapace).sort();
+        for (var r = 0; r < rapaceNames.length; r++) {
+            var rapaceName = rapaceNames[r];
+            var activities = activitiesByRapace[rapaceName];
+            
+            // Trier les activités par heure
+            activities.sort(function(a, b) {
+                return a.time.localeCompare(b.time);
+            });
+            
+            content += '<div style="background: #f8f9fa; margin: 15px 0; padding: 20px; border-radius: 15px; border-left: 5px solid #2a5298;">';
+            content += '<h4 style="color: #1e3c72; margin-bottom: 15px;">🦅 ' + rapaceName + ' (' + activities.length + ' activités)</h4>';
+            
+            for (var a = 0; a < activities.length; a++) {
+                var activity = activities[a];
+                var detail = activity.detail;
+                
+                content += '<div class="entry-item" style="margin: 10px 0;">';
+                content += '<div class="date">' + activity.time + ' • ' + activity.icon + ' ' + activity.type + '</div>';
+                content += '<div class="content">';
+                
+                if (activity.category === 'entry') {
+                    content += '<strong>' + detail.type.charAt(0).toUpperCase() + detail.type.slice(1) + '</strong>';
+                    
+                    if (detail.type === 'nourriture') {
+                        content += '<br>• Poids: ' + (detail.poidsAvant || '?') + 'g → ' + (detail.poidsApres || '?') + 'g';
+                        content += '<br>• Menu: ' + detail.menu + ' (' + detail.quantite + ')';
+                    } else if (detail.type === 'vol') {
+                        content += '<br>• Type de vol: ' + detail.typeVol;
+                    } else if (detail.type === 'comportement') {
+                        content += '<br>• Réactivité: ' + detail.reactivite + '/5';
+                    } else if (detail.type === 'sante') {
+                        content += '<br>• État de santé: ' + detail.etatSante;
+                    } else if (detail.type === 'entrainement') {
+                        content += '<br>• Type d\'entraînement: ' + detail.typeEntrainement;
+                    }
+                    
+                } else if (activity.category === 'chasse') {
+                    var totalPrises = detail.faisan + detail.perdrix + detail.lapin + detail.lievre + detail.canard + detail.oie + detail.autre;
+                    content += '<strong>Session de chasse - ' + totalPrises + ' prise(s)</strong>';
+                    
+                    var prises = [];
+                    if (detail.faisan > 0) prises.push('Faisan: ' + detail.faisan);
+                    if (detail.perdrix > 0) prises.push('Perdrix: ' + detail.perdrix);
+                    if (detail.lapin > 0) prises.push('Lapin: ' + detail.lapin);
+                    if (detail.lievre > 0) prises.push('Lièvre: ' + detail.lievre);
+                    if (detail.canard > 0) prises.push('Canard: ' + detail.canard);
+                    if (detail.oie > 0) prises.push('Oie: ' + detail.oie);
+                    if (detail.autre > 0) prises.push('Autre: ' + detail.autre);
+                    
+                    if (prises.length > 0) {
+                        content += '<br>• Détail: ' + prises.join(', ');
+                    } else {
+                        content += '<br>• Aucune prise';
+                    }
+                    
+                } else if (activity.category === 'affaitage') {
+                    content += '<strong>Séance d\'affaitage</strong>';
+                    
+                    var activitesAffaitage = [];
+                    if (detail.priseNourriture) activitesAffaitage.push('Prise de nourriture');
+                    if (detail.gant) activitesAffaitage.push('Travail au gant');
+                    if (detail.filiere) activitesAffaitage.push('Filière');
+                    if (detail.libre) activitesAffaitage.push('Vol libre');
+                    
+                    if (activitesAffaitage.length > 0) {
+                        content += '<br>• Activités: ' + activitesAffaitage.join(', ');
+                    } else {
+                        content += '<br>• Aucune activité spécifique';
+                    }
+                }
+                
+                // Notes
+                if (detail.notes && detail.notes.trim()) {
+                    content += '<br>• <em>Notes: ' + detail.notes + '</em>';
+                }
+                
+                content += '</div></div>';
+            }
+            
+            content += '</div>';
+        }
+        
+        // Résumé de fin
+        content += '<div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin-top: 20px;">';
+        content += '<h4 style="color: #1e3c72;">📊 Résumé de la journée</h4>';
+        content += '<p><strong>• ' + rapaceNames.length + '</strong> rapace(s) ont eu des activités</p>';
+        content += '<p><strong>• ' + dayEntries.length + '</strong> activité(s) de suivi quotidien</p>';
+        content += '<p><strong>• ' + dayChasse.length + '</strong> session(s) de chasse</p>';
+        content += '<p><strong>• ' + dayAffaitage.length + '</strong> séance(s) d\'affaitage</p>';
+        
+        // Calcul total des prises de chasse
+        var totalPrisesJour = 0;
+        for (var i = 0; i < dayChasse.length; i++) {
+            var chasse = dayChasse[i];
+            totalPrisesJour += chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
+        }
+        if (totalPrisesJour > 0) {
+            content += '<p><strong>• ' + totalPrisesJour + '</strong> prise(s) de chasse au total</p>';
+        }
+        
+        if (weatherOfDay) {
+            content += '<p><strong>• Conditions météo:</strong> ' + weatherOfDay + '</p>';
+        }
+        
+        content += '</div>';
+        
+    } else {
+        content += '<div style="text-align: center; color: #666; margin: 40px 0;">';
+        content += '<h3>😴 Journée de repos</h3>';
+        content += '<p>Aucune activité enregistrée pour cette date.</p>';
+        content += '</div>';
+    }
+    
+    content += '</div>';
+    
+    document.getElementById('stats-content').innerHTML = content;
+}
+
+// Export/Import/Clear
+function exportAllData() {
+    var allData = {
+        rapaces: rapaces,
+        entries: entries,
+        chasseEntries: chasseEntries,
+        affaitageEntries: affaitageEntries,
+        currentLocation: currentLocation,
+        exportDate: new Date().toISOString()
+    };
+    
+    var dataStr = JSON.stringify(allData, null, 2);
+    var blob = new Blob([dataStr], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = 'rapaces_backup.json';
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    alert('Sauvegarde exportée !');
+}
+
+function importAllData() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = function(e) {
+        var file = e.target.files[0];
+        if (file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = JSON.parse(e.target.result);
+                    
+                    if (confirm('Importer ces données ? (remplace tout)')) {
+                        rapaces = data.rapaces || [];
+                        entries = data.entries || [];
+                        chasseEntries = data.chasseEntries || [];
+                        affaitageEntries = data.affaitageEntries || [];
+                        currentLocation = data.currentLocation || "Orthez (64300)";
+                        
+                        saveAllData();
+                        updateRapaceList();
+                        updateRapaceSelects();
+                        updateEntryList();
+                        updatechasseList();
+                        updateAffaitageList();
+                        loadWeather();
+                        
+                        alert('Données importées !');
+                    }
+                } catch (error) {
+                    alert('Erreur : fichier non valide');
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
+    
+    input.click();
+}
+
+function clearAllData() {
+    if (confirm('Effacer TOUTES les données ?')) {
+        if (confirm('Dernière confirmation - tout sera perdu !')) {
+            rapaces = [];
+            entries = [];
+            chasseEntries = [];
+            affaitageEntries = [];
+            
+            localStorage.removeItem('rapaces_data');
+            
+            updateRapaceList();
+            updateRapaceSelects();
+            updateEntryList();
+            updatechasseList();
+            updateAffaitageList();
+            
+            alert('Données effacées !');
+        }
+    }
+}
+
+// Initialisation
+window.onload = function() {
+    loadAllData();
+    loadWeather();
+    
+    var now = new Date();
+    var dateInputs = ['event-date', 'chasse-date', 'affaitage-date', 'stats-date'];
+    var timeInputs = ['event-time', 'chasse-time', 'affaitage-time'];
+    
+    for (var i = 0; i < dateInputs.length; i++) {
+        var input = document.getElementById(dateInputs[i]);
+        if (input) {
+            input.value = now.toISOString().split('T')[0];
+        }
+    }
+    
+    for (var i = 0; i < timeInputs.length; i++) {
+        var input = document.getElementById(timeInputs[i]);
+        if (input) {
+            input.value = now.toTimeString().slice(0, 5);
+        }
+    }
+    
+    currentStatsDate = now;
+    
+    updateRapaceList();
+    updateRapaceSelects();
+    updateEntryList();
+    updatechasseList();
+    updateAffaitageList();
+    showEventFields();
+    
+    // Sauvegarder toutes les 30 secondes
+    setInterval(saveAllData, 30000);
+};
+
+// Fermer modal en cliquant à côté
 window.onclick = function(event) {
-    const modal = document.getElementById('editModal');
-    if (event.target === modal) {
+    var modal = document.getElementById('editModal');
+    if (event.target == modal) {
         closeEditModal();
     }
-}
+};
 </script>
-
 </body>
 </html>
