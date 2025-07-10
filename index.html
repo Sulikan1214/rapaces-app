@@ -329,6 +329,31 @@
         .close:hover {
             color: #000;
         }
+
+        .sync-status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .sync-status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .sync-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .sync-status.syncing {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
     </style>
 </head>
 <body>
@@ -364,6 +389,7 @@
         <button class="tab" onclick="showTab('chasse')">Chasse</button>
         <button class="tab" onclick="showTab('affaitage')">Affaitage</button>
         <button class="tab" onclick="showTab('stats')">Statistiques</button>
+        <button class="tab" onclick="showTab('sync')">Sync</button>
     </div>
 
     <div id="gestion" class="tab-content active">
@@ -663,7 +689,7 @@
     <div id="sync" class="tab-content">
         <h2>🌐 Synchronisation Google Drive</h2>
         
-        <div class="day-card">
+        <div id="sync-status-container" class="sync-status disconnected">
             <h4 id="sync-status">📊 État de la synchronisation</h4>
             <p id="sync-details">🔄 Non configuré</p>
             <p id="last-sync-time">Dernière sync : Jamais</p>
@@ -685,7 +711,7 @@
             <h3>⚙️ Paramètres de synchronisation</h3>
             <div class="checkbox-group">
                 <div class="checkbox-item">
-                    <input type="checkbox" id="auto-sync-enabled" checked>
+                    <input type="checkbox" id="auto-sync-enabled" checked onchange="toggleAutoSync()">
                     <label for="auto-sync-enabled">Synchronisation automatique (toutes les 2 minutes)</label>
                 </div>
                 <div class="checkbox-item">
@@ -764,6 +790,7 @@
     </div>
 </div>
 
+<script src="https://apis.google.com/js/api.js"></script>
 <script>
 // Variables globales
 var rapaces = [];
@@ -776,261 +803,296 @@ var currentStatsDate = new Date();
 var editingRapaceId = null;
 
 // Variables pour Google Drive synchronisation
-var gapi = null;
 var isGoogleDriveConnected = false;
 var syncIntervalId = null;
 var lastSyncTime = null;
 var googleDriveFileId = null;
 var syncHistory = [];
+var CLIENT_ID = '464618923115-m4h8hf5gkqmfhg2oqm6vr9sj5h0f4nq9.apps.googleusercontent.com';
+var API_KEY = 'b4d68d2dedd2d6d43f81f804010b0673';
+var DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+var SCOPES = 'https://www.googleapis.com/auth/drive.file';
+var FILENAME = 'rapaces_data_sync.json';
 
-// Sauvegarder avec sync Google Drive
-function saveAllData() {
+// ===== GOOGLE DRIVE SYNCHRONISATION RÉELLE =====
+
+// Initialiser Google Drive API
+function initGoogleAPI() {
+    gapi.load('auth2:client', async function() {
+        try {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                clientId: CLIENT_ID,
+                discoveryDocs: [DISCOVERY_DOC],
+                scope: SCOPES
+            });
+            
+            addSyncHistoryEntry('✅ API Google Drive initialisée');
+            
+            // Vérifier si déjà connecté
+            const authInstance = gapi.auth2.getAuthInstance();
+            if (authInstance.isSignedIn.get()) {
+                isGoogleDriveConnected = true;
+                updateSyncUI();
+                addSyncHistoryEntry('🔄 Reconnexion automatique réussie');
+                // Charger les données au démarrage
+                await loadFromGoogleDrive();
+                startAutoSync();
+            }
+        } catch (error) {
+            console.error('Erreur initialisation Google Drive:', error);
+            addSyncHistoryEntry('❌ Erreur initialisation API : ' + error.message);
+        }
+    });
+}
+
+// Connecter à Google Drive
+async function initGoogleDriveSync() {
     try {
-        var data = {
+        addSyncHistoryEntry('🔄 Tentative de connexion...');
+        updateSyncUI();
+        
+        const authInstance = gapi.auth2.getAuthInstance();
+        const user = await authInstance.signIn();
+        
+        if (user.isSignedIn()) {
+            isGoogleDriveConnected = true;
+            addSyncHistoryEntry('✅ Connexion réussie à Google Drive');
+            updateSyncUI();
+            
+            // Charger les données existantes
+            await loadFromGoogleDrive();
+            
+            // Puis synchroniser les données locales
+            await syncToGoogleDrive(true);
+            startAutoSync();
+            
+            if (document.getElementById('sync-notifications').checked) {
+                showMiniNotification('✅ Connecté à Google Drive !');
+            }
+        }
+    } catch (error) {
+        console.error('Erreur connexion:', error);
+        addSyncHistoryEntry('❌ Erreur de connexion : ' + (error.error || error.message));
+        if (document.getElementById('sync-notifications').checked) {
+            showMiniNotification('❌ Erreur de connexion');
+        }
+    }
+}
+
+// Déconnecter de Google Drive
+async function disconnectDrive() {
+    try {
+        const authInstance = gapi.auth2.getAuthInstance();
+        await authInstance.signOut();
+        
+        isGoogleDriveConnected = false;
+        stopAutoSync();
+        addSyncHistoryEntry('❌ Déconnexion de Google Drive');
+        updateSyncUI();
+        
+        if (document.getElementById('sync-notifications').checked) {
+            showMiniNotification('❌ Déconnecté de Google Drive');
+        }
+    } catch (error) {
+        console.error('Erreur déconnexion:', error);
+        addSyncHistoryEntry('❌ Erreur déconnexion : ' + error.message);
+    }
+}
+
+// Synchroniser vers Google Drive
+async function syncToGoogleDrive(showNotification = false) {
+    if (!isGoogleDriveConnected) return;
+    
+    try {
+        const data = {
             rapaces: rapaces,
             entries: entries,
             chasseEntries: chasseEntries,
             affaitageEntries: affaitageEntries,
             currentLocation: currentLocation,
-            lastSave: new Date().toISOString()
+            lastSync: new Date().toISOString(),
+            deviceInfo: {
+                userAgent: navigator.userAgent,
+                timestamp: new Date().toISOString()
+            }
         };
-        localStorage.setItem('rapaces_data', JSON.stringify(data));
         
-        // Synchroniser avec Google Drive si connecté et activé
-        if (isGoogleDriveConnected && document.getElementById('sync-on-change-enabled') && document.getElementById('sync-on-change-enabled').checked) {
-            syncToGoogleDrive(false); // false = pas de notification pour les auto-sync
-        }
-    } catch (e) {
-        console.error('Erreur sauvegarde:', e);
-    }
-}
-
-// ===== GOOGLE DRIVE SYNCHRONISATION RÉELLE =====
-
-// Charger et initialiser Google Drive API
-function loadGoogleDriveAPI() {
-    if (typeof gapi !== 'undefined') {
-        initGoogleDriveAPI();
-        return;
-    }
-    
-    var script = document.createElement('script');
-    script.src = 'https://apis.google.com/js/api.js';
-    script.onload = function() {
-        gapi.load('auth2:client:drive', initGoogleDriveAPI);
-    };
-    document.head.appendChild(script);
-}
-
-function initGoogleDriveAPI() {
-    gapi.load('auth2:client', function() {
-        gapi.client.init({
-            apiKey: 'b4d68d2dedd2d6d43f81f804010b0673', // Votre clé API
-            clientId: '464618923115-m4h8hf5gkqmfhg2oqm6vr9sj5h0f4nq9.apps.googleusercontent.com',
-            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-            scope: 'https://www.googleapis.com/auth/drive.file'
-        }).then(function() {
-            // Vérifier si déjà connecté
-            var authInstance = gapi.auth2.getAuthInstance();
-            if (authInstance.isSignedIn.get()) {
-                isGoogleDriveConnected = true;
-                updateSyncUI();
-                addSyncHistoryEntry('Reconnexion automatique réussie');
-                startAutoSync();
-            }
-        }).catch(function(error) {
-            console.error('Erreur initialisation Google Drive:', error);
-        });
-    });
-}
-
-function initGoogleDriveSync() {
-    if (!gapi || !gapi.auth2) {
-        addSyncHistoryEntry('Chargement de l\'API Google Drive...');
-        loadGoogleDriveAPI();
-        setTimeout(initGoogleDriveSync, 2000);
-        return;
-    }
-    
-    var authInstance = gapi.auth2.getAuthInstance();
-    authInstance.signIn().then(function() {
-        isGoogleDriveConnected = true;
-        addSyncHistoryEntry('✅ Connexion réussie à Google Drive');
-        updateSyncUI();
+        const fileContent = JSON.stringify(data, null, 2);
         
-        // Première synchronisation
-        syncToGoogleDrive(true);
-        startAutoSync();
+        // Chercher le fichier existant
+        let fileId = await findSyncFile();
         
-        if (document.getElementById('sync-notifications').checked) {
-            alert('✅ Connecté à Google Drive !\nSynchronisation automatique activée.');
-        }
-    }).catch(function(error) {
-        console.error('Erreur connexion:', error);
-        addSyncHistoryEntry('❌ Erreur de connexion : ' + error.error);
-        alert('❌ Erreur de connexion à Google Drive');
-    });
-}
-
-function disconnectDrive() {
-    if (gapi && gapi.auth2) {
-        gapi.auth2.getAuthInstance().signOut().then(function() {
-            isGoogleDriveConnected = false;
-            stopAutoSync();
-            addSyncHistoryEntry('❌ Déconnexion de Google Drive');
-            updateSyncUI();
+        let response;
+        if (fileId) {
+            // Mettre à jour le fichier existant
+            response = await gapi.client.request({
+                path: `https://www.googleapis.com/upload/drive/v3/files/${fileId}`,
+                method: 'PATCH',
+                params: { uploadType: 'media' },
+                headers: { 'Content-Type': 'application/json' },
+                body: fileContent
+            });
+        } else {
+            // Créer un nouveau fichier
+            const fileMetadata = {
+                name: FILENAME,
+                parents: ['appDataFolder']
+            };
             
-            if (document.getElementById('sync-notifications').checked) {
-                alert('❌ Déconnecté de Google Drive');
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(fileMetadata)], {type: 'application/json'}));
+            form.append('file', new Blob([fileContent], {type: 'application/json'}));
+            
+            response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token}`
+                },
+                body: form
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                googleDriveFileId = result.id;
             }
-        });
-    }
-}
-
-function syncToGoogleDrive(showNotification) {
-    if (!isGoogleDriveConnected) return;
-    
-    var data = {
-        rapaces: rapaces,
-        entries: entries,
-        chasseEntries: chasseEntries,
-        affaitageEntries: affaitageEntries,
-        currentLocation: currentLocation,
-        lastSync: new Date().toISOString(),
-        deviceInfo: {
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            timestamp: new Date().toISOString()
         }
-    };
-    
-    var fileContent = JSON.stringify(data, null, 2);
-    var fileName = 'rapaces_data_sync.json';
-    
-    // Créer ou mettre à jour le fichier sur Google Drive
-    var fileMetadata = {
-        name: fileName,
-        parents: ['appDataFolder'] // Dossier privé de l'application
-    };
-    
-    var form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(fileMetadata)], {type: 'application/json'}));
-    form.append('file', new Blob([fileContent], {type: 'application/json'}));
-    
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'https://www.googleapis.com/upload/drive/v3/files' + (googleDriveFileId ? '/' + googleDriveFileId : ''));
-    xhr.setRequestHeader('Authorization', 'Bearer ' + gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token);
-    
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            var response = JSON.parse(xhr.responseText);
-            googleDriveFileId = response.id;
+        
+        if (response && (response.status === 200 || response.ok)) {
             lastSyncTime = new Date();
-            
             addSyncHistoryEntry('📤 Synchronisation vers Google Drive réussie');
             updateSyncUI();
             
             if (showNotification && document.getElementById('sync-notifications').checked) {
-                // Mini notification non-intrusive
                 showMiniNotification('✅ Données synchronisées');
             }
         }
-    };
-    
-    xhr.onerror = function() {
-        addSyncHistoryEntry('❌ Erreur lors de la synchronisation');
-    };
-    
-    xhr.send(form);
+    } catch (error) {
+        console.error('Erreur sync vers Drive:', error);
+        addSyncHistoryEntry('❌ Erreur synchronisation : ' + error.message);
+    }
 }
 
-function loadFromGoogleDrive() {
+// Charger depuis Google Drive
+async function loadFromGoogleDrive() {
     if (!isGoogleDriveConnected) return;
     
-    // Rechercher le fichier de synchronisation
-    gapi.client.drive.files.list({
-        q: "name='rapaces_data_sync.json' and parents in 'appDataFolder'",
-        spaces: 'appDataFolder'
-    }).then(function(response) {
-        var files = response.result.files;
-        if (files && files.length > 0) {
-            googleDriveFileId = files[0].id;
-            
-            // Télécharger le contenu du fichier
-            gapi.client.drive.files.get({
-                fileId: googleDriveFileId,
-                alt: 'media'
-            }).then(function(response) {
-                try {
-                    var data = JSON.parse(response.body);
-                    
-                    // Fusionner les données (prendre les plus récentes)
-                    var localLastSave = localStorage.getItem('rapaces_data') ? 
-                        JSON.parse(localStorage.getItem('rapaces_data')).lastSave : null;
-                    
-                    if (!localLastSave || data.lastSync > localLastSave) {
-                        rapaces = data.rapaces || [];
-                        entries = data.entries || [];
-                        chasseEntries = data.chasseEntries || [];
-                        affaitageEntries = data.affaitageEntries || [];
-                        currentLocation = data.currentLocation || currentLocation;
-                        
-                        // Mettre à jour l'interface
-                        updateRapaceList();
-                        updateRapaceSelects();
-                        updateEntryList();
-                        updatechasseList();
-                        updateAffaitageList();
-                        
-                        // Sauvegarder localement
-                        saveAllData();
-                        
-                        addSyncHistoryEntry('📥 Données chargées depuis Google Drive');
-                        showMiniNotification('📥 Données synchronisées depuis le cloud');
-                    } else {
-                        addSyncHistoryEntry('📊 Données locales plus récentes, pas de changement');
-                    }
-                } catch (error) {
-                    addSyncHistoryEntry('❌ Erreur de lecture des données cloud');
-                }
-            });
-        } else {
-            addSyncHistoryEntry('📊 Aucun fichier de sauvegarde trouvé sur Google Drive');
+    try {
+        const fileId = await findSyncFile();
+        if (!fileId) {
+            addSyncHistoryEntry('📊 Aucun fichier de sauvegarde trouvé');
+            return;
         }
-    });
+        
+        const response = await gapi.client.drive.files.get({
+            fileId: fileId,
+            alt: 'media'
+        });
+        
+        if (response.status === 200) {
+            const data = JSON.parse(response.body);
+            
+            // Vérifier si les données cloud sont plus récentes
+            const localData = localStorage.getItem('rapaces_data');
+            const localLastSave = localData ? JSON.parse(localData).lastSave : null;
+            
+            if (!localLastSave || new Date(data.lastSync) > new Date(localLastSave)) {
+                // Charger les données cloud
+                rapaces = data.rapaces || [];
+                entries = data.entries || [];
+                chasseEntries = data.chasseEntries || [];
+                affaitageEntries = data.affaitageEntries || [];
+                currentLocation = data.currentLocation || currentLocation;
+                
+                // Mettre à jour l'interface
+                updateRapaceList();
+                updateRapaceSelects();
+                updateEntryList();
+                updatechasseList();
+                updateAffaitageList();
+                
+                // Sauvegarder localement
+                saveAllData();
+                
+                addSyncHistoryEntry('📥 Données chargées depuis Google Drive');
+                if (document.getElementById('sync-notifications').checked) {
+                    showMiniNotification('📥 Données synchronisées depuis le cloud');
+                }
+            } else {
+                addSyncHistoryEntry('📊 Données locales plus récentes');
+            }
+        }
+    } catch (error) {
+        console.error('Erreur chargement depuis Drive:', error);
+        addSyncHistoryEntry('❌ Erreur chargement : ' + error.message);
+    }
 }
 
-function manualSync() {
+// Trouver le fichier de synchronisation
+async function findSyncFile() {
+    try {
+        const response = await gapi.client.drive.files.list({
+            q: `name='${FILENAME}' and parents in 'appDataFolder'`,
+            spaces: 'appDataFolder',
+            fields: 'files(id, name)'
+        });
+        
+        const files = response.result.files;
+        if (files && files.length > 0) {
+            googleDriveFileId = files[0].id;
+            return files[0].id;
+        }
+        return null;
+    } catch (error) {
+        console.error('Erreur recherche fichier:', error);
+        return null;
+    }
+}
+
+// Synchronisation manuelle
+async function manualSync() {
     if (!isGoogleDriveConnected) {
-        alert('❌ Connectez-vous d\'abord à Google Drive');
+        if (document.getElementById('sync-notifications').checked) {
+            showMiniNotification('❌ Connectez-vous d\'abord à Google Drive');
+        }
         return;
     }
     
     addSyncHistoryEntry('🔄 Synchronisation manuelle lancée...');
     updateSyncUI();
     
-    // D'abord charger depuis Google Drive
-    loadFromGoogleDrive();
-    
-    // Puis sauvegarder vers Google Drive
-    setTimeout(function() {
-        syncToGoogleDrive(true);
-    }, 1000);
+    try {
+        // D'abord charger depuis Google Drive
+        await loadFromGoogleDrive();
+        
+        // Puis sauvegarder vers Google Drive
+        await syncToGoogleDrive(true);
+        
+        addSyncHistoryEntry('✅ Synchronisation manuelle terminée');
+    } catch (error) {
+        addSyncHistoryEntry('❌ Erreur synchronisation manuelle : ' + error.message);
+    }
 }
 
+// Démarrer la synchronisation automatique
 function startAutoSync() {
-    stopAutoSync(); // Arrêter l'ancien timer
+    stopAutoSync();
     
     if (isGoogleDriveConnected && document.getElementById('auto-sync-enabled') && document.getElementById('auto-sync-enabled').checked) {
-        syncIntervalId = setInterval(function() {
-            loadFromGoogleDrive(); // Vérifier les mises à jour
-            syncToGoogleDrive(false); // Sauvegarder sans notification
-        }, 2 * 60 * 1000); // Toutes les 2 minutes
+        syncIntervalId = setInterval(async function() {
+            try {
+                await loadFromGoogleDrive();
+                await syncToGoogleDrive(false);
+            } catch (error) {
+                console.error('Erreur auto-sync:', error);
+            }
+        }, 2 * 60 * 1000); // 2 minutes
         
         addSyncHistoryEntry('🔄 Synchronisation automatique activée (2 min)');
     }
 }
 
+// Arrêter la synchronisation automatique
 function stopAutoSync() {
     if (syncIntervalId) {
         clearInterval(syncIntervalId);
@@ -1039,34 +1101,47 @@ function stopAutoSync() {
     }
 }
 
+// Basculer la synchronisation automatique
+function toggleAutoSync() {
+    if (isGoogleDriveConnected) {
+        if (document.getElementById('auto-sync-enabled').checked) {
+            startAutoSync();
+        } else {
+            stopAutoSync();
+        }
+    }
+}
+
+// Mettre à jour l'interface de synchronisation
 function updateSyncUI() {
-    var statusEl = document.getElementById('sync-status');
-    var detailsEl = document.getElementById('sync-details');
-    var lastSyncEl = document.getElementById('last-sync-time');
-    var connectBtn = document.getElementById('connect-drive-btn');
-    var syncBtn = document.getElementById('manual-sync-btn');
-    var disconnectBtn = document.getElementById('disconnect-drive-btn');
+    const statusContainer = document.getElementById('sync-status-container');
+    const statusEl = document.getElementById('sync-status');
+    const detailsEl = document.getElementById('sync-details');
+    const lastSyncEl = document.getElementById('last-sync-time');
+    const connectBtn = document.getElementById('connect-drive-btn');
+    const syncBtn = document.getElementById('manual-sync-btn');
+    const disconnectBtn = document.getElementById('disconnect-drive-btn');
     
-    if (!statusEl) return; // Pas sur l'onglet sync
+    if (!statusEl) return;
     
     if (isGoogleDriveConnected) {
+        statusContainer.className = 'sync-status connected';
         statusEl.textContent = '✅ Google Drive connecté';
-        statusEl.style.color = 'green';
         detailsEl.textContent = '🔄 Synchronisation active';
-        detailsEl.style.color = 'green';
         
         if (lastSyncTime) {
             lastSyncEl.textContent = 'Dernière sync : ' + lastSyncTime.toLocaleString('fr-FR');
+        } else {
+            lastSyncEl.textContent = 'Dernière sync : En cours...';
         }
         
         connectBtn.style.display = 'none';
         syncBtn.style.display = 'inline-block';
         disconnectBtn.style.display = 'inline-block';
     } else {
+        statusContainer.className = 'sync-status disconnected';
         statusEl.textContent = '❌ Google Drive non connecté';
-        statusEl.style.color = 'red';
         detailsEl.textContent = 'Connectez-vous pour synchroniser automatiquement vos données';
-        detailsEl.style.color = '#666';
         lastSyncEl.textContent = 'Dernière sync : Jamais';
         
         connectBtn.style.display = 'inline-block';
@@ -1075,28 +1150,33 @@ function updateSyncUI() {
     }
 }
 
+// Ajouter une entrée à l'historique de synchronisation
 function addSyncHistoryEntry(message) {
-    var now = new Date();
-    var timeStr = now.toLocaleTimeString('fr-FR');
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('fr-FR');
     syncHistory.unshift(timeStr + ' - ' + message);
     
-    // Garder seulement les 10 dernières entrées
     if (syncHistory.length > 10) {
         syncHistory = syncHistory.slice(0, 10);
     }
     
-    var historyEl = document.getElementById('sync-history');
+    const historyEl = document.getElementById('sync-history');
     if (historyEl) {
-        historyEl.innerHTML = syncHistory.map(entry => 
-            '<p style="margin: 5px 0; font-size: 14px;">' + entry + '</p>'
-        ).join('');
+        if (syncHistory.length === 0) {
+            historyEl.innerHTML = '<p style="color: #666; font-style: italic;">Aucune synchronisation effectuée</p>';
+        } else {
+            historyEl.innerHTML = syncHistory.map(entry => 
+                '<p style="margin: 5px 0; font-size: 14px;">' + entry + '</p>'
+            ).join('');
+        }
     }
 }
 
+// Afficher une mini notification
 function showMiniNotification(message) {
     if (!document.getElementById('sync-notifications').checked) return;
     
-    var notification = document.createElement('div');
+    const notification = document.createElement('div');
     notification.style.cssText = `
         position: fixed;
         top: 20px;
@@ -1108,14 +1188,40 @@ function showMiniNotification(message) {
         z-index: 10000;
         font-size: 14px;
         box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        animation: slideIn 0.3s ease;
     `;
     notification.textContent = message;
     
     document.body.appendChild(notification);
     
     setTimeout(function() {
-        notification.remove();
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
     }, 3000);
+}
+
+// Sauvegarder avec sync Google Drive
+function saveAllData() {
+    try {
+        const data = {
+            rapaces: rapaces,
+            entries: entries,
+            chasseEntries: chasseEntries,
+            affaitageEntries: affaitageEntries,
+            currentLocation: currentLocation,
+            lastSave: new Date().toISOString()
+        };
+        localStorage.setItem('rapaces_data', JSON.stringify(data));
+        
+        // Synchroniser avec Google Drive si connecté et activé
+        if (isGoogleDriveConnected && 
+            document.getElementById('sync-on-change-enabled') && 
+            document.getElementById('sync-on-change-enabled').checked) {
+            syncToGoogleDrive(false);
+        }
+    } catch (e) {
+        console.error('Erreur sauvegarde:', e);
+    }
 }
 
 function loadAllData() {
@@ -1138,26 +1244,22 @@ function loadAllData() {
 
 // Météo avec OpenWeatherMap API
 function loadWeather() {
-    // Essayer d'abord de géolocaliser automatiquement
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             function(position) {
                 loadWeatherByCoords(position.coords.latitude, position.coords.longitude);
             },
             function(error) {
-                // Si géolocalisation échoue, utiliser la ville configurée
                 loadWeatherByCity(currentLocation);
             },
-            { timeout: 5000, maximumAge: 300000 } // 5 min cache
+            { timeout: 5000, maximumAge: 300000 }
         );
     } else {
-        // Pas de géolocalisation, utiliser la ville
         loadWeatherByCity(currentLocation);
     }
 }
 
 function loadWeatherByCoords(lat, lon) {
-    // Votre clé API OpenWeatherMap
     var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
     var url = "https://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&appid=" + apiKey + "&units=metric&lang=fr";
     
@@ -1168,7 +1270,6 @@ function loadWeatherByCoords(lat, lon) {
         })
         .then(data => {
             processWeatherData(data);
-            // Mettre à jour la localisation détectée
             currentLocation = data.name + " (" + data.sys.country + ")";
             saveAllData();
         })
@@ -1179,10 +1280,7 @@ function loadWeatherByCoords(lat, lon) {
 }
 
 function loadWeatherByCity(cityName) {
-    // Extraire juste le nom de ville (enlever le code postal)
     var city = cityName.split("(")[0].trim();
-    
-    // Votre clé API OpenWeatherMap
     var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
     var url = "https://api.openweathermap.org/data/2.5/weather?q=" + encodeURIComponent(city) + ",FR&appid=" + apiKey + "&units=metric&lang=fr";
     
@@ -1201,29 +1299,23 @@ function loadWeatherByCity(cityName) {
 }
 
 function processWeatherData(data) {
-    // Extraire les données de l'API OpenWeatherMap
     var temp = Math.round(data.main.temp);
     var description = data.weather[0].description;
     var humidity = data.main.humidity;
-    var windSpeed = Math.round(data.wind.speed * 3.6); // Convertir m/s en km/h
+    var windSpeed = Math.round(data.wind.speed * 3.6);
     var precipitation = 0;
     
-    // Calculer les précipitations si disponibles
     if (data.rain && data.rain["1h"]) {
-        precipitation = Math.round((data.rain["1h"] / 1) * 100); // Approximation
+        precipitation = Math.round((data.rain["1h"] / 1) * 100);
     } else if (data.snow && data.snow["1h"]) {
         precipitation = Math.round((data.snow["1h"] / 1) * 100);
     } else if (data.clouds && data.clouds.all > 80) {
-        precipitation = Math.floor(data.clouds.all / 4); // Estimation basée sur la couverture nuageuse
+        precipitation = Math.floor(data.clouds.all / 4);
     }
     
-    // Limiter les précipitations à 100%
     precipitation = Math.min(precipitation, 100);
-    
-    // Choisir l'icône selon les conditions
     var icon = getWeatherIcon(data.weather[0].main, data.weather[0].id);
     
-    // Formatter la météo complète
     var detailedWeather = temp + "°C\n" +
                          "Précipitations : " + precipitation + "%\n" +
                          "Humidité : " + humidity + "%\n" +
@@ -1245,60 +1337,49 @@ function processWeatherData(data) {
 }
 
 function getWeatherIcon(main, id) {
-    // Mapper les conditions OpenWeatherMap vers des emojis
     switch (main) {
-        case "Clear":
-            return "☀️";
-        case "Clouds":
-            return id < 803 ? "⛅" : "☁️";
-        case "Rain":
-            return "🌧️";
-        case "Drizzle":
-            return "🌦️";
-        case "Thunderstorm":
-            return "⛈️";
-        case "Snow":
-            return "❄️";
+        case "Clear": return "☀️";
+        case "Clouds": return id < 803 ? "⛅" : "☁️";
+        case "Rain": return "🌧️";
+        case "Drizzle": return "🌦️";
+        case "Thunderstorm": return "⛈️";
+        case "Snow": return "❄️";
         case "Mist":
-        case "Fog":
-            return "🌫️";
-        case "Haze":
-            return "🌤️";
-        default:
-            return "🌤️";
+        case "Fog": return "🌫️";
+        case "Haze": return "🌤️";
+        default: return "🌤️";
     }
 }
 
 function loadWeatherFallback() {
-    // Météo simulée si l'API ne fonctionne pas
     var now = new Date();
     var month = now.getMonth();
     var hour = now.getHours();
     
     var conditions;
     
-    if (month >= 2 && month <= 4) { // Printemps
+    if (month >= 2 && month <= 4) {
         conditions = [
             {desc: "ensoleillé", temp: 15 + Math.floor(Math.random() * 8), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 20), humidity: 45 + Math.floor(Math.random() * 20)},
             {desc: "partiellement nuageux", temp: 12 + Math.floor(Math.random() * 7), icon: "⛅", precipitation: 10 + Math.floor(Math.random() * 30), humidity: 50 + Math.floor(Math.random() * 25)},
             {desc: "nuageux", temp: 10 + Math.floor(Math.random() * 6), icon: "☁️", precipitation: 20 + Math.floor(Math.random() * 40), humidity: 60 + Math.floor(Math.random() * 25)},
             {desc: "pluvieux", temp: 8 + Math.floor(Math.random() * 8), icon: "🌧️", precipitation: 70 + Math.floor(Math.random() * 30), humidity: 75 + Math.floor(Math.random() * 20)}
         ];
-    } else if (month >= 5 && month <= 7) { // Été
+    } else if (month >= 5 && month <= 7) {
         conditions = [
             {desc: "ensoleillé", temp: 20 + Math.floor(Math.random() * 10), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 10), humidity: 35 + Math.floor(Math.random() * 20)},
             {desc: "très ensoleillé", temp: 25 + Math.floor(Math.random() * 8), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 5), humidity: 30 + Math.floor(Math.random() * 15)},
             {desc: "chaud", temp: 28 + Math.floor(Math.random() * 7), icon: "🌡️", precipitation: 0 + Math.floor(Math.random() * 15), humidity: 25 + Math.floor(Math.random() * 20)},
             {desc: "orageux", temp: 22 + Math.floor(Math.random() * 6), icon: "⛈️", precipitation: 60 + Math.floor(Math.random() * 40), humidity: 70 + Math.floor(Math.random() * 25)}
         ];
-    } else if (month >= 8 && month <= 10) { // Automne
+    } else if (month >= 8 && month <= 10) {
         conditions = [
             {desc: "doux", temp: 12 + Math.floor(Math.random() * 10), icon: "🍂", precipitation: 10 + Math.floor(Math.random() * 30), humidity: 50 + Math.floor(Math.random() * 25)},
             {desc: "nuageux", temp: 8 + Math.floor(Math.random() * 8), icon: "☁️", precipitation: 25 + Math.floor(Math.random() * 45), humidity: 65 + Math.floor(Math.random() * 25)},
             {desc: "pluvieux", temp: 6 + Math.floor(Math.random() * 10), icon: "🌧️", precipitation: 70 + Math.floor(Math.random() * 30), humidity: 80 + Math.floor(Math.random() * 15)},
             {desc: "brumeux", temp: 5 + Math.floor(Math.random() * 8), icon: "🌫️", precipitation: 30 + Math.floor(Math.random() * 40), humidity: 85 + Math.floor(Math.random() * 10)}
         ];
-    } else { // Hiver
+    } else {
         conditions = [
             {desc: "frais", temp: 2 + Math.floor(Math.random() * 8), icon: "🌤️", precipitation: 15 + Math.floor(Math.random() * 35), humidity: 65 + Math.floor(Math.random() * 25)},
             {desc: "nuageux", temp: 0 + Math.floor(Math.random() * 10), icon: "☁️", precipitation: 30 + Math.floor(Math.random() * 50), humidity: 70 + Math.floor(Math.random() * 25)},
@@ -1309,13 +1390,11 @@ function loadWeatherFallback() {
     
     var weather = conditions[Math.floor(Math.random() * conditions.length)];
     
-    // Ajuster selon l'heure
     if (hour < 8 || hour > 20) {
         weather.temp = Math.max(weather.temp - 3, -5);
         weather.humidity = Math.min(weather.humidity + 10, 95);
     }
     
-    // Générer vitesse du vent
     var windSpeed = 3 + Math.floor(Math.random() * 15);
     
     var detailedWeather = weather.temp + "°C\n" +
@@ -1977,226 +2056,4 @@ function updateStats() {
                     if (detail.type === 'nourriture') {
                         content += '<br>• Poids: ' + (detail.poidsAvant || '?') + 'g → ' + (detail.poidsApres || '?') + 'g';
                         content += '<br>• Menu: ' + detail.menu + ' (' + detail.quantite + ')';
-                    } else if (detail.type === 'vol') {
-                        content += '<br>• Type de vol: ' + detail.typeVol;
-                    } else if (detail.type === 'comportement') {
-                        content += '<br>• Réactivité: ' + detail.reactivite + '/5';
-                    } else if (detail.type === 'sante') {
-                        content += '<br>• État de santé: ' + detail.etatSante;
-                    } else if (detail.type === 'entrainement') {
-                        content += '<br>• Type d\'entraînement: ' + detail.typeEntrainement;
-                    }
                     
-                } else if (activity.category === 'chasse') {
-                    var totalPrises = detail.faisan + detail.perdrix + detail.lapin + detail.lievre + detail.canard + detail.oie + detail.autre;
-                    content += '<strong>Session de chasse - ' + totalPrises + ' prise(s)</strong>';
-                    
-                    var prises = [];
-                    if (detail.faisan > 0) prises.push('Faisan: ' + detail.faisan);
-                    if (detail.perdrix > 0) prises.push('Perdrix: ' + detail.perdrix);
-                    if (detail.lapin > 0) prises.push('Lapin: ' + detail.lapin);
-                    if (detail.lievre > 0) prises.push('Lièvre: ' + detail.lievre);
-                    if (detail.canard > 0) prises.push('Canard: ' + detail.canard);
-                    if (detail.oie > 0) prises.push('Oie: ' + detail.oie);
-                    if (detail.autre > 0) prises.push('Autre: ' + detail.autre);
-                    
-                    if (prises.length > 0) {
-                        content += '<br>• Détail: ' + prises.join(', ');
-                    } else {
-                        content += '<br>• Aucune prise';
-                    }
-                    
-                } else if (activity.category === 'affaitage') {
-                    content += '<strong>Séance d\'affaitage</strong>';
-                    
-                    var activitesAffaitage = [];
-                    if (detail.priseNourriture) activitesAffaitage.push('Prise de nourriture');
-                    if (detail.gant) activitesAffaitage.push('Travail au gant');
-                    if (detail.filiere) activitesAffaitage.push('Filière');
-                    if (detail.libre) activitesAffaitage.push('Vol libre');
-                    
-                    if (activitesAffaitage.length > 0) {
-                        content += '<br>• Activités: ' + activitesAffaitage.join(', ');
-                    } else {
-                        content += '<br>• Aucune activité spécifique';
-                    }
-                }
-                
-                // Notes
-                if (detail.notes && detail.notes.trim()) {
-                    content += '<br>• <em>Notes: ' + detail.notes + '</em>';
-                }
-                
-                content += '</div></div>';
-            }
-            
-            content += '</div>';
-        }
-        
-        // Résumé de fin
-        content += '<div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin-top: 20px;">';
-        content += '<h4 style="color: #1e3c72;">📊 Résumé de la journée</h4>';
-        content += '<p><strong>• ' + rapaceNames.length + '</strong> rapace(s) ont eu des activités</p>';
-        content += '<p><strong>• ' + dayEntries.length + '</strong> activité(s) de suivi quotidien</p>';
-        content += '<p><strong>• ' + dayChasse.length + '</strong> session(s) de chasse</p>';
-        content += '<p><strong>• ' + dayAffaitage.length + '</strong> séance(s) d\'affaitage</p>';
-        
-        // Calcul total des prises de chasse
-        var totalPrisesJour = 0;
-        for (var i = 0; i < dayChasse.length; i++) {
-            var chasse = dayChasse[i];
-            totalPrisesJour += chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
-        }
-        if (totalPrisesJour > 0) {
-            content += '<p><strong>• ' + totalPrisesJour + '</strong> prise(s) de chasse au total</p>';
-        }
-        
-        if (weatherOfDay) {
-            content += '<p><strong>• Conditions météo:</strong> ' + weatherOfDay + '</p>';
-        }
-        
-        content += '</div>';
-        
-    } else {
-        content += '<div style="text-align: center; color: #666; margin: 40px 0;">';
-        content += '<h3>😴 Journée de repos</h3>';
-        content += '<p>Aucune activité enregistrée pour cette date.</p>';
-        content += '</div>';
-    }
-    
-    content += '</div>';
-    
-    document.getElementById('stats-content').innerHTML = content;
-}
-
-// Export/Import/Clear
-function exportAllData() {
-    var allData = {
-        rapaces: rapaces,
-        entries: entries,
-        chasseEntries: chasseEntries,
-        affaitageEntries: affaitageEntries,
-        currentLocation: currentLocation,
-        exportDate: new Date().toISOString()
-    };
-    
-    var dataStr = JSON.stringify(allData, null, 2);
-    var blob = new Blob([dataStr], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement('a');
-    link.href = url;
-    link.download = 'rapaces_backup.json';
-    link.click();
-    URL.revokeObjectURL(url);
-    
-    alert('Sauvegarde exportée !');
-}
-
-function importAllData() {
-    var input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    
-    input.onchange = function(e) {
-        var file = e.target.files[0];
-        if (file) {
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    var data = JSON.parse(e.target.result);
-                    
-                    if (confirm('Importer ces données ? (remplace tout)')) {
-                        rapaces = data.rapaces || [];
-                        entries = data.entries || [];
-                        chasseEntries = data.chasseEntries || [];
-                        affaitageEntries = data.affaitageEntries || [];
-                        currentLocation = data.currentLocation || "Orthez (64300)";
-                        
-                        saveAllData();
-                        updateRapaceList();
-                        updateRapaceSelects();
-                        updateEntryList();
-                        updatechasseList();
-                        updateAffaitageList();
-                        loadWeather();
-                        
-                        alert('Données importées !');
-                    }
-                } catch (error) {
-                    alert('Erreur : fichier non valide');
-                }
-            };
-            reader.readAsText(file);
-        }
-    };
-    
-    input.click();
-}
-
-function clearAllData() {
-    if (confirm('Effacer TOUTES les données ?')) {
-        if (confirm('Dernière confirmation - tout sera perdu !')) {
-            rapaces = [];
-            entries = [];
-            chasseEntries = [];
-            affaitageEntries = [];
-            
-            localStorage.removeItem('rapaces_data');
-            
-            updateRapaceList();
-            updateRapaceSelects();
-            updateEntryList();
-            updatechasseList();
-            updateAffaitageList();
-            
-            alert('Données effacées !');
-        }
-    }
-}
-
-// Initialisation
-window.onload = function() {
-    loadAllData();
-    loadWeather();
-    
-    var now = new Date();
-    var dateInputs = ['event-date', 'chasse-date', 'affaitage-date', 'stats-date'];
-    var timeInputs = ['event-time', 'chasse-time', 'affaitage-time'];
-    
-    for (var i = 0; i < dateInputs.length; i++) {
-        var input = document.getElementById(dateInputs[i]);
-        if (input) {
-            input.value = now.toISOString().split('T')[0];
-        }
-    }
-    
-    for (var i = 0; i < timeInputs.length; i++) {
-        var input = document.getElementById(timeInputs[i]);
-        if (input) {
-            input.value = now.toTimeString().slice(0, 5);
-        }
-    }
-    
-    currentStatsDate = now;
-    
-    updateRapaceList();
-    updateRapaceSelects();
-    updateEntryList();
-    updatechasseList();
-    updateAffaitageList();
-    showEventFields();
-    
-    // Sauvegarder toutes les 30 secondes
-    setInterval(saveAllData, 30000);
-};
-
-// Fermer modal en cliquant à côté
-window.onclick = function(event) {
-    var modal = document.getElementById('editModal');
-    if (event.target == modal) {
-        closeEditModal();
-    }
-};
-</script>
-</body>
-</html>
