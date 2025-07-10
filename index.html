@@ -2056,4 +2056,246 @@ function updateStats() {
                     if (detail.type === 'nourriture') {
                         content += '<br>• Poids: ' + (detail.poidsAvant || '?') + 'g → ' + (detail.poidsApres || '?') + 'g';
                         content += '<br>• Menu: ' + detail.menu + ' (' + detail.quantite + ')';
+                    } else if (detail.type === 'vol') {
+                        content += '<br>• Type de vol: ' + detail.typeVol;
+                    } else if (detail.type === 'comportement') {
+                        content += '<br>• Réactivité: ' + detail.reactivite + '/5';
+                    } else if (detail.type === 'sante') {
+                        content += '<br>• État de santé: ' + detail.etatSante;
+                    } else if (detail.type === 'entrainement') {
+                        content += '<br>• Type d\'entraînement: ' + detail.typeEntrainement;
+                    }
+                    
+                } else if (activity.category === 'chasse') {
+                    var totalPrises = detail.faisan + detail.perdrix + detail.lapin + detail.lievre + detail.canard + detail.oie + detail.autre;
+                    content += '<strong>Session de chasse - ' + totalPrises + ' prise(s)</strong>';
+                    
+                    var prises = [];
+                    if (detail.faisan > 0) prises.push('Faisan: ' + detail.faisan);
+                    if (detail.perdrix > 0) prises.push('Perdrix: ' + detail.perdrix);
+                    if (detail.lapin > 0) prises.push('Lapin: ' + detail.lapin);
+                    if (detail.lievre > 0) prises.push('Lièvre: ' + detail.lievre);
+                    if (detail.canard > 0) prises.push('Canard: ' + detail.canard);
+                    if (detail.oie > 0) prises.push('Oie: ' + detail.oie);
+                    if (detail.autre > 0) prises.push('Autre: ' + detail.autre);
+                    
+                    if (prises.length > 0) {
+                        content += '<br>• Détail: ' + prises.join(', ');
+                    } else {
+                        content += '<br>• Aucune prise';
+                    }
+                    
+                } else if (activity.category === 'affaitage') {
+                    content += '<strong>Séance d\'affaitage</strong>';
+                    
+                    var activitesAffaitage = [];
+                    if (detail.priseNourriture) activitesAffaitage.push('Prise de nourriture');
+                    if (detail.gant) activitesAffaitage.push('Travail au gant');
+                    if (detail.filiere) activitesAffaitage.push('Filière');
+                    if (detail.libre) activitesAffaitage.push('Vol libre');
+                    
+                    if (activitesAffaitage.length > 0) {
+                        content += '<br>• Activités: ' + activitesAffaitage.join(', ');
+                    } else {
+                        content += '<br>• Aucune activité spécifique';
+                    }
+                }
+                
+                // Notes
+                if (detail.notes && detail.notes.trim()) {
+                    content += '<br>• <em>Notes: ' + detail.notes + '</em>';
+                }
+                
+                content += '</div></div>';
+            }
+            
+            content += '</div>';
+        }
+        
+        // Résumé de fin
+        content += '<div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin-top: 20px;">';
+        content += '<h4 style="color: #1e3c72;">📊 Résumé de la journée</h4>';
+        content += '<p><strong>• ' + rapaceNames.length + '</strong> rapace(s) ont eu des activités</p>';
+        content += '<p><strong>• ' + dayEntries.length + '</strong> activité(s) de suivi quotidien</p>';
+        content += '<p><strong>• ' + dayChasse.length + '</strong> session(s) de chasse</p>';
+        content += '<p><strong>• ' + dayAffaitage.length + '</strong> séance(s) d\'affaitage</p>';
+        
+        // Calcul total des prises de chasse
+        var totalPrisesJour = 0;
+        for (var i = 0; i < dayChasse.length; i++) {
+            var chasse = dayChasse[i];
+            totalPrisesJour += chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
+        }
+        if (totalPrisesJour > 0) {
+            content += '<p><strong>• ' + totalPrisesJour + '</strong> prise(s) de chasse au total</p>';
+        }
+        
+        if (weatherOfDay) {
+            content += '<p><strong>• Conditions météo:</strong> ' + weatherOfDay + '</p>';
+        }
+        
+        content += '</div>';
+        
+    } else {
+        content += '<div style="text-align: center; color: #666; margin: 40px 0;">';
+        content += '<h3>😴 Journée de repos</h3>';
+        content += '<p>Aucune activité enregistrée pour cette date.</p>';
+        content += '</div>';
+    }
+    
+    content += '</div>';
+    
+    document.getElementById('stats-content').innerHTML = content;
+}
+
+// Export/Import/Clear
+function exportAllData() {
+    var allData = {
+        rapaces: rapaces,
+        entries: entries,
+        chasseEntries: chasseEntries,
+        affaitageEntries: affaitageEntries,
+        currentLocation: currentLocation,
+        exportDate: new Date().toISOString()
+    };
+    
+    var dataStr = JSON.stringify(allData, null, 2);
+    var blob = new Blob([dataStr], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = 'rapaces_backup.json';
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    alert('Sauvegarde exportée !');
+}
+
+function importAllData() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = function(e) {
+        var file = e.target.files[0];
+        if (file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = JSON.parse(e.target.result);
+                    
+                    if (confirm('Importer ces données ? (remplace tout)')) {
+                        rapaces = data.rapaces || [];
+                        entries = data.entries || [];
+                        chasseEntries = data.chasseEntries || [];
+                        affaitageEntries = data.affaitageEntries || [];
+                        currentLocation = data.currentLocation || "Orthez (64300)";
+                        
+                        saveAllData();
+                        updateRapaceList();
+                        updateRapaceSelects();
+                        updateEntryList();
+                        updatechasseList();
+                        updateAffaitageList();
+                        loadWeather();
+                        
+                        alert('Données importées !');
+                    }
+                } catch (error) {
+                    alert('Erreur : fichier non valide');
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
+    
+    input.click();
+}
+
+function clearAllData() {
+    if (confirm('Effacer TOUTES les données ?')) {
+        if (confirm('Dernière confirmation - tout sera perdu !')) {
+            rapaces = [];
+            entries = [];
+            chasseEntries = [];
+            affaitageEntries = [];
+            
+            localStorage.removeItem('rapaces_data');
+            
+            updateRapaceList();
+            updateRapaceSelects();
+            updateEntryList();
+            updatechasseList();
+            updateAffaitageList();
+            
+            alert('Données effacées !');
+        }
+    }
+}
+
+// Initialisation
+window.onload = function() {
+    // Charger les données locales d'abord
+    loadAllData();
+    loadWeather();
+    
+    // Initialiser Google Drive API
+    initGoogleAPI();
+    
+    var now = new Date();
+    var dateInputs = ['event-date', 'chasse-date', 'affaitage-date', 'stats-date'];
+    var timeInputs = ['event-time', 'chasse-time', 'affaitage-time'];
+    
+    for (var i = 0; i < dateInputs.length; i++) {
+        var input = document.getElementById(dateInputs[i]);
+        if (input) {
+            input.value = now.toISOString().split('T')[0];
+        }
+    }
+    
+    for (var i = 0; i < timeInputs.length; i++) {
+        var input = document.getElementById(timeInputs[i]);
+        if (input) {
+            input.value = now.toTimeString().slice(0, 5);
+        }
+    }
+    
+    currentStatsDate = now;
+    
+    updateRapaceList();
+    updateRapaceSelects();
+    updateEntryList();
+    updatechasseList();
+    updateAffaitageList();
+    showEventFields();
+    
+    // Sauvegarder toutes les 30 secondes
+    setInterval(saveAllData, 30000);
+};
+
+// Fermer modal en cliquant à côté
+window.onclick = function(event) {
+    var modal = document.getElementById('editModal');
+    if (event.target == modal) {
+        closeEditModal();
+    }
+};
+
+// Ajouter les styles pour les animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
+</script>
+</body>
+</html>
                     
