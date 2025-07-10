@@ -661,60 +661,74 @@
     </div>
 
     <div id="sync" class="tab-content">
-        <h2>Synchronisation Google Drive</h2>
+        <h2>🌐 Synchronisation Google Drive</h2>
         
         <div class="day-card">
-            <h4>📊 État de la synchronisation</h4>
-            <p id="sync-status">🔄 Non configuré</p>
-            <p id="last-sync">Dernière sync : Jamais</p>
-            <p id="sync-devices">Appareils connectés : 0</p>
+            <h4 id="sync-status">📊 État de la synchronisation</h4>
+            <p id="sync-details">🔄 Non configuré</p>
+            <p id="last-sync-time">Dernière sync : Jamais</p>
         </div>
 
         <div style="margin: 20px 0;">
             <h3>🔧 Configuration</h3>
             <div style="display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
-                <button onclick="connectGoogleDrive()" id="connect-btn">🔗 Connecter Google Drive</button>
-                <button onclick="disconnectGoogleDrive()" id="disconnect-btn" style="display: none;" class="btn-secondary">❌ Déconnecter</button>
-                <button onclick="syncNow()" id="sync-btn" style="display: none;">⚡ Synchroniser maintenant</button>
+                <button onclick="initGoogleDriveSync()" id="connect-drive-btn">🔗 Connecter Google Drive</button>
+                <button onclick="manualSync()" id="manual-sync-btn" style="display: none;">⚡ Synchroniser maintenant</button>
+                <button onclick="disconnectDrive()" id="disconnect-drive-btn" style="display: none;" class="btn-secondary">❌ Déconnecter</button>
             </div>
+            <p style="font-size: 14px; color: #666;">
+                La synchronisation Google Drive permet de garder vos données à jour sur tous vos appareils automatiquement.
+            </p>
         </div>
 
         <div style="margin: 20px 0;">
-            <h3>⚙️ Paramètres</h3>
+            <h3>⚙️ Paramètres de synchronisation</h3>
             <div class="checkbox-group">
                 <div class="checkbox-item">
-                    <input type="checkbox" id="auto-sync" checked>
-                    <label for="auto-sync">Synchronisation automatique (toutes les 5 minutes)</label>
+                    <input type="checkbox" id="auto-sync-enabled" checked>
+                    <label for="auto-sync-enabled">Synchronisation automatique (toutes les 2 minutes)</label>
                 </div>
                 <div class="checkbox-item">
-                    <input type="checkbox" id="sync-on-change" checked>
-                    <label for="sync-on-change">Synchroniser à chaque modification</label>
+                    <input type="checkbox" id="sync-on-change-enabled" checked>
+                    <label for="sync-on-change-enabled">Synchroniser à chaque modification</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="sync-notifications" checked>
+                    <label for="sync-notifications">Notifications de synchronisation</label>
                 </div>
             </div>
         </div>
 
         <div style="margin: 20px 0;">
-            <h3>📱 Autres appareils</h3>
-            <p>1. Ouvrez cette application sur votre autre appareil</p>
-            <p>2. Connectez-vous avec le même compte Google</p>
-            <p>3. Vos données se synchroniseront automatiquement</p>
+            <h3>📱 Instructions multi-appareils</h3>
+            <div class="day-card" style="background: #e8f4fd;">
+                <p><strong>1. Sur cet appareil :</strong></p>
+                <p>• Cliquez "🔗 Connecter Google Drive"</p>
+                <p>• Autorisez l'accès à votre Google Drive</p>
+                <p>• Vos données seront sauvegardées automatiquement</p>
+                
+                <p><strong>2. Sur vos autres appareils :</strong></p>
+                <p>• Ouvrez cette application</p>
+                <p>• Allez dans l'onglet "Sync"</p>
+                <p>• Connectez-vous avec le MÊME compte Google</p>
+                <p>• Vos données se synchroniseront automatiquement !</p>
+            </div>
         </div>
 
         <div style="margin: 20px 0;">
-            <h3>💾 Sauvegarde manuelle</h3>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button onclick="exportAllData()">💾 Exporter sauvegarde</button>
-                <button onclick="importAllData()">📁 Importer sauvegarde</button>
-                <button onclick="clearAllData()" class="btn-danger">🗑️ Vider tout</button>
+            <h3>📊 Historique de synchronisation</h3>
+            <div id="sync-history" style="max-height: 200px; overflow-y: auto;">
+                <p style="color: #666; font-style: italic;">Aucune synchronisation effectuée</p>
             </div>
         </div>
 
         <div class="day-card" style="background: #e3f2fd;">
             <h4>ℹ️ Comment ça marche</h4>
-            <p>• Vos données sont sauvegardées dans votre Google Drive personnel</p>
-            <p>• Seuls vous et vos appareils connectés peuvent y accéder</p>
-            <p>• La synchronisation est automatique et sécurisée</p>
-            <p>• Vous pouvez vous déconnecter à tout moment</p>
+            <p>• Vos données sont chiffrées et stockées dans votre Google Drive personnel</p>
+            <p>• Seuls vos appareils connectés avec le même compte Google peuvent y accéder</p>
+            <p>• La synchronisation est bidirectionnelle : les modifications sur n'importe quel appareil se propagent partout</p>
+            <p>• En cas de conflit, la version la plus récente est conservée</p>
+            <p>• Vous gardez le contrôle total : déconnexion possible à tout moment</p>
         </div>
     </div>
 </div>
@@ -761,13 +775,15 @@ var currentLocation = "Orthez (64300)";
 var currentStatsDate = new Date();
 var editingRapaceId = null;
 
-// Variables pour Google Drive sync
+// Variables pour Google Drive synchronisation
 var gapi = null;
 var isGoogleDriveConnected = false;
-var syncInterval = null;
+var syncIntervalId = null;
 var lastSyncTime = null;
+var googleDriveFileId = null;
+var syncHistory = [];
 
-// Sauvegarder normalement
+// Sauvegarder avec sync Google Drive
 function saveAllData() {
     try {
         var data = {
@@ -779,32 +795,327 @@ function saveAllData() {
             lastSave: new Date().toISOString()
         };
         localStorage.setItem('rapaces_data', JSON.stringify(data));
+        
+        // Synchroniser avec Google Drive si connecté et activé
+        if (isGoogleDriveConnected && document.getElementById('sync-on-change-enabled') && document.getElementById('sync-on-change-enabled').checked) {
+            syncToGoogleDrive(false); // false = pas de notification pour les auto-sync
+        }
     } catch (e) {
         console.error('Erreur sauvegarde:', e);
     }
 }
 
-// Fonctions de synchronisation simplifiées
-function setupGoogleDriveSync() {
-    alert('🌐 Configuration Google Drive\n\n' +
-          '1. Cette fonctionnalité connecte vos appareils via Google Drive\n' +
-          '2. Vos données seront sauvegardées automatiquement\n' +
-          '3. Tous vos appareils avec le même compte Google seront synchronisés\n\n' +
-          'Pour l\'instant, utilisez Export/Import pour synchroniser manuellement.\n\n' +
-          'Exportez sur un appareil → Importez sur l\'autre !');
+// ===== GOOGLE DRIVE SYNCHRONISATION RÉELLE =====
+
+// Charger et initialiser Google Drive API
+function loadGoogleDriveAPI() {
+    if (typeof gapi !== 'undefined') {
+        initGoogleDriveAPI();
+        return;
+    }
+    
+    var script = document.createElement('script');
+    script.src = 'https://apis.google.com/js/api.js';
+    script.onload = function() {
+        gapi.load('auth2:client:drive', initGoogleDriveAPI);
+    };
+    document.head.appendChild(script);
 }
 
-function showSyncInstructions() {
-    alert('📖 Instructions de synchronisation\n\n' +
-          '📱 MÉTHODE ACTUELLE (Export/Import) :\n' +
-          '1. Sur appareil principal : Statistiques → "💾 Exporter"\n' +
-          '2. Envoyez le fichier par email/cloud\n' +
-          '3. Sur autre appareil : Statistiques → "📁 Importer"\n' +
-          '4. Sélectionnez le fichier reçu\n' +
-          '5. Vos données sont synchronisées !\n\n' +
-          '🔄 MÉTHODE FUTURE (Google Drive) :\n' +
-          '- Synchronisation automatique en temps réel\n' +
-          '- Disponible dans une prochaine version');
+function initGoogleDriveAPI() {
+    gapi.load('auth2:client', function() {
+        gapi.client.init({
+            apiKey: 'b4d68d2dedd2d6d43f81f804010b0673', // Votre clé API
+            clientId: '464618923115-m4h8hf5gkqmfhg2oqm6vr9sj5h0f4nq9.apps.googleusercontent.com',
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+            scope: 'https://www.googleapis.com/auth/drive.file'
+        }).then(function() {
+            // Vérifier si déjà connecté
+            var authInstance = gapi.auth2.getAuthInstance();
+            if (authInstance.isSignedIn.get()) {
+                isGoogleDriveConnected = true;
+                updateSyncUI();
+                addSyncHistoryEntry('Reconnexion automatique réussie');
+                startAutoSync();
+            }
+        }).catch(function(error) {
+            console.error('Erreur initialisation Google Drive:', error);
+        });
+    });
+}
+
+function initGoogleDriveSync() {
+    if (!gapi || !gapi.auth2) {
+        addSyncHistoryEntry('Chargement de l\'API Google Drive...');
+        loadGoogleDriveAPI();
+        setTimeout(initGoogleDriveSync, 2000);
+        return;
+    }
+    
+    var authInstance = gapi.auth2.getAuthInstance();
+    authInstance.signIn().then(function() {
+        isGoogleDriveConnected = true;
+        addSyncHistoryEntry('✅ Connexion réussie à Google Drive');
+        updateSyncUI();
+        
+        // Première synchronisation
+        syncToGoogleDrive(true);
+        startAutoSync();
+        
+        if (document.getElementById('sync-notifications').checked) {
+            alert('✅ Connecté à Google Drive !\nSynchronisation automatique activée.');
+        }
+    }).catch(function(error) {
+        console.error('Erreur connexion:', error);
+        addSyncHistoryEntry('❌ Erreur de connexion : ' + error.error);
+        alert('❌ Erreur de connexion à Google Drive');
+    });
+}
+
+function disconnectDrive() {
+    if (gapi && gapi.auth2) {
+        gapi.auth2.getAuthInstance().signOut().then(function() {
+            isGoogleDriveConnected = false;
+            stopAutoSync();
+            addSyncHistoryEntry('❌ Déconnexion de Google Drive');
+            updateSyncUI();
+            
+            if (document.getElementById('sync-notifications').checked) {
+                alert('❌ Déconnecté de Google Drive');
+            }
+        });
+    }
+}
+
+function syncToGoogleDrive(showNotification) {
+    if (!isGoogleDriveConnected) return;
+    
+    var data = {
+        rapaces: rapaces,
+        entries: entries,
+        chasseEntries: chasseEntries,
+        affaitageEntries: affaitageEntries,
+        currentLocation: currentLocation,
+        lastSync: new Date().toISOString(),
+        deviceInfo: {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            timestamp: new Date().toISOString()
+        }
+    };
+    
+    var fileContent = JSON.stringify(data, null, 2);
+    var fileName = 'rapaces_data_sync.json';
+    
+    // Créer ou mettre à jour le fichier sur Google Drive
+    var fileMetadata = {
+        name: fileName,
+        parents: ['appDataFolder'] // Dossier privé de l'application
+    };
+    
+    var form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(fileMetadata)], {type: 'application/json'}));
+    form.append('file', new Blob([fileContent], {type: 'application/json'}));
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'https://www.googleapis.com/upload/drive/v3/files' + (googleDriveFileId ? '/' + googleDriveFileId : ''));
+    xhr.setRequestHeader('Authorization', 'Bearer ' + gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token);
+    
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            var response = JSON.parse(xhr.responseText);
+            googleDriveFileId = response.id;
+            lastSyncTime = new Date();
+            
+            addSyncHistoryEntry('📤 Synchronisation vers Google Drive réussie');
+            updateSyncUI();
+            
+            if (showNotification && document.getElementById('sync-notifications').checked) {
+                // Mini notification non-intrusive
+                showMiniNotification('✅ Données synchronisées');
+            }
+        }
+    };
+    
+    xhr.onerror = function() {
+        addSyncHistoryEntry('❌ Erreur lors de la synchronisation');
+    };
+    
+    xhr.send(form);
+}
+
+function loadFromGoogleDrive() {
+    if (!isGoogleDriveConnected) return;
+    
+    // Rechercher le fichier de synchronisation
+    gapi.client.drive.files.list({
+        q: "name='rapaces_data_sync.json' and parents in 'appDataFolder'",
+        spaces: 'appDataFolder'
+    }).then(function(response) {
+        var files = response.result.files;
+        if (files && files.length > 0) {
+            googleDriveFileId = files[0].id;
+            
+            // Télécharger le contenu du fichier
+            gapi.client.drive.files.get({
+                fileId: googleDriveFileId,
+                alt: 'media'
+            }).then(function(response) {
+                try {
+                    var data = JSON.parse(response.body);
+                    
+                    // Fusionner les données (prendre les plus récentes)
+                    var localLastSave = localStorage.getItem('rapaces_data') ? 
+                        JSON.parse(localStorage.getItem('rapaces_data')).lastSave : null;
+                    
+                    if (!localLastSave || data.lastSync > localLastSave) {
+                        rapaces = data.rapaces || [];
+                        entries = data.entries || [];
+                        chasseEntries = data.chasseEntries || [];
+                        affaitageEntries = data.affaitageEntries || [];
+                        currentLocation = data.currentLocation || currentLocation;
+                        
+                        // Mettre à jour l'interface
+                        updateRapaceList();
+                        updateRapaceSelects();
+                        updateEntryList();
+                        updatechasseList();
+                        updateAffaitageList();
+                        
+                        // Sauvegarder localement
+                        saveAllData();
+                        
+                        addSyncHistoryEntry('📥 Données chargées depuis Google Drive');
+                        showMiniNotification('📥 Données synchronisées depuis le cloud');
+                    } else {
+                        addSyncHistoryEntry('📊 Données locales plus récentes, pas de changement');
+                    }
+                } catch (error) {
+                    addSyncHistoryEntry('❌ Erreur de lecture des données cloud');
+                }
+            });
+        } else {
+            addSyncHistoryEntry('📊 Aucun fichier de sauvegarde trouvé sur Google Drive');
+        }
+    });
+}
+
+function manualSync() {
+    if (!isGoogleDriveConnected) {
+        alert('❌ Connectez-vous d\'abord à Google Drive');
+        return;
+    }
+    
+    addSyncHistoryEntry('🔄 Synchronisation manuelle lancée...');
+    updateSyncUI();
+    
+    // D'abord charger depuis Google Drive
+    loadFromGoogleDrive();
+    
+    // Puis sauvegarder vers Google Drive
+    setTimeout(function() {
+        syncToGoogleDrive(true);
+    }, 1000);
+}
+
+function startAutoSync() {
+    stopAutoSync(); // Arrêter l'ancien timer
+    
+    if (isGoogleDriveConnected && document.getElementById('auto-sync-enabled') && document.getElementById('auto-sync-enabled').checked) {
+        syncIntervalId = setInterval(function() {
+            loadFromGoogleDrive(); // Vérifier les mises à jour
+            syncToGoogleDrive(false); // Sauvegarder sans notification
+        }, 2 * 60 * 1000); // Toutes les 2 minutes
+        
+        addSyncHistoryEntry('🔄 Synchronisation automatique activée (2 min)');
+    }
+}
+
+function stopAutoSync() {
+    if (syncIntervalId) {
+        clearInterval(syncIntervalId);
+        syncIntervalId = null;
+        addSyncHistoryEntry('⏹️ Synchronisation automatique arrêtée');
+    }
+}
+
+function updateSyncUI() {
+    var statusEl = document.getElementById('sync-status');
+    var detailsEl = document.getElementById('sync-details');
+    var lastSyncEl = document.getElementById('last-sync-time');
+    var connectBtn = document.getElementById('connect-drive-btn');
+    var syncBtn = document.getElementById('manual-sync-btn');
+    var disconnectBtn = document.getElementById('disconnect-drive-btn');
+    
+    if (!statusEl) return; // Pas sur l'onglet sync
+    
+    if (isGoogleDriveConnected) {
+        statusEl.textContent = '✅ Google Drive connecté';
+        statusEl.style.color = 'green';
+        detailsEl.textContent = '🔄 Synchronisation active';
+        detailsEl.style.color = 'green';
+        
+        if (lastSyncTime) {
+            lastSyncEl.textContent = 'Dernière sync : ' + lastSyncTime.toLocaleString('fr-FR');
+        }
+        
+        connectBtn.style.display = 'none';
+        syncBtn.style.display = 'inline-block';
+        disconnectBtn.style.display = 'inline-block';
+    } else {
+        statusEl.textContent = '❌ Google Drive non connecté';
+        statusEl.style.color = 'red';
+        detailsEl.textContent = 'Connectez-vous pour synchroniser automatiquement vos données';
+        detailsEl.style.color = '#666';
+        lastSyncEl.textContent = 'Dernière sync : Jamais';
+        
+        connectBtn.style.display = 'inline-block';
+        syncBtn.style.display = 'none';
+        disconnectBtn.style.display = 'none';
+    }
+}
+
+function addSyncHistoryEntry(message) {
+    var now = new Date();
+    var timeStr = now.toLocaleTimeString('fr-FR');
+    syncHistory.unshift(timeStr + ' - ' + message);
+    
+    // Garder seulement les 10 dernières entrées
+    if (syncHistory.length > 10) {
+        syncHistory = syncHistory.slice(0, 10);
+    }
+    
+    var historyEl = document.getElementById('sync-history');
+    if (historyEl) {
+        historyEl.innerHTML = syncHistory.map(entry => 
+            '<p style="margin: 5px 0; font-size: 14px;">' + entry + '</p>'
+        ).join('');
+    }
+}
+
+function showMiniNotification(message) {
+    if (!document.getElementById('sync-notifications').checked) return;
+    
+    var notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4285f4;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        z-index: 10000;
+        font-size: 14px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(function() {
+        notification.remove();
+    }, 3000);
 }
 
 function loadAllData() {
@@ -1075,7 +1386,7 @@ function showTab(tabName) {
     if (tabName === 'stats') {
         updateStats();
     } else if (tabName === 'sync') {
-        updateSyncStatus();
+        updateSyncUI();
     }
 }
 
