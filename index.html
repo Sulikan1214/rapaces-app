@@ -926,33 +926,58 @@ function setupAutoSync() {
 
 function updateSyncStatus() {
     var statusElement = document.getElementById('sync-status');
+    var statusElementStats = document.getElementById('sync-status-stats');
     var lastSyncElement = document.getElementById('last-sync');
     var devicesElement = document.getElementById('sync-devices');
     var connectBtn = document.getElementById('connect-btn');
+    var connectBtnStats = document.getElementById('connect-btn-stats');
     var disconnectBtn = document.getElementById('disconnect-btn');
+    var disconnectBtnStats = document.getElementById('disconnect-btn-stats');
     var syncBtn = document.getElementById('sync-btn');
-    
-    if (!statusElement) return; // Pas encore sur l'onglet sync
+    var syncBtnStats = document.getElementById('sync-btn-stats');
     
     if (isGoogleDriveConnected) {
-        statusElement.textContent = '✅ Connecté à Google Drive';
-        statusElement.style.color = 'green';
-        connectBtn.style.display = 'none';
-        disconnectBtn.style.display = 'inline-block';
-        syncBtn.style.display = 'inline-block';
+        if (statusElement) {
+            statusElement.textContent = '✅ Connecté à Google Drive';
+            statusElement.style.color = 'green';
+        }
+        if (statusElementStats) {
+            statusElementStats.textContent = '✅ Connecté à Google Drive';
+            statusElementStats.style.color = 'green';
+        }
         
-        if (lastSyncTime) {
+        if (connectBtn) connectBtn.style.display = 'none';
+        if (connectBtnStats) connectBtnStats.style.display = 'none';
+        if (disconnectBtn) disconnectBtn.style.display = 'inline-block';
+        if (disconnectBtnStats) disconnectBtnStats.style.display = 'inline-block';
+        if (syncBtn) syncBtn.style.display = 'inline-block';
+        if (syncBtnStats) syncBtnStats.style.display = 'inline-block';
+        
+        if (lastSyncElement && lastSyncTime) {
             lastSyncElement.textContent = 'Dernière sync : ' + lastSyncTime.toLocaleString('fr-FR');
         }
-        devicesElement.textContent = 'Appareils connectés : 1+ (votre compte Google)';
+        if (devicesElement) {
+            devicesElement.textContent = 'Appareils connectés : 1+ (votre compte Google)';
+        }
     } else {
-        statusElement.textContent = '❌ Non connecté';
-        statusElement.style.color = 'red';
-        connectBtn.style.display = 'inline-block';
-        disconnectBtn.style.display = 'none';
-        syncBtn.style.display = 'none';
-        lastSyncElement.textContent = 'Dernière sync : Jamais';
-        devicesElement.textContent = 'Appareils connectés : 0';
+        if (statusElement) {
+            statusElement.textContent = '❌ Non connecté';
+            statusElement.style.color = 'red';
+        }
+        if (statusElementStats) {
+            statusElementStats.textContent = '❌ Non connecté - Cliquez pour configurer';
+            statusElementStats.style.color = 'red';
+        }
+        
+        if (connectBtn) connectBtn.style.display = 'inline-block';
+        if (connectBtnStats) connectBtnStats.style.display = 'inline-block';
+        if (disconnectBtn) disconnectBtn.style.display = 'none';
+        if (disconnectBtnStats) disconnectBtnStats.style.display = 'none';
+        if (syncBtn) syncBtn.style.display = 'none';
+        if (syncBtnStats) syncBtnStats.style.display = 'none';
+        
+        if (lastSyncElement) lastSyncElement.textContent = 'Dernière sync : Jamais';
+        if (devicesElement) devicesElement.textContent = 'Appareils connectés : 0';
     }
 }
 
