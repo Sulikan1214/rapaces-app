@@ -552,7 +552,7 @@
         <h2>Registre de Chasse</h2>
         <div class="form-group">
             <label for="chasse-rapace">Rapace :</label>
-            <select id="chasse-rapace">
+            <select id="chasse-rapace" onchange="updatePoidsChaseReference()">
                 <option value="">Choisir un rapace</option>
             </select>
         </div>
@@ -595,6 +595,16 @@
             <div class="hunt-item">
                 <label for="chasse-autre">Autre :</label>
                 <input type="number" id="chasse-autre" min="0" max="10" value="0">
+            </div>
+        </div>
+        
+        <div class="form-row" style="margin-top: 20px;">
+            <div class="form-group">
+                <label for="chasse-poids-jour">Poids du jour (g) :</label>
+                <input type="number" id="chasse-poids-jour" min="0" placeholder="Poids avant la chasse">
+            </div>
+            <div class="form-group" id="poids-chasse-reference" style="padding: 12px; background: #f8f9fa; border-radius: 8px; display: flex; align-items: center;">
+                <span style="color: #666;">Sélectionnez un rapace pour voir son poids de chasse</span>
             </div>
         </div>
         
@@ -669,8 +679,8 @@
                 <input type="date" id="stats-date" onchange="updateStats()">
                 <button onclick="changeStatsDate(1)">Jour suivant →</button>
                 <button onclick="showMultipleDays()">Voir 4 jours</button>
-                <button onclick="showBirdStats()">Récap par oiseau</button>
-                <button onclick="showWeightGraphs()">Courbes de poids</button>
+                <button onclick="showBirdStats()">📊 Stats par oiseau</button>
+                <button onclick="showWeightGraphs()">📈 Graphiques poids</button>
             </div>
             <div style="margin-top: 10px;">
                 <button onclick="exportAllData()">💾 Exporter</button>
@@ -868,12 +878,12 @@ function initFirebase() {
             
             // Générer un ID utilisateur unique
             firebaseUserId = prompt("Entrez un identifiant unique pour la synchronisation (le même sur tous les appareils) :", localStorage.getItem('firebaseUserId') || "");
-if (!firebaseUserId || firebaseUserId.trim() === "") {
-    alert("Identifiant requis pour activer la synchronisation.");
-    return;
-}
-firebaseUserId = firebaseUserId.trim();
-localStorage.setItem('firebaseUserId', firebaseUserId);
+            if (!firebaseUserId || firebaseUserId.trim() === "") {
+                alert("Identifiant requis pour activer la synchronisation.");
+                return;
+            }
+            firebaseUserId = firebaseUserId.trim();
+            localStorage.setItem('firebaseUserId', firebaseUserId);
             
             isFirebaseReady = true;
             addSyncHistoryEntry('✅ Firebase initialisé avec succès');
@@ -1560,6 +1570,35 @@ function updateRapaceSelects() {
         
         select.innerHTML = html;
         select.value = currentValue;
+        
+        // Mettre à jour l'affichage du poids de chasse si on est sur l'onglet chasse
+        if (select.id === 'chasse-rapace') {
+            updatePoidsChaseReference();
+        }
+    }
+}
+
+function updatePoidsChaseReference() {
+    var rapaceId = document.getElementById('chasse-rapace').value;
+    var referenceDiv = document.getElementById('poids-chasse-reference');
+    
+    if (!referenceDiv) return;
+    
+    if (rapaceId) {
+        var rapace = rapaces.find(r => r.id == rapaceId);
+        if (rapace && rapace.poidsChasse) {
+            referenceDiv.innerHTML = '<strong>🎯 Poids de chasse de ' + rapace.name + ':</strong> ' + rapace.poidsChasse + 'g';
+            referenceDiv.style.background = '#e3f2fd';
+            referenceDiv.style.color = '#1e3c72';
+        } else if (rapace) {
+            referenceDiv.innerHTML = '<strong>⚠️ ' + rapace.name + ':</strong> Poids de chasse non défini';
+            referenceDiv.style.background = '#fff3cd';
+            referenceDiv.style.color = '#856404';
+        }
+    } else {
+        referenceDiv.innerHTML = '<span style="color: #666;">Sélectionnez un rapace pour voir son poids de chasse</span>';
+        referenceDiv.style.background = '#f8f9fa';
+        referenceDiv.style.color = '#666';
     }
 }
 
@@ -1836,6 +1875,7 @@ function addChasse() {
     var date = document.getElementById('chasse-date').value;
     var time = document.getElementById('chasse-time').value;
     var notes = document.getElementById('chasse-notes').value.trim();
+    var poidsJour = document.getElementById('chasse-poids-jour').value;
     
     if (!rapaceId) {
         alert('Veuillez sélectionner un rapace.');
@@ -1858,6 +1898,7 @@ function addChasse() {
         notes: notes,
         weather: currentWeather,
         timestamp: new Date().toISOString(),
+        poidsJour: poidsJour ? parseInt(poidsJour) : null,
         faisan: parseInt(document.getElementById('chasse-faisan').value) || 0,
         perdrix: parseInt(document.getElementById('chasse-perdrix').value) || 0,
         lapin: parseInt(document.getElementById('chasse-lapin').value) || 0,
@@ -1873,6 +1914,7 @@ function addChasse() {
     
     // Nettoyer le formulaire
     document.getElementById('chasse-notes').value = '';
+    document.getElementById('chasse-poids-jour').value = '';
     var huntInputs = document.querySelectorAll('.hunt-item input[type="number"]');
     for (var i = 0; i < huntInputs.length; i++) {
         huntInputs[i].value = '0';
@@ -1906,6 +1948,20 @@ function updatechasseList() {
         html += '<div class="date">' + new Date(chasse.date + 'T' + chasse.time).toLocaleDateString('fr-FR') + ' à ' + chasse.time;
         html += ' - ' + rapaceName + ' (Total: ' + total + ' prises)</div>';
         html += '<div class="content">';
+        
+        // Afficher le poids du jour si renseigné
+        if (chasse.poidsJour) {
+            html += '<strong>Poids du jour:</strong> ' + chasse.poidsJour + 'g';
+            
+            // Comparer avec le poids de chasse de référence si disponible
+            if (rapace && rapace.poidsChasse) {
+                var diffPoids = chasse.poidsJour - rapace.poidsChasse;
+                var diffColor = diffPoids >= 0 ? '#28a745' : '#dc3545';
+                var diffSign = diffPoids >= 0 ? '+' : '';
+                html += ' <span style="color: ' + diffColor + '; font-weight: bold;">(' + diffSign + diffPoids + 'g vs poids chasse)</span>';
+            }
+            html += '<br>';
+        }
         
         var details = [];
         if (chasse.faisan > 0) details.push(chasse.faisan + ' faisan(s)');
@@ -2026,7 +2082,7 @@ function updateAffaitageList() {
 
 // Statistiques
 function showBirdStats() {
-    var html = '<h3>📊 Récapitulatif par oiseau</h3>';
+    var html = '<h3>📊 Statistiques complètes par oiseau</h3>';
     
     if (rapaces.length === 0) {
         html += '<p style="color: #666; font-style: italic;">Aucun rapace enregistré.</p>';
@@ -2040,118 +2096,330 @@ function showBirdStats() {
         var birdChasses = chasseEntries.filter(c => c.rapaceId === rapace.id);
         var birdAffaitages = affaitageEntries.filter(a => a.rapaceId === rapace.id);
         
-        // Calculs statistiques
+        html += '<div class="day-card" style="margin: 20px 0; background: linear-gradient(135deg, #f8f9fa 0%, #e3f2fd 100%);">';
+        html += '<h4 style="color: #1e3c72; margin-bottom: 20px; font-size: 1.8em; text-align: center; border-bottom: 2px solid #2a5298; padding-bottom: 10px;">🦅 ' + rapace.name + ' (' + rapace.species + ')</h4>';
+        
+        // === SECTION RESUME ===
         var totalEntries = birdEntries.length;
         var totalChasses = birdChasses.length;
         var totalAffaitages = birdAffaitages.length;
-        
-        // Calcul des prises totales
         var totalPrises = 0;
+        
         for (var j = 0; j < birdChasses.length; j++) {
             var chasse = birdChasses[j];
             totalPrises += chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
         }
         
-        // Poids moyen sur les 7 derniers jours
-        var last7Days = [];
-        var today = new Date();
-        for (var d = 0; d < 7; d++) {
-            var checkDate = new Date(today);
-            checkDate.setDate(checkDate.getDate() - d);
-            var dateStr = checkDate.toISOString().split('T')[0];
+        html += '<div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">';
+        html += '<h5 style="color: #1e3c72; margin-bottom: 15px; font-size: 1.3em;">📈 Résumé</h5>';
+        html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">';
+        
+        html += '<div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #28a745, #20c997); color: white; border-radius: 10px;">';
+        html += '<div style="font-size: 2em; font-weight: bold;">' + totalEntries + '</div>';
+        html += '<div style="font-size: 0.9em;">Entrées totales</div>';
+        html += '</div>';
+        
+        html += '<div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #dc3545, #c82333); color: white; border-radius: 10px;">';
+        html += '<div style="font-size: 2em; font-weight: bold;">' + totalChasses + '</div>';
+        html += '<div style="font-size: 0.9em;">Chasses</div>';
+        html += '</div>';
+        
+        html += '<div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #ffc107, #e0a800); color: #212529; border-radius: 10px;">';
+        html += '<div style="font-size: 2em; font-weight: bold;">' + totalPrises + '</div>';
+        html += '<div style="font-size: 0.9em;">Prises</div>';
+        html += '</div>';
+        
+        html += '<div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #6f42c1, #563d7c); color: white; border-radius: 10px;">';
+        html += '<div style="font-size: 2em; font-weight: bold;">' + totalAffaitages + '</div>';
+        html += '<div style="font-size: 0.9em;">Affaitages</div>';
+        html += '</div>';
+        
+        html += '</div>';
+        html += '</div>';
+        
+        // === SECTION TOUTES LES ENTREES DETAILLEES ===
+        html += '<div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">';
+        html += '<h5 style="color: #1e3c72; margin-bottom: 20px; font-size: 1.3em;">📋 Toutes les entrées détaillées (' + totalEntries + ' entrées)</h5>';
+        
+        if (birdEntries.length === 0) {
+            html += '<p style="color: #666; font-style: italic; text-align: center; padding: 20px;">Aucune entrée enregistrée pour ce rapace.</p>';
+        } else {
+            // Trier toutes les entrées par date décroissante
+            var allEntries = birdEntries.sort((a, b) => {
+                var dateTimeA = new Date(a.date + 'T' + a.time);
+                var dateTimeB = new Date(b.date + 'T' + b.time);
+                return dateTimeB - dateTimeA;
+            });
             
-            var dayEntries = birdEntries.filter(e => e.date === dateStr && e.type === 'nourriture' && e.poidsApres);
-            if (dayEntries.length > 0) {
-                var lastEntry = dayEntries[dayEntries.length - 1];
-                last7Days.push({
-                    date: dateStr,
-                    poids: parseFloat(lastEntry.poidsApres)
-                });
-            }
-        }
-        
-        var poidsMoyen = 0;
-        if (last7Days.length > 0) {
-            var sommePoids = last7Days.reduce((sum, day) => sum + day.poids, 0);
-            poidsMoyen = Math.round(sommePoids / last7Days.length);
-        }
-        
-        // Dernière pesée
-        var dernierePesee = null;
-        var nutritionEntries = birdEntries.filter(e => e.type === 'nourriture' && e.poidsApres).sort((a, b) => {
-            var dateTimeA = new Date(a.date + 'T' + a.time);
-            var dateTimeB = new Date(b.date + 'T' + b.time);
-            return dateTimeB - dateTimeA;
-        });
-        
-        if (nutritionEntries.length > 0) {
-            dernierePesee = {
-                poids: nutritionEntries[0].poidsApres,
-                date: nutritionEntries[0].date
-            };
-        }
-        
-        html += '<div class="day-card" style="margin: 15px 0;">';
-        html += '<h4 style="color: #1e3c72; margin-bottom: 15px;">🦅 ' + rapace.name + ' (' + rapace.species + ')</h4>';
-        
-        // Grille de statistiques
-        html += '<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 15px;">';
-        
-        html += '<div class="stat-card" style="padding: 15px;">';
-        html += '<h3 style="font-size: 14px;">📝 Entrées totales</h3>';
-        html += '<div class="value" style="font-size: 1.5em;">' + totalEntries + '</div>';
-        html += '</div>';
-        
-        html += '<div class="stat-card" style="padding: 15px;">';
-        html += '<h3 style="font-size: 14px;">🏹 Chasses</h3>';
-        html += '<div class="value" style="font-size: 1.5em;">' + totalChasses + '</div>';
-        html += '</div>';
-        
-        html += '<div class="stat-card" style="padding: 15px;">';
-        html += '<h3 style="font-size: 14px;">🎯 Prises totales</h3>';
-        html += '<div class="value" style="font-size: 1.5em;">' + totalPrises + '</div>';
-        html += '</div>';
-        
-        html += '<div class="stat-card" style="padding: 15px;">';
-        html += '<h3 style="font-size: 14px;">🦅 Affaitages</h3>';
-        html += '<div class="value" style="font-size: 1.5em;">' + totalAffaitages + '</div>';
-        html += '</div>';
-        
-        html += '</div>';
-        
-        // Informations de poids
-        html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;">';
-        html += '<h5 style="margin-bottom: 10px; color: #495057;">📊 Informations de poids</h5>';
-        
-        if (rapace.poidsPlein || rapace.poidsVol || rapace.poidsChasse) {
-            html += '<p><strong>Poids de référence:</strong> ';
-            if (rapace.poidsPlein) html += '🍖 Plein: ' + rapace.poidsPlein + 'g ';
-            if (rapace.poidsVol) html += '🕊️ Vol: ' + rapace.poidsVol + 'g ';
-            if (rapace.poidsChasse) html += '🎯 Chasse: ' + rapace.poidsChasse + 'g';
-            html += '</p>';
-        }
-        
-        if (dernierePesee) {
-            html += '<p><strong>Dernière pesée:</strong> ' + dernierePesee.poids + 'g (' + new Date(dernierePesee.date).toLocaleDateString('fr-FR') + ')';
-            
-            // Comparaison avec les poids de référence
-            if (rapace.poidsChasse && dernierePesee.poids) {
-                var diffChasse = parseFloat(dernierePesee.poids) - rapace.poidsChasse;
-                if (diffChasse >= 0) {
-                    html += ' <span style="color: #28a745;">+' + diffChasse + 'g vs poids chasse</span>';
-                } else {
-                    html += ' <span style="color: #dc3545;">' + diffChasse + 'g vs poids chasse</span>';
+            for (var e = 0; e < allEntries.length; e++) {
+                var entry = allEntries[e];
+                
+                html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 5px solid #2a5298; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">';
+                
+                // En-tête avec date et type
+                html += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #dee2e6;">';
+                html += '<div style="font-weight: bold; color: #1e3c72; font-size: 1.1em;">';
+                html += '📅 ' + new Date(entry.date + 'T' + entry.time).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                html += ' à ' + entry.time;
+                html += '</div>';
+                html += '<div style="background: #2a5298; color: white; padding: 5px 12px; border-radius: 15px; font-size: 0.9em; font-weight: bold;">';
+                html += getEventTypeLabel(entry.type);
+                html += '</div>';
+                html += '</div>';
+                
+                // Contenu principal selon le type
+                html += '<div style="display: grid; gap: 15px;">';
+                
+                if (entry.type === 'nourriture') {
+                    // Section nutrition détaillée
+                    html += '<div style="background: white; padding: 12px; border-radius: 5px; border: 1px solid #e9ecef;">';
+                    html += '<h6 style="color: #495057; margin-bottom: 8px; font-size: 1em;">🍽️ Nutrition</h6>';
+                    html += '<p><strong>Menu:</strong> ' + entry.menu;
+                    if (entry.quantite) html += ' (' + entry.quantite + ')';
+                    html += '</p>';
+                    
+                    if (entry.poidsAvant && entry.poidsApres) {
+                        var difference = parseFloat(entry.poidsAvant) - parseFloat(entry.poidsApres);
+                        var pourcentage = Math.round((Math.abs(difference) / parseFloat(entry.poidsAvant)) * 100 * 100) / 100;
+                        
+                        html += '<div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 8px;">';
+                        html += '<p><strong>⚖️ Poids avant:</strong> ' + entry.poidsAvant + 'g</p>';
+                        html += '<p><strong>⚖️ Poids après:</strong> ' + entry.poidsApres + 'g</p>';
+                        
+                        var diffColor = '#6c757d';
+                        var diffText = '';
+                        var diffIcon = '➖';
+                        
+                        if (difference > 0) {
+                            diffColor = '#dc3545';
+                            diffText = '-' + difference + 'g (perte)';
+                            diffIcon = '📉';
+                        } else if (difference < 0) {
+                            diffColor = '#28a745';
+                            diffText = '+' + Math.abs(difference) + 'g (gain)';
+                            diffIcon = '📈';
+                        } else {
+                            diffText = '0g (stable)';
+                            diffIcon = '➖';
+                        }
+                        
+                        html += '<p style="color: ' + diffColor + '; font-weight: bold; font-size: 1.1em;">';
+                        html += '<strong>' + diffIcon + ' Différence:</strong> ' + diffText;
+                        html += ' <span style="background: ' + diffColor + '; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.9em;">(' + pourcentage + '%)</span>';
+                        html += '</p>';
+                        
+                        // Comparaison avec poids de référence
+                        if (rapace.poidsChasse && entry.poidsApres) {
+                            var diffChasse = parseFloat(entry.poidsApres) - rapace.poidsChasse;
+                            var chasseColor = diffChasse >= 0 ? '#28a745' : '#dc3545';
+                            var chasseSign = diffChasse >= 0 ? '+' : '';
+                            html += '<p style="color: ' + chasseColor + '; font-size: 0.95em;">';
+                            html += '<strong>🎯 vs Poids chasse (' + rapace.poidsChasse + 'g):</strong> ' + chasseSign + diffChasse + 'g';
+                            html += '</p>';
+                        }
+                        
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                    
+                } else if (entry.type === 'vol') {
+                    html += '<div style="background: white; padding: 12px; border-radius: 5px; border: 1px solid #e9ecef;">';
+                    html += '<h6 style="color: #495057; margin-bottom: 8px;">🕊️ Vol</h6>';
+                    html += '<p><strong>Type de vol:</strong> ' + entry.typeVol + '</p>';
+                    html += '</div>';
+                    
+                } else if (entry.type === 'comportement') {
+                    html += '<div style="background: white; padding: 12px; border-radius: 5px; border: 1px solid #e9ecef;">';
+                    html += '<h6 style="color: #495057; margin-bottom: 8px;">🧠 Comportement</h6>';
+                    html += '<p><strong>Réactivité:</strong> ' + entry.reactivite + '/5</p>';
+                    
+                    // Barre de progression pour la réactivité
+                    var reactivitePercent = (entry.reactivite / 5) * 100;
+                    var reactiviteColor = entry.reactivite <= 2 ? '#dc3545' : entry.reactivite <= 3 ? '#ffc107' : '#28a745';
+                    html += '<div style="background: #e9ecef; border-radius: 10px; height: 8px; margin-top: 5px;">';
+                    html += '<div style="background: ' + reactiviteColor + '; width: ' + reactivitePercent + '%; height: 8px; border-radius: 10px;"></div>';
+                    html += '</div>';
+                    html += '</div>';
+                    
+                } else if (entry.type === 'sante') {
+                    html += '<div style="background: white; padding: 12px; border-radius: 5px; border: 1px solid #e9ecef;">';
+                    html += '<h6 style="color: #495057; margin-bottom: 8px;">🏥 Santé</h6>';
+                    var santeColor = entry.etatSante === 'ras' ? '#28a745' : '#dc3545';
+                    var santeIcon = entry.etatSante === 'ras' ? '✅' : '⚠️';
+                    html += '<p style="color: ' + santeColor + '; font-weight: bold;"><strong>' + santeIcon + ' État:</strong> ' + entry.etatSante.toUpperCase() + '</p>';
+                    html += '</div>';
+                    
+                } else if (entry.type === 'entrainement') {
+                    html += '<div style="background: white; padding: 12px; border-radius: 5px; border: 1px solid #e9ecef;">';
+                    html += '<h6 style="color: #495057; margin-bottom: 8px;">💪 Entraînement</h6>';
+                    html += '<p><strong>Type:</strong> ' + entry.typeEntrainement + '</p>';
+                    html += '</div>';
                 }
+                
+                // Météo complète si disponible
+                if (entry.weather) {
+                    html += '<div style="background: #e3f2fd; padding: 12px; border-radius: 5px; border: 1px solid #bbdefb;">';
+                    html += '<h6 style="color: #1565c0; margin-bottom: 8px;">🌤️ Conditions météorologiques</h6>';
+                    html += '<p style="font-size: 0.95em; white-space: pre-line; color: #424242;">' + entry.weather + '</p>';
+                    html += '</div>';
+                }
+                
+                // Notes si disponibles
+                if (entry.notes) {
+                    html += '<div style="background: #fff3e0; padding: 12px; border-radius: 5px; border: 1px solid #ffcc80;">';
+                    html += '<h6 style="color: #ef6c00; margin-bottom: 8px;">📝 Notes & Observations</h6>';
+                    html += '<p style="font-style: italic; color: #424242;">' + entry.notes + '</p>';
+                    html += '</div>';
+                }
+                
+                html += '</div>'; // Fin grid
+                html += '</div>'; // Fin entrée
             }
-            html += '</p>';
-        }
-        
-        if (poidsMoyen > 0) {
-            html += '<p><strong>Poids moyen 7 jours:</strong> ' + poidsMoyen + 'g</p>';
         }
         
         html += '</div>';
-        html += '</div>';
+        
+        // === SECTION CHASSES DETAILLEES ===
+        if (birdChasses.length > 0) {
+            html += '<div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">';
+            html += '<h5 style="color: #1e3c72; margin-bottom: 20px; font-size: 1.3em;">🏹 Historique des chasses (' + birdChasses.length + ' sorties)</h5>';
+            
+            var sortedChasses = birdChasses.sort((a, b) => {
+                var dateTimeA = new Date(a.date + 'T' + a.time);
+                var dateTimeB = new Date(b.date + 'T' + b.time);
+                return dateTimeB - dateTimeA;
+            });
+            
+            for (var c = 0; c < sortedChasses.length; c++) {
+                var chasse = sortedChasses[c];
+                var totalChasse = chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
+                var successColor = totalChasse > 0 ? '#28a745' : '#6c757d';
+                var successIcon = totalChasse > 0 ? '🎯' : '❌';
+                
+                html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 5px solid ' + successColor + '; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">';
+                
+                html += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">';
+                html += '<div style="font-weight: bold; color: #1e3c72; font-size: 1.1em;">';
+                html += '📅 ' + new Date(chasse.date + 'T' + chasse.time).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                html += ' à ' + chasse.time;
+                html += '</div>';
+                html += '<div style="background: ' + successColor + '; color: white; padding: 5px 12px; border-radius: 15px; font-size: 0.9em; font-weight: bold;">';
+                html += successIcon + ' ' + totalChasse + ' prise(s)';
+                html += '</div>';
+                html += '</div>';
+                
+                // Poids du jour si renseigné
+                if (chasse.poidsJour) {
+                    html += '<div style="background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px;">';
+                    html += '<p><strong>⚖️ Poids du jour:</strong> ' + chasse.poidsJour + 'g';
+                    
+                    if (rapace.poidsChasse) {
+                        var diffPoids = chasse.poidsJour - rapace.poidsChasse;
+                        var diffColor = diffPoids >= 0 ? '#28a745' : '#dc3545';
+                        var diffSign = diffPoids >= 0 ? '+' : '';
+                        html += ' <span style="color: ' + diffColor + '; font-weight: bold;">(' + diffSign + diffPoids + 'g vs poids chasse ' + rapace.poidsChasse + 'g)</span>';
+                    }
+                    html += '</p>';
+                    html += '</div>';
+                }
+                
+                // Détail des prises
+                if (totalChasse > 0) {
+                    html += '<div style="background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px;">';
+                    html += '<h6 style="color: #495057; margin-bottom: 8px;">🎯 Détail des prises</h6>';
+                    var details = [];
+                    if (chasse.faisan > 0) details.push('🐦 ' + chasse.faisan + ' faisan(s)');
+                    if (chasse.perdrix > 0) details.push('🐦 ' + chasse.perdrix + ' perdrix');
+                    if (chasse.lapin > 0) details.push('🐰 ' + chasse.lapin + ' lapin(s)');
+                    if (chasse.lievre > 0) details.push('🐰 ' + chasse.lievre + ' lièvre(s)');
+                    if (chasse.canard > 0) details.push('🦆 ' + chasse.canard + ' canard(s)');
+                    if (chasse.oie > 0) details.push('🦢 ' + chasse.oie + ' oie(s)');
+                    if (chasse.autre > 0) details.push('❓ ' + chasse.autre + ' autre(s)');
+                    
+                    html += '<p>' + details.join(', ') + '</p>';
+                    html += '</div>';
+                }
+                
+                // Météo de la chasse
+                if (chasse.weather) {
+                    html += '<div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 10px;">';
+                    html += '<h6 style="color: #1565c0; margin-bottom: 8px;">🌤️ Conditions</h6>';
+                    html += '<p style="font-size: 0.9em; white-space: pre-line; color: #424242;">' + chasse.weather + '</p>';
+                    html += '</div>';
+                }
+                
+                // Notes
+                if (chasse.notes) {
+                    html += '<div style="background: #fff3e0; padding: 10px; border-radius: 5px;">';
+                    html += '<h6 style="color: #ef6c00; margin-bottom: 8px;">📝 Notes</h6>';
+                    html += '<p style="font-style: italic; color: #424242;">' + chasse.notes + '</p>';
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+            }
+            
+            html += '</div>';
+        }
+        
+        // === SECTION AFFAITAGES ===
+        if (birdAffaitages.length > 0) {
+            html += '<div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">';
+            html += '<h5 style="color: #1e3c72; margin-bottom: 20px; font-size: 1.3em;">🦅 Historique d\'affaitage (' + birdAffaitages.length + ' sessions)</h5>';
+            
+            var sortedAffaitages = birdAffaitages.sort((a, b) => {
+                var dateTimeA = new Date(a.date + 'T' + a.time);
+                var dateTimeB = new Date(b.date + 'T' + b.time);
+                return dateTimeB - dateTimeA;
+            });
+            
+            for (var a = 0; a < sortedAffaitages.length; a++) {
+                var affaitage = sortedAffaitages[a];
+                
+                html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 5px solid #6f42c1; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">';
+                
+                html += '<div style="font-weight: bold; color: #1e3c72; font-size: 1.1em; margin-bottom: 12px;">';
+                html += '📅 ' + new Date(affaitage.date + 'T' + affaitage.time).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                html += ' à ' + affaitage.time;
+                html += '</div>';
+                
+                // Activités
+                var activites = [];
+                if (affaitage.priseNourriture) activites.push('🍽️ Prise de nourriture');
+                if (affaitage.gant) activites.push('🧤 Gant');
+                if (affaitage.filiere) activites.push('🎯 Filière');
+                if (affaitage.libre) activites.push('🕊️ Libre');
+                
+                if (activites.length > 0) {
+                    html += '<div style="background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px;">';
+                    html += '<h6 style="color: #495057; margin-bottom: 8px;">🎭 Activités</h6>';
+                    html += '<p>' + activites.join(', ') + '</p>';
+                    html += '</div>';
+                }
+                
+                // Météo
+                if (affaitage.weather) {
+                    html += '<div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 10px;">';
+                    html += '<h6 style="color: #1565c0; margin-bottom: 8px;">🌤️ Conditions</h6>';
+                    html += '<p style="font-size: 0.9em; white-space: pre-line; color: #424242;">' + affaitage.weather + '</p>';
+                    html += '</div>';
+                }
+                
+                // Notes
+                if (affaitage.notes) {
+                    html += '<div style="background: #fff3e0; padding: 10px; border-radius: 5px;">';
+                    html += '<h6 style="color: #ef6c00; margin-bottom: 8px;">📝 Notes</h6>';
+                    html += '<p style="font-style: italic; color: #424242;">' + affaitage.notes + '</p>';
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+            }
+            
+            html += '</div>';
+        }
+        
+        html += '</div>'; // Fin carte rapace
     }
     
     document.getElementById('stats-content').innerHTML = html;
@@ -2537,6 +2805,9 @@ function initApp() {
             loadFirebase();
         }
     }, 2000);
+    
+    // Initialiser l'affichage du poids de chasse dans la section chasse
+    updatePoidsChaseReference();
 }
 
 // Fermer la modal en cliquant à l'extérieur
