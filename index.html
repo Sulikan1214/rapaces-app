@@ -833,11 +833,13 @@ function initFirebase() {
             db = firebase.firestore();
             
             // Générer un ID utilisateur unique
-            firebaseUserId = localStorage.getItem('firebaseUserId');
-            if (!firebaseUserId) {
-                firebaseUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('firebaseUserId', firebaseUserId);
-            }
+            firebaseUserId = prompt("Entrez un identifiant unique pour la synchronisation (le même sur tous les appareils) :", localStorage.getItem('firebaseUserId') || "");
+if (!firebaseUserId || firebaseUserId.trim() === "") {
+    alert("Identifiant requis pour activer la synchronisation.");
+    return;
+}
+firebaseUserId = firebaseUserId.trim();
+localStorage.setItem('firebaseUserId', firebaseUserId);
             
             isFirebaseReady = true;
             addSyncHistoryEntry('✅ Firebase initialisé avec succès');
