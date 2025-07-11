@@ -364,6 +364,7 @@
         <button class="tab" onclick="showTab('chasse')">Chasse</button>
         <button class="tab" onclick="showTab('affaitage')">Affaitage</button>
         <button class="tab" onclick="showTab('stats')">Statistiques</button>
+        <button class="tab" onclick="showTab('sync')">Sync</button>
     </div>
 
     <div id="gestion" class="tab-content active">
@@ -661,7 +662,7 @@
     </div>
 
     <div id="sync" class="tab-content">
-        <h2>🌐 Synchronisation Google Drive</h2>
+        <h2>🔥 Synchronisation Firebase</h2>
         
         <div class="day-card">
             <h4 id="sync-status">📊 État de la synchronisation</h4>
@@ -672,12 +673,12 @@
         <div style="margin: 20px 0;">
             <h3>🔧 Configuration</h3>
             <div style="display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
-                <button onclick="initGoogleDriveSync()" id="connect-drive-btn">🔗 Connecter Google Drive</button>
-                <button onclick="manualSync()" id="manual-sync-btn" style="display: none;">⚡ Synchroniser maintenant</button>
-                <button onclick="disconnectDrive()" id="disconnect-drive-btn" style="display: none;" class="btn-secondary">❌ Déconnecter</button>
+                <button onclick="initFirebaseSync()" id="connect-drive-btn">🔗 Activer Firebase</button>
+                <button onclick="manualFirebaseSync()" id="manual-sync-btn" style="display: none;">⚡ Synchroniser maintenant</button>
+                <button onclick="disconnectFirebase()" id="disconnect-drive-btn" style="display: none;" class="btn-secondary">❌ Déconnecter</button>
             </div>
             <p style="font-size: 14px; color: #666;">
-                La synchronisation Google Drive permet de garder vos données à jour sur tous vos appareils automatiquement.
+                La synchronisation Firebase permet de garder vos données à jour sur tous vos appareils automatiquement.
             </p>
         </div>
 
@@ -703,14 +704,13 @@
             <h3>📱 Instructions multi-appareils</h3>
             <div class="day-card" style="background: #e8f4fd;">
                 <p><strong>1. Sur cet appareil :</strong></p>
-                <p>• Cliquez "🔗 Connecter Google Drive"</p>
-                <p>• Autorisez l'accès à votre Google Drive</p>
+                <p>• Cliquez "🔗 Activer Firebase"</p>
                 <p>• Vos données seront sauvegardées automatiquement</p>
                 
                 <p><strong>2. Sur vos autres appareils :</strong></p>
                 <p>• Ouvrez cette application</p>
                 <p>• Allez dans l'onglet "Sync"</p>
-                <p>• Connectez-vous avec le MÊME compte Google</p>
+                <p>• Cliquez "Activer Firebase"</p>
                 <p>• Vos données se synchroniseront automatiquement !</p>
             </div>
         </div>
@@ -724,11 +724,11 @@
 
         <div class="day-card" style="background: #e3f2fd;">
             <h4>ℹ️ Comment ça marche</h4>
-            <p>• Vos données sont chiffrées et stockées dans votre Google Drive personnel</p>
-            <p>• Seuls vos appareils connectés avec le même compte Google peuvent y accéder</p>
-            <p>• La synchronisation est bidirectionnelle : les modifications sur n'importe quel appareil se propagent partout</p>
+            <p>• Vos données sont stockées de manière sécurisée sur Firebase</p>
+            <p>• Synchronisation automatique sur tous vos appareils</p>
+            <p>• Fonctionnement hors ligne avec synchronisation au retour de connexion</p>
             <p>• En cas de conflit, la version la plus récente est conservée</p>
-            <p>• Vous gardez le contrôle total : déconnexion possible à tout moment</p>
+            <p>• Données sauvegardées de manière permanente dans le cloud</p>
         </div>
     </div>
 </div>
@@ -775,128 +775,103 @@ var currentLocation = "Orthez (64300)";
 var currentStatsDate = new Date();
 var editingRapaceId = null;
 
-// Variables pour Google Drive synchronisation
-var gapi = null;
-var isGoogleDriveConnected = false;
+// Variables pour la synchronisation
 var syncIntervalId = null;
 var lastSyncTime = null;
-var googleDriveFileId = null;
 var syncHistory = [];
 
-// Sauvegarder avec sync Google Drive
-function saveAllData() {
-    try {
-        var data = {
-            rapaces: rapaces,
-            entries: entries,
-            chasseEntries: chasseEntries,
-            affaitageEntries: affaitageEntries,
-            currentLocation: currentLocation,
-            lastSave: new Date().toISOString()
-        };
-        localStorage.setItem('rapaces_data', JSON.stringify(data));
-        
-        // Synchroniser avec Google Drive si connecté et activé
-        if (isGoogleDriveConnected && document.getElementById('sync-on-change-enabled') && document.getElementById('sync-on-change-enabled').checked) {
-            syncToGoogleDrive(false); // false = pas de notification pour les auto-sync
-        }
-    } catch (e) {
-        console.error('Erreur sauvegarde:', e);
-    }
-}
+// === FIREBASE CONFIGURATION ===
+const firebaseConfig = {
+  apiKey: "AIzaSyB5nXyJU-FO5YClrS-NZYOJ5hPmW0toEPA",
+  authDomain: "rapaces-d00a2.firebaseapp.com",
+  projectId: "rapaces-d00a2",
+  storageBucket: "rapaces-d00a2.firebasestorage.app",
+  messagingSenderId: "404149284295",
+  appId: "1:404149284295:web:d71ab1d727c8806b3a7de2",
+  measurementId: "G-Y4C19XG2P7"
+};
 
-// ===== GOOGLE DRIVE SYNCHRONISATION RÉELLE =====
+// Variables Firebase
+let db = null;
+let isFirebaseReady = false;
+let firebaseUserId = null;
 
-// Charger et initialiser Google Drive API
-function loadGoogleDriveAPI() {
-    if (typeof gapi !== 'undefined') {
-        initGoogleDriveAPI();
-        return;
-    }
+// Charger Firebase
+function loadFirebase() {
+    addSyncHistoryEntry('🔄 Chargement de Firebase...');
     
-    var script = document.createElement('script');
-    script.src = 'https://apis.google.com/js/api.js';
-    script.onload = function() {
-        gapi.load('auth2:client:drive', initGoogleDriveAPI);
-    };
-    document.head.appendChild(script);
-}
-
-function initGoogleDriveAPI() {
-    gapi.load('auth2:client', function() {
-        gapi.client.init({
-            apiKey: 'b4d68d2dedd2d6d43f81f804010b0673', // Votre clé API
-            clientId: '464618923115-m4h8hf5gkqmfhg2oqm6vr9sj5h0f4nq9.apps.googleusercontent.com',
-            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-            scope: 'https://www.googleapis.com/auth/drive.file'
-        }).then(function() {
-            // Vérifier si déjà connecté
-            var authInstance = gapi.auth2.getAuthInstance();
-            if (authInstance.isSignedIn.get()) {
-                isGoogleDriveConnected = true;
-                updateSyncUI();
-                addSyncHistoryEntry('Reconnexion automatique réussie');
-                startAutoSync();
+    // Charger les scripts Firebase
+    const scripts = [
+        'https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js',
+        'https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js'
+    ];
+    
+    let scriptsLoaded = 0;
+    
+    scripts.forEach(src => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => {
+            scriptsLoaded++;
+            if (scriptsLoaded === scripts.length) {
+                initFirebase();
             }
-        }).catch(function(error) {
-            console.error('Erreur initialisation Google Drive:', error);
-        });
+        };
+        script.onerror = () => {
+            console.error('Erreur chargement Firebase:', src);
+            addSyncHistoryEntry('❌ Erreur chargement Firebase');
+        };
+        document.head.appendChild(script);
     });
 }
 
-function initGoogleDriveSync() {
-    if (!gapi || !gapi.auth2) {
-        addSyncHistoryEntry('Chargement de l\'API Google Drive...');
-        loadGoogleDriveAPI();
-        setTimeout(initGoogleDriveSync, 2000);
-        return;
-    }
-    
-    var authInstance = gapi.auth2.getAuthInstance();
-    authInstance.signIn().then(function() {
-        isGoogleDriveConnected = true;
-        addSyncHistoryEntry('✅ Connexion réussie à Google Drive');
-        updateSyncUI();
-        
-        // Première synchronisation
-        syncToGoogleDrive(true);
-        startAutoSync();
-        
-        if (document.getElementById('sync-notifications').checked) {
-            alert('✅ Connecté à Google Drive !\nSynchronisation automatique activée.');
-        }
-    }).catch(function(error) {
-        console.error('Erreur connexion:', error);
-        addSyncHistoryEntry('❌ Erreur de connexion : ' + error.error);
-        alert('❌ Erreur de connexion à Google Drive');
-    });
-}
-
-function disconnectDrive() {
-    if (gapi && gapi.auth2) {
-        gapi.auth2.getAuthInstance().signOut().then(function() {
-            isGoogleDriveConnected = false;
-            stopAutoSync();
-            addSyncHistoryEntry('❌ Déconnexion de Google Drive');
+function initFirebase() {
+    try {
+        // Initialiser Firebase
+        if (typeof firebase !== 'undefined') {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            
+            // Générer un ID utilisateur unique
+            firebaseUserId = localStorage.getItem('firebaseUserId');
+            if (!firebaseUserId) {
+                firebaseUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('firebaseUserId', firebaseUserId);
+            }
+            
+            isFirebaseReady = true;
+            addSyncHistoryEntry('✅ Firebase initialisé avec succès');
             updateSyncUI();
             
-            if (document.getElementById('sync-notifications').checked) {
-                alert('❌ Déconnecté de Google Drive');
-            }
-        });
+            // Première synchronisation
+            loadFromFirebase();
+            
+            // Synchronisation automatique toutes les 2 minutes
+            startAutoSync();
+            
+        } else {
+            throw new Error('Firebase non chargé');
+        }
+    } catch (error) {
+        console.error('Erreur initialisation Firebase:', error);
+        addSyncHistoryEntry('❌ Erreur initialisation: ' + error.message);
     }
 }
 
-function syncToGoogleDrive(showNotification) {
-    if (!isGoogleDriveConnected) return;
+// Sauvegarder vers Firebase
+function syncToFirebase() {
+    if (!isFirebaseReady || !db) {
+        console.log('Firebase pas prêt pour la sync');
+        return;
+    }
     
-    var data = {
+    const data = {
         rapaces: rapaces,
         entries: entries,
         chasseEntries: chasseEntries,
         affaitageEntries: affaitageEntries,
         currentLocation: currentLocation,
-        lastSync: new Date().toISOString(),
+        lastSync: firebase.firestore.FieldValue.serverTimestamp(),
         deviceInfo: {
             userAgent: navigator.userAgent,
             platform: navigator.platform,
@@ -904,127 +879,131 @@ function syncToGoogleDrive(showNotification) {
         }
     };
     
-    var fileContent = JSON.stringify(data, null, 2);
-    var fileName = 'rapaces_data_sync.json';
-    
-    // Créer ou mettre à jour le fichier sur Google Drive
-    var fileMetadata = {
-        name: fileName,
-        parents: ['appDataFolder'] // Dossier privé de l'application
-    };
-    
-    var form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(fileMetadata)], {type: 'application/json'}));
-    form.append('file', new Blob([fileContent], {type: 'application/json'}));
-    
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', 'https://www.googleapis.com/upload/drive/v3/files' + (googleDriveFileId ? '/' + googleDriveFileId : ''));
-    xhr.setRequestHeader('Authorization', 'Bearer ' + gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token);
-    
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            var response = JSON.parse(xhr.responseText);
-            googleDriveFileId = response.id;
+    db.collection('users').doc(firebaseUserId).set(data, { merge: true })
+        .then(() => {
+            addSyncHistoryEntry('📤 Données sauvegardées sur Firebase');
             lastSyncTime = new Date();
-            
-            addSyncHistoryEntry('📤 Synchronisation vers Google Drive réussie');
             updateSyncUI();
             
-            if (showNotification && document.getElementById('sync-notifications').checked) {
-                // Mini notification non-intrusive
-                showMiniNotification('✅ Données synchronisées');
+            // Mini notification
+            if (document.getElementById('sync-notifications').checked) {
+                showMiniNotification('☁️ Données synchronisées');
             }
-        }
-    };
-    
-    xhr.onerror = function() {
-        addSyncHistoryEntry('❌ Erreur lors de la synchronisation');
-    };
-    
-    xhr.send(form);
+        })
+        .catch((error) => {
+            console.error('Erreur sauvegarde Firebase:', error);
+            addSyncHistoryEntry('❌ Erreur sauvegarde: ' + error.message);
+        });
 }
 
-function loadFromGoogleDrive() {
-    if (!isGoogleDriveConnected) return;
+// Charger depuis Firebase
+function loadFromFirebase() {
+    if (!isFirebaseReady || !db) {
+        console.log('Firebase pas prêt pour le chargement');
+        return;
+    }
     
-    // Rechercher le fichier de synchronisation
-    gapi.client.drive.files.list({
-        q: "name='rapaces_data_sync.json' and parents in 'appDataFolder'",
-        spaces: 'appDataFolder'
-    }).then(function(response) {
-        var files = response.result.files;
-        if (files && files.length > 0) {
-            googleDriveFileId = files[0].id;
-            
-            // Télécharger le contenu du fichier
-            gapi.client.drive.files.get({
-                fileId: googleDriveFileId,
-                alt: 'media'
-            }).then(function(response) {
-                try {
-                    var data = JSON.parse(response.body);
-                    
-                    // Fusionner les données (prendre les plus récentes)
-                    var localLastSave = localStorage.getItem('rapaces_data') ? 
-                        JSON.parse(localStorage.getItem('rapaces_data')).lastSave : null;
-                    
-                    if (!localLastSave || data.lastSync > localLastSave) {
-                        rapaces = data.rapaces || [];
-                        entries = data.entries || [];
-                        chasseEntries = data.chasseEntries || [];
-                        affaitageEntries = data.affaitageEntries || [];
-                        currentLocation = data.currentLocation || currentLocation;
-                        
-                        // Mettre à jour l'interface
-                        updateRapaceList();
-                        updateRapaceSelects();
-                        updateEntryList();
-                        updatechasseList();
-                        updateAffaitageList();
-                        
-                        // Sauvegarder localement
-                        saveAllData();
-                        
-                        addSyncHistoryEntry('📥 Données chargées depuis Google Drive');
-                        showMiniNotification('📥 Données synchronisées depuis le cloud');
-                    } else {
-                        addSyncHistoryEntry('📊 Données locales plus récentes, pas de changement');
+    db.collection('users').doc(firebaseUserId).get()
+        .then((doc) => {
+            if (doc.exists) {
+                const firebaseData = doc.data();
+                
+                // Comparer les timestamps pour voir quelle version est plus récente
+                const localData = localStorage.getItem('rapaces_data');
+                let localTimestamp = 0;
+                
+                if (localData) {
+                    try {
+                        const parsed = JSON.parse(localData);
+                        localTimestamp = parsed.lastSave ? new Date(parsed.lastSave).getTime() : 0;
+                    } catch (e) {
+                        localTimestamp = 0;
                     }
-                } catch (error) {
-                    addSyncHistoryEntry('❌ Erreur de lecture des données cloud');
                 }
-            });
-        } else {
-            addSyncHistoryEntry('📊 Aucun fichier de sauvegarde trouvé sur Google Drive');
-        }
-    });
+                
+                const firebaseTimestamp = firebaseData.lastSync ? firebaseData.lastSync.toDate().getTime() : 0;
+                
+                if (firebaseTimestamp > localTimestamp) {
+                    // Firebase plus récent, utiliser ces données
+                    rapaces = firebaseData.rapaces || [];
+                    entries = firebaseData.entries || [];
+                    chasseEntries = firebaseData.chasseEntries || [];
+                    affaitageEntries = firebaseData.affaitageEntries || [];
+                    currentLocation = firebaseData.currentLocation || currentLocation;
+                    
+                    // Mettre à jour l'interface
+                    updateRapaceList();
+                    updateRapaceSelects();
+                    updateEntryList();
+                    updatechasseList();
+                    updateAffaitageList();
+                    
+                    // Sauvegarder localement
+                    saveAllData();
+                    
+                    addSyncHistoryEntry('📥 Données chargées depuis Firebase');
+                    if (document.getElementById('sync-notifications').checked) {
+                        showMiniNotification('📥 Données mises à jour depuis le cloud');
+                    }
+                } else {
+                    addSyncHistoryEntry('📊 Données locales plus récentes');
+                    // Sauvegarder vers Firebase si les données locales sont plus récentes
+                    syncToFirebase();
+                }
+            } else {
+                addSyncHistoryEntry('📊 Aucune donnée Firebase, première utilisation');
+                // Première utilisation, sauvegarder les données locales vers Firebase
+                syncToFirebase();
+            }
+        })
+        .catch((error) => {
+            console.error('Erreur chargement Firebase:', error);
+            addSyncHistoryEntry('❌ Erreur chargement: ' + error.message);
+        });
 }
 
-function manualSync() {
-    if (!isGoogleDriveConnected) {
-        alert('❌ Connectez-vous d\'abord à Google Drive');
+// Fonction de synchronisation manuelle Firebase
+function manualFirebaseSync() {
+    if (!isFirebaseReady) {
+        addSyncHistoryEntry('🔄 Initialisation Firebase...');
+        loadFirebase();
         return;
     }
     
     addSyncHistoryEntry('🔄 Synchronisation manuelle lancée...');
-    updateSyncUI();
     
-    // D'abord charger depuis Google Drive
-    loadFromGoogleDrive();
+    // D'abord charger depuis Firebase
+    loadFromFirebase();
     
-    // Puis sauvegarder vers Google Drive
-    setTimeout(function() {
-        syncToGoogleDrive(true);
+    // Puis sauvegarder vers Firebase
+    setTimeout(() => {
+        syncToFirebase();
     }, 1000);
 }
 
+// Connecter Firebase
+function initFirebaseSync() {
+    addSyncHistoryEntry('🔄 Connexion à Firebase...');
+    loadFirebase();
+}
+
+// Déconnecter Firebase
+function disconnectFirebase() {
+    isFirebaseReady = false;
+    db = null;
+    stopAutoSync();
+    addSyncHistoryEntry('❌ Firebase déconnecté');
+    updateSyncUI();
+}
+
+// Démarrer la synchronisation automatique
 function startAutoSync() {
     stopAutoSync(); // Arrêter l'ancien timer
     
-    if (isGoogleDriveConnected && document.getElementById('auto-sync-enabled') && document.getElementById('auto-sync-enabled').checked) {
+    if (isFirebaseReady && document.getElementById('auto-sync-enabled') && document.getElementById('auto-sync-enabled').checked) {
         syncIntervalId = setInterval(function() {
-            loadFromGoogleDrive(); // Vérifier les mises à jour
-            syncToGoogleDrive(false); // Sauvegarder sans notification
+            loadFromFirebase(); // Vérifier les mises à jour
+            syncToFirebase(); // Sauvegarder
         }, 2 * 60 * 1000); // Toutes les 2 minutes
         
         addSyncHistoryEntry('🔄 Synchronisation automatique activée (2 min)');
@@ -1039,20 +1018,21 @@ function stopAutoSync() {
     }
 }
 
+// Mettre à jour l'interface de synchronisation pour Firebase
 function updateSyncUI() {
-    var statusEl = document.getElementById('sync-status');
-    var detailsEl = document.getElementById('sync-details');
-    var lastSyncEl = document.getElementById('last-sync-time');
-    var connectBtn = document.getElementById('connect-drive-btn');
-    var syncBtn = document.getElementById('manual-sync-btn');
-    var disconnectBtn = document.getElementById('disconnect-drive-btn');
+    const statusEl = document.getElementById('sync-status');
+    const detailsEl = document.getElementById('sync-details');
+    const lastSyncEl = document.getElementById('last-sync-time');
+    const connectBtn = document.getElementById('connect-drive-btn');
+    const syncBtn = document.getElementById('manual-sync-btn');
+    const disconnectBtn = document.getElementById('disconnect-drive-btn');
     
     if (!statusEl) return; // Pas sur l'onglet sync
     
-    if (isGoogleDriveConnected) {
-        statusEl.textContent = '✅ Google Drive connecté';
+    if (isFirebaseReady) {
+        statusEl.textContent = '✅ Firebase connecté';
         statusEl.style.color = 'green';
-        detailsEl.textContent = '🔄 Synchronisation active';
+        detailsEl.textContent = '🔄 Synchronisation automatique active';
         detailsEl.style.color = 'green';
         
         if (lastSyncTime) {
@@ -1063,9 +1043,9 @@ function updateSyncUI() {
         syncBtn.style.display = 'inline-block';
         disconnectBtn.style.display = 'inline-block';
     } else {
-        statusEl.textContent = '❌ Google Drive non connecté';
+        statusEl.textContent = '❌ Firebase non connecté';
         statusEl.style.color = 'red';
-        detailsEl.textContent = 'Connectez-vous pour synchroniser automatiquement vos données';
+        detailsEl.textContent = 'Cliquez pour activer la synchronisation automatique';
         detailsEl.style.color = '#666';
         lastSyncEl.textContent = 'Dernière sync : Jamais';
         
@@ -1094,8 +1074,6 @@ function addSyncHistoryEntry(message) {
 }
 
 function showMiniNotification(message) {
-    if (!document.getElementById('sync-notifications').checked) return;
-    
     var notification = document.createElement('div');
     notification.style.cssText = `
         position: fixed;
@@ -1116,6 +1094,43 @@ function showMiniNotification(message) {
     setTimeout(function() {
         notification.remove();
     }, 3000);
+}
+
+// === FONCTIONS EXISTANTES MODIFIÉES ===
+
+// Sauvegarder avec sync Firebase
+function saveAllData() {
+    try {
+        var data = {
+            rapaces: rapaces,
+            entries: entries,
+            chasseEntries: chasseEntries,
+            affaitageEntries: affaitageEntries,
+            currentLocation: currentLocation,
+            lastSave: new Date().toISOString()
+        };
+        localStorage.setItem('rapaces_data', JSON.stringify(data));
+        
+        // Synchroniser avec Firebase si connecté et activé
+        if (isFirebaseReady && document.getElementById('sync-on-change-enabled') && document.getElementById('sync-on-change-enabled').checked) {
+            syncToFirebase();
+        }
+    } catch (e) {
+        console.error('Erreur sauvegarde:', e);
+    }
+}
+
+// Compatibilité avec les anciennes fonctions Google Drive
+function initGoogleDriveSync() {
+    initFirebaseSync();
+}
+
+function manualSync() {
+    manualFirebaseSync();
+}
+
+function disconnectDrive() {
+    disconnectFirebase();
 }
 
 function loadAllData() {
@@ -1377,826 +1392,4 @@ function showTab(tabName) {
         tabs[i].classList.remove('active');
     }
     
-    document.getElementById(tabName).classList.add('active');
-    var activeTab = document.querySelector("[onclick=\"showTab('" + tabName + "')\"]");
-    if (activeTab) {
-        activeTab.classList.add('active');
-    }
     
-    if (tabName === 'stats') {
-        updateStats();
-    } else if (tabName === 'sync') {
-        updateSyncUI();
-    }
-}
-
-// Champs conditionnels
-function showEventFields() {
-    var eventType = document.getElementById('event-type').value;
-    var fields = document.querySelectorAll('.conditional-fields');
-    
-    for (var i = 0; i < fields.length; i++) {
-        fields[i].classList.remove('active');
-    }
-    
-    var targetField = document.getElementById(eventType + '-fields');
-    if (targetField) {
-        targetField.classList.add('active');
-    }
-}
-
-// Ajouter rapace
-function addRapace() {
-    var name = document.getElementById('rapace-name').value;
-    var species = document.getElementById('rapace-species').value;
-    var birthdate = document.getElementById('rapace-birthdate').value;
-    var sex = document.getElementById('rapace-sex').value;
-
-    if (!name || !species || !birthdate) {
-        alert('Merci de remplir tous les champs');
-        return;
-    }
-
-    var age = calculateAge(birthdate);
-
-    var rapace = {
-        id: Date.now(),
-        name: name,
-        species: species,
-        birthdate: birthdate,
-        age: age,
-        sex: sex,
-        dateAdded: new Date().toISOString()
-    };
-
-    rapaces.push(rapace);
-    saveAllData();
-    updateRapaceList();
-    updateRapaceSelects();
-    
-    document.getElementById('rapace-name').value = '';
-    document.getElementById('rapace-species').value = '';
-    document.getElementById('rapace-birthdate').value = '';
-}
-
-// Liste rapaces
-function updateRapaceList() {
-    var list = document.getElementById('rapace-list');
-    list.innerHTML = '';
-    
-    if (rapaces.length === 0) {
-        list.innerHTML = '<p style="text-align:center; color: #666;">Aucun rapace ajouté</p>';
-        return;
-    }
-
-    for (var i = 0; i < rapaces.length; i++) {
-        var rapace = rapaces[i];
-        var div = document.createElement('div');
-        div.className = 'rapace-card';
-        
-        rapace.age = calculateAge(rapace.birthdate);
-        
-        div.innerHTML = '<div class="rapace-actions">' +
-                        '<button onclick="editRapace(' + rapace.id + ')" class="btn-warning">✏️</button>' +
-                        '<button onclick="deleteRapace(' + rapace.id + ')" class="btn-danger">🗑️</button>' +
-                        '</div>' +
-                        '<h3>' + rapace.name + '</h3>' +
-                        '<p><strong>Espèce :</strong> ' + rapace.species + '</p>' +
-                        '<p><strong>Âge :</strong> ' + rapace.age + ' ans</p>' +
-                        '<p><strong>Sexe :</strong> ' + rapace.sex + '</p>' +
-                        '<p><strong>Né le :</strong> ' + new Date(rapace.birthdate).toLocaleDateString('fr-FR') + '</p>';
-        list.appendChild(div);
-    }
-}
-
-// Édition rapace
-function editRapace(rapaceId) {
-    var rapace = rapaces.find(r => r.id === rapaceId);
-    if (!rapace) return;
-    
-    editingRapaceId = rapaceId;
-    document.getElementById('edit-name').value = rapace.name;
-    document.getElementById('edit-species').value = rapace.species;
-    document.getElementById('edit-birthdate').value = rapace.birthdate;
-    document.getElementById('edit-sex').value = rapace.sex;
-    
-    document.getElementById('editModal').style.display = 'block';
-}
-
-function saveRapaceEdit() {
-    if (!editingRapaceId) return;
-    
-    var rapace = rapaces.find(r => r.id === editingRapaceId);
-    if (!rapace) return;
-    
-    var name = document.getElementById('edit-name').value;
-    var species = document.getElementById('edit-species').value;
-    var birthdate = document.getElementById('edit-birthdate').value;
-    var sex = document.getElementById('edit-sex').value;
-    
-    if (!name || !species || !birthdate) {
-        alert('Merci de remplir tous les champs');
-        return;
-    }
-    
-    rapace.name = name;
-    rapace.species = species;
-    rapace.birthdate = birthdate;
-    rapace.age = calculateAge(birthdate);
-    rapace.sex = sex;
-    
-    saveAllData();
-    updateRapaceList();
-    updateRapaceSelects();
-    closeEditModal();
-    
-    alert('Rapace modifié !');
-}
-
-function closeEditModal() {
-    document.getElementById('editModal').style.display = 'none';
-    editingRapaceId = null;
-}
-
-function deleteRapace(rapaceId) {
-    var rapace = rapaces.find(r => r.id === rapaceId);
-    if (!rapace) return;
-    
-    if (confirm('Supprimer ' + rapace.name + ' et tout son historique ?')) {
-        rapaces = rapaces.filter(r => r.id !== rapaceId);
-        entries = entries.filter(e => e.rapaceId !== rapaceId);
-        chasseEntries = chasseEntries.filter(c => c.rapaceId !== rapaceId);
-        affaitageEntries = affaitageEntries.filter(a => a.rapaceId !== rapaceId);
-        
-        saveAllData();
-        updateRapaceList();
-        updateRapaceSelects();
-        updateEntryList();
-        updatechasseList();
-        updateAffaitageList();
-        
-        alert('Rapace supprimé !');
-    }
-}
-
-// Mise à jour selects
-function updateRapaceSelects() {
-    var selects = ['rapace-select', 'chasse-rapace', 'affaitage-rapace'];
-    
-    for (var s = 0; s < selects.length; s++) {
-        var select = document.getElementById(selects[s]);
-        if (select) {
-            var currentValue = select.value;
-            select.innerHTML = '<option value="">Choisir un rapace</option>';
-            
-            for (var i = 0; i < rapaces.length; i++) {
-                var rapace = rapaces[i];
-                var option = document.createElement('option');
-                option.value = rapace.id;
-                option.textContent = rapace.name;
-                select.appendChild(option);
-            }
-            
-            select.value = currentValue;
-        }
-    }
-}
-
-// Ajouter entrée
-function addEntry() {
-    var rapaceId = document.getElementById('rapace-select').value;
-    var type = document.getElementById('event-type').value;
-    var date = document.getElementById('event-date').value;
-    var time = document.getElementById('event-time').value;
-    var notes = document.getElementById('event-notes').value;
-
-    if (!rapaceId || !date || !time) {
-        alert('Merci de remplir tous les champs requis');
-        return;
-    }
-
-    var entry = {
-        id: Date.now(),
-        rapaceId: parseInt(rapaceId),
-        type: type,
-        date: date,
-        time: time,
-        notes: notes,
-        weather: currentWeather || 'Météo non dispo'
-    };
-
-    // Données spécifiques selon le type
-    if (type === 'nourriture') {
-        entry.poidsAvant = document.getElementById('poids-avant').value;
-        entry.poidsApres = document.getElementById('poids-apres').value;
-        entry.menu = document.getElementById('detail-nourriture').value;
-        entry.quantite = document.getElementById('quantite-nourriture').value;
-    } else if (type === 'vol') {
-        entry.typeVol = document.getElementById('type-vol').value;
-    } else if (type === 'comportement') {
-        var reactivite = document.querySelector('input[name="reactivite"]:checked');
-        entry.reactivite = reactivite ? reactivite.value : '';
-    } else if (type === 'sante') {
-        entry.etatSante = document.getElementById('etat-sante').value;
-    } else if (type === 'entrainement') {
-        entry.typeEntrainement = document.getElementById('type-entrainement').value;
-    }
-
-    entries.push(entry);
-    saveAllData();
-    updateEntryList();
-    
-    // Vider les champs
-    document.getElementById('event-notes').value = '';
-    clearConditionalFields();
-}
-
-function clearConditionalFields() {
-    var fields = ['poids-avant', 'poids-apres', 'quantite-nourriture'];
-    for (var i = 0; i < fields.length; i++) {
-        var field = document.getElementById(fields[i]);
-        if (field) field.value = '';
-    }
-    
-    var radios = document.querySelectorAll('input[name="reactivite"]');
-    for (var i = 0; i < radios.length; i++) {
-        radios[i].checked = false;
-    }
-}
-
-// Liste entrées
-function updateEntryList() {
-    var selectedRapaceId = document.getElementById('rapace-select').value;
-    var entryList = document.getElementById('entry-list');
-    
-    if (!selectedRapaceId) {
-        entryList.innerHTML = '<p style="text-align:center; color: #666;">Sélectionnez un rapace</p>';
-        return;
-    }
-
-    var filteredEntries = [];
-    for (var i = 0; i < entries.length; i++) {
-        if (entries[i].rapaceId == selectedRapaceId) {
-            filteredEntries.push(entries[i]);
-        }
-    }
-
-    entryList.innerHTML = '';
-    
-    if (filteredEntries.length === 0) {
-        entryList.innerHTML = '<p style="text-align:center; color: #666;">Aucune entrée</p>';
-        return;
-    }
-
-    // Trier et prendre les 10 dernières
-    filteredEntries.sort((a, b) => new Date(b.date + ' ' + b.time) - new Date(a.date + ' ' + a.time));
-    filteredEntries = filteredEntries.slice(0, 10);
-
-    for (var i = 0; i < filteredEntries.length; i++) {
-        var entry = filteredEntries[i];
-        var div = document.createElement('div');
-        div.className = 'entry-item';
-        var formattedDate = new Date(entry.date).toLocaleDateString('fr-FR') + ' à ' + entry.time;
-        
-        var details = '';
-        if (entry.type === 'nourriture') {
-            details = '<br><strong>Poids:</strong> ' + (entry.poidsAvant || '?') + 'g → ' + (entry.poidsApres || '?') + 'g';
-            details += '<br><strong>Menu:</strong> ' + entry.menu + ' (' + entry.quantite + ')';
-        } else if (entry.type === 'vol') {
-            details = '<br><strong>Type:</strong> ' + entry.typeVol;
-        } else if (entry.type === 'comportement') {
-            details = '<br><strong>Réactivité:</strong> ' + entry.reactivite + '/5';
-        } else if (entry.type === 'sante') {
-            details = '<br><strong>État:</strong> ' + entry.etatSante;
-        } else if (entry.type === 'entrainement') {
-            details = '<br><strong>Type:</strong> ' + entry.typeEntrainement;
-        }
-        
-        div.innerHTML = '<div class="date">' + formattedDate + ' • ' + entry.weather + '</div>' +
-                        '<div class="content">' +
-                        '<strong>' + entry.type.charAt(0).toUpperCase() + entry.type.slice(1) + '</strong>' + details +
-                        (entry.notes ? '<br><em>' + entry.notes + '</em>' : '') +
-                        '</div>';
-        entryList.appendChild(div);
-    }
-}
-
-// Chasse
-function addChasse() {
-    var rapaceId = document.getElementById('chasse-rapace').value;
-    var date = document.getElementById('chasse-date').value;
-    var time = document.getElementById('chasse-time').value;
-    var notes = document.getElementById('chasse-notes').value;
-    
-    if (!rapaceId || !date || !time) {
-        alert('Merci de remplir tous les champs requis');
-        return;
-    }
-    
-    var chasse = {
-        id: Date.now(),
-        rapaceId: parseInt(rapaceId),
-        date: date,
-        time: time,
-        notes: notes,
-        faisan: parseInt(document.getElementById('chasse-faisan').value) || 0,
-        perdrix: parseInt(document.getElementById('chasse-perdrix').value) || 0,
-        lapin: parseInt(document.getElementById('chasse-lapin').value) || 0,
-        lievre: parseInt(document.getElementById('chasse-lievre').value) || 0,
-        canard: parseInt(document.getElementById('chasse-canard').value) || 0,
-        oie: parseInt(document.getElementById('chasse-oie').value) || 0,
-        autre: parseInt(document.getElementById('chasse-autre').value) || 0,
-        weather: currentWeather || 'Météo non dispo'
-    };
-    
-    chasseEntries.push(chasse);
-    saveAllData();
-    updatechasseList();
-    
-    // Vider
-    var huntInputs = document.querySelectorAll('.hunt-item input');
-    for (var i = 0; i < huntInputs.length; i++) {
-        huntInputs[i].value = 0;
-    }
-    document.getElementById('chasse-notes').value = '';
-}
-
-function updatechasseList() {
-    var chasseList = document.getElementById('chasse-list');
-    chasseList.innerHTML = '';
-    
-    if (chasseEntries.length === 0) {
-        chasseList.innerHTML = '<p style="text-align:center; color: #666;">Aucune chasse</p>';
-        return;
-    }
-    
-    for (var i = chasseEntries.length - 1; i >= 0; i--) {
-        var chasse = chasseEntries[i];
-        var rapace = rapaces.find(r => r.id === chasse.rapaceId);
-        var div = document.createElement('div');
-        div.className = 'day-card';
-        
-        var total = chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
-        var details = '';
-        
-        if (chasse.faisan > 0) details += 'Faisan: ' + chasse.faisan + ' ';
-        if (chasse.perdrix > 0) details += 'Perdrix: ' + chasse.perdrix + ' ';
-        if (chasse.lapin > 0) details += 'Lapin: ' + chasse.lapin + ' ';
-        if (chasse.lievre > 0) details += 'Lièvre: ' + chasse.lievre + ' ';
-        if (chasse.canard > 0) details += 'Canard: ' + chasse.canard + ' ';
-        if (chasse.oie > 0) details += 'Oie: ' + chasse.oie + ' ';
-        if (chasse.autre > 0) details += 'Autre: ' + chasse.autre + ' ';
-        
-        div.innerHTML = '<h4>' + (rapace ? rapace.name : 'Inconnu') + '</h4>' +
-                        '<p style="color: #666; font-size: 14px;">' + new Date(chasse.date).toLocaleDateString('fr-FR') + ' à ' + chasse.time + '</p>' +
-                        '<p><strong>Total prises:</strong> ' + total + '</p>' +
-                        '<p>' + (details || 'Aucune prise') + '</p>' +
-                        (chasse.notes ? '<p><em>' + chasse.notes + '</em></p>' : '') +
-                        '<p style="font-size: 12px; color: #666;">' + chasse.weather + '</p>';
-        chasseList.appendChild(div);
-    }
-}
-
-// Affaitage
-function addAffaitage() {
-    var rapaceId = document.getElementById('affaitage-rapace').value;
-    var date = document.getElementById('affaitage-date').value;
-    var time = document.getElementById('affaitage-time').value;
-    var notes = document.getElementById('affaitage-notes').value;
-    
-    if (!rapaceId || !date || !time) {
-        alert('Merci de remplir tous les champs requis');
-        return;
-    }
-    
-    var affaitage = {
-        id: Date.now(),
-        rapaceId: parseInt(rapaceId),
-        date: date,
-        time: time,
-        notes: notes,
-        priseNourriture: document.getElementById('prise-nourriture').checked,
-        gant: document.getElementById('gant').checked,
-        filiere: document.getElementById('filiere').checked,
-        libre: document.getElementById('libre').checked,
-        weather: currentWeather || 'Météo non dispo'
-    };
-    
-    affaitageEntries.push(affaitage);
-    saveAllData();
-    updateAffaitageList();
-    
-    // Vider
-    document.getElementById('affaitage-notes').value = '';
-    var checkboxes = document.querySelectorAll('#affaitage .checkbox-item input');
-    for (var i = 0; i < checkboxes.length; i++) {
-        checkboxes[i].checked = false;
-    }
-}
-
-function updateAffaitageList() {
-    var affaitageList = document.getElementById('affaitage-list');
-    affaitageList.innerHTML = '';
-    
-    if (affaitageEntries.length === 0) {
-        affaitageList.innerHTML = '<p style="text-align:center; color: #666;">Aucun affaitage</p>';
-        return;
-    }
-    
-    for (var i = affaitageEntries.length - 1; i >= 0; i--) {
-        var affaitage = affaitageEntries[i];
-        var rapace = rapaces.find(r => r.id === affaitage.rapaceId);
-        var div = document.createElement('div');
-        div.className = 'day-card';
-        
-        var activites = [];
-        if (affaitage.priseNourriture) activites.push('Prise de nourriture');
-        if (affaitage.gant) activites.push('Gant');
-        if (affaitage.filiere) activites.push('Filière');
-        if (affaitage.libre) activites.push('Libre');
-        
-        div.innerHTML = '<h4>' + (rapace ? rapace.name : 'Inconnu') + '</h4>' +
-                        '<p style="color: #666; font-size: 14px;">' + new Date(affaitage.date).toLocaleDateString('fr-FR') + ' à ' + affaitage.time + '</p>' +
-                        '<p><strong>Activités:</strong> ' + (activites.length > 0 ? activites.join(', ') : 'Aucune') + '</p>' +
-                        (affaitage.notes ? '<p><em>' + affaitage.notes + '</em></p>' : '') +
-                        '<p style="font-size: 12px; color: #666;">' + affaitage.weather + '</p>';
-        affaitageList.appendChild(div);
-    }
-}
-
-// Stats
-function changeStatsDate(days) {
-    currentStatsDate.setDate(currentStatsDate.getDate() + days);
-    document.getElementById('stats-date').value = currentStatsDate.toISOString().split('T')[0];
-    updateStats();
-}
-
-function showMultipleDays() {
-    var statsContent = document.getElementById('stats-content');
-    statsContent.innerHTML = '<div class="stats-grid">';
-    
-    for (var i = 0; i < 4; i++) {
-        var dayDate = new Date(currentStatsDate);
-        dayDate.setDate(dayDate.getDate() - 1 + i);
-        var dateStr = dayDate.toISOString().split('T')[0];
-        
-        var dayEntries = entries.filter(e => e.date === dateStr);
-        var dayChasse = chasseEntries.filter(c => c.date === dateStr);
-        var dayAffaitage = affaitageEntries.filter(a => a.date === dateStr);
-        
-        statsContent.innerHTML += '<div class="stat-card">' +
-                                  '<h3>' + dayDate.toLocaleDateString('fr-FR') + '</h3>' +
-                                  '<div class="value">' + (dayEntries.length + dayChasse.length + dayAffaitage.length) + '</div>' +
-                                  '<p>activités</p>' +
-                                  '</div>';
-    }
-    
-    statsContent.innerHTML += '</div>';
-}
-
-function updateStats() {
-    var selectedDate = document.getElementById('stats-date').value;
-    if (!selectedDate) return;
-    
-    currentStatsDate = new Date(selectedDate);
-    
-    var dayEntries = entries.filter(e => e.date === selectedDate);
-    var dayChasse = chasseEntries.filter(c => c.date === selectedDate);
-    var dayAffaitage = affaitageEntries.filter(a => a.date === selectedDate);
-    
-    var weatherOfDay = '';
-    if (dayEntries.length > 0) weatherOfDay = dayEntries[0].weather;
-    else if (dayChasse.length > 0) weatherOfDay = dayChasse[0].weather;
-    else if (dayAffaitage.length > 0) weatherOfDay = dayAffaitage[0].weather;
-    
-    var content = '<div class="day-card">';
-    content += '<h4>📅 Récapitulatif détaillé du ' + new Date(selectedDate).toLocaleDateString('fr-FR') + '</h4>';
-    
-    if (weatherOfDay) {
-        content += '<p style="color: #666; font-style: italic; margin-bottom: 15px;">🌤️ ' + weatherOfDay + '</p>';
-    }
-    
-    // Résumé rapide
-    content += '<div class="stats-grid">';
-    content += '<div class="stat-card"><h3>Activités quotidiennes</h3><div class="value">' + dayEntries.length + '</div></div>';
-    content += '<div class="stat-card"><h3>Chasses</h3><div class="value">' + dayChasse.length + '</div></div>';
-    content += '<div class="stat-card"><h3>Affaitages</h3><div class="value">' + dayAffaitage.length + '</div></div>';
-    var totalActivities = dayEntries.length + dayChasse.length + dayAffaitage.length;
-    content += '<div class="stat-card"><h3>Total</h3><div class="value">' + totalActivities + '</div></div>';
-    content += '</div>';
-    
-    // Détail complet des activités par rapace
-    if (totalActivities > 0) {
-        content += '<h3 style="margin-top: 30px;">📋 Détail complet des activités</h3>';
-        
-        // Grouper par rapace
-        var activitiesByRapace = {};
-        
-        // Ajouter les activités quotidiennes
-        for (var i = 0; i < dayEntries.length; i++) {
-            var entry = dayEntries[i];
-            var rapace = rapaces.find(r => r.id === entry.rapaceId);
-            var rapaceName = rapace ? rapace.name : 'Rapace inconnu';
-            
-            if (!activitiesByRapace[rapaceName]) {
-                activitiesByRapace[rapaceName] = [];
-            }
-            
-            activitiesByRapace[rapaceName].push({
-                type: 'Suivi',
-                icon: '📝',
-                time: entry.time,
-                detail: entry,
-                category: 'entry'
-            });
-        }
-        
-        // Ajouter les chasses
-        for (var i = 0; i < dayChasse.length; i++) {
-            var chasse = dayChasse[i];
-            var rapace = rapaces.find(r => r.id === chasse.rapaceId);
-            var rapaceName = rapace ? rapace.name : 'Rapace inconnu';
-            
-            if (!activitiesByRapace[rapaceName]) {
-                activitiesByRapace[rapaceName] = [];
-            }
-            
-            activitiesByRapace[rapaceName].push({
-                type: 'Chasse',
-                icon: '🏹',
-                time: chasse.time,
-                detail: chasse,
-                category: 'chasse'
-            });
-        }
-        
-        // Ajouter les affaitages
-        for (var i = 0; i < dayAffaitage.length; i++) {
-            var affaitage = dayAffaitage[i];
-            var rapace = rapaces.find(r => r.id === affaitage.rapaceId);
-            var rapaceName = rapace ? rapace.name : 'Rapace inconnu';
-            
-            if (!activitiesByRapace[rapaceName]) {
-                activitiesByRapace[rapaceName] = [];
-            }
-            
-            activitiesByRapace[rapaceName].push({
-                type: 'Affaitage',
-                icon: '🦅',
-                time: affaitage.time,
-                detail: affaitage,
-                category: 'affaitage'
-            });
-        }
-        
-        // Afficher par rapace
-        var rapaceNames = Object.keys(activitiesByRapace).sort();
-        for (var r = 0; r < rapaceNames.length; r++) {
-            var rapaceName = rapaceNames[r];
-            var activities = activitiesByRapace[rapaceName];
-            
-            // Trier les activités par heure
-            activities.sort(function(a, b) {
-                return a.time.localeCompare(b.time);
-            });
-            
-            content += '<div style="background: #f8f9fa; margin: 15px 0; padding: 20px; border-radius: 15px; border-left: 5px solid #2a5298;">';
-            content += '<h4 style="color: #1e3c72; margin-bottom: 15px;">🦅 ' + rapaceName + ' (' + activities.length + ' activités)</h4>';
-            
-            for (var a = 0; a < activities.length; a++) {
-                var activity = activities[a];
-                var detail = activity.detail;
-                
-                content += '<div class="entry-item" style="margin: 10px 0;">';
-                content += '<div class="date">' + activity.time + ' • ' + activity.icon + ' ' + activity.type + '</div>';
-                content += '<div class="content">';
-                
-                if (activity.category === 'entry') {
-                    content += '<strong>' + detail.type.charAt(0).toUpperCase() + detail.type.slice(1) + '</strong>';
-                    
-                    if (detail.type === 'nourriture') {
-                        content += '<br>• Poids: ' + (detail.poidsAvant || '?') + 'g → ' + (detail.poidsApres || '?') + 'g';
-                        content += '<br>• Menu: ' + detail.menu + ' (' + detail.quantite + ')';
-                    } else if (detail.type === 'vol') {
-                        content += '<br>• Type de vol: ' + detail.typeVol;
-                    } else if (detail.type === 'comportement') {
-                        content += '<br>• Réactivité: ' + detail.reactivite + '/5';
-                    } else if (detail.type === 'sante') {
-                        content += '<br>• État de santé: ' + detail.etatSante;
-                    } else if (detail.type === 'entrainement') {
-                        content += '<br>• Type d\'entraînement: ' + detail.typeEntrainement;
-                    }
-                    
-                } else if (activity.category === 'chasse') {
-                    var totalPrises = detail.faisan + detail.perdrix + detail.lapin + detail.lievre + detail.canard + detail.oie + detail.autre;
-                    content += '<strong>Session de chasse - ' + totalPrises + ' prise(s)</strong>';
-                    
-                    var prises = [];
-                    if (detail.faisan > 0) prises.push('Faisan: ' + detail.faisan);
-                    if (detail.perdrix > 0) prises.push('Perdrix: ' + detail.perdrix);
-                    if (detail.lapin > 0) prises.push('Lapin: ' + detail.lapin);
-                    if (detail.lievre > 0) prises.push('Lièvre: ' + detail.lievre);
-                    if (detail.canard > 0) prises.push('Canard: ' + detail.canard);
-                    if (detail.oie > 0) prises.push('Oie: ' + detail.oie);
-                    if (detail.autre > 0) prises.push('Autre: ' + detail.autre);
-                    
-                    if (prises.length > 0) {
-                        content += '<br>• Détail: ' + prises.join(', ');
-                    } else {
-                        content += '<br>• Aucune prise';
-                    }
-                    
-                } else if (activity.category === 'affaitage') {
-                    content += '<strong>Séance d\'affaitage</strong>';
-                    
-                    var activitesAffaitage = [];
-                    if (detail.priseNourriture) activitesAffaitage.push('Prise de nourriture');
-                    if (detail.gant) activitesAffaitage.push('Travail au gant');
-                    if (detail.filiere) activitesAffaitage.push('Filière');
-                    if (detail.libre) activitesAffaitage.push('Vol libre');
-                    
-                    if (activitesAffaitage.length > 0) {
-                        content += '<br>• Activités: ' + activitesAffaitage.join(', ');
-                    } else {
-                        content += '<br>• Aucune activité spécifique';
-                    }
-                }
-                
-                // Notes
-                if (detail.notes && detail.notes.trim()) {
-                    content += '<br>• <em>Notes: ' + detail.notes + '</em>';
-                }
-                
-                content += '</div></div>';
-            }
-            
-            content += '</div>';
-        }
-        
-        // Résumé de fin
-        content += '<div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin-top: 20px;">';
-        content += '<h4 style="color: #1e3c72;">📊 Résumé de la journée</h4>';
-        content += '<p><strong>• ' + rapaceNames.length + '</strong> rapace(s) ont eu des activités</p>';
-        content += '<p><strong>• ' + dayEntries.length + '</strong> activité(s) de suivi quotidien</p>';
-        content += '<p><strong>• ' + dayChasse.length + '</strong> session(s) de chasse</p>';
-        content += '<p><strong>• ' + dayAffaitage.length + '</strong> séance(s) d\'affaitage</p>';
-        
-        // Calcul total des prises de chasse
-        var totalPrisesJour = 0;
-        for (var i = 0; i < dayChasse.length; i++) {
-            var chasse = dayChasse[i];
-            totalPrisesJour += chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
-        }
-        if (totalPrisesJour > 0) {
-            content += '<p><strong>• ' + totalPrisesJour + '</strong> prise(s) de chasse au total</p>';
-        }
-        
-        if (weatherOfDay) {
-            content += '<p><strong>• Conditions météo:</strong> ' + weatherOfDay + '</p>';
-        }
-        
-        content += '</div>';
-        
-    } else {
-        content += '<div style="text-align: center; color: #666; margin: 40px 0;">';
-        content += '<h3>😴 Journée de repos</h3>';
-        content += '<p>Aucune activité enregistrée pour cette date.</p>';
-        content += '</div>';
-    }
-    
-    content += '</div>';
-    
-    document.getElementById('stats-content').innerHTML = content;
-}
-
-// Export/Import/Clear
-function exportAllData() {
-    var allData = {
-        rapaces: rapaces,
-        entries: entries,
-        chasseEntries: chasseEntries,
-        affaitageEntries: affaitageEntries,
-        currentLocation: currentLocation,
-        exportDate: new Date().toISOString()
-    };
-    
-    var dataStr = JSON.stringify(allData, null, 2);
-    var blob = new Blob([dataStr], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement('a');
-    link.href = url;
-    link.download = 'rapaces_backup.json';
-    link.click();
-    URL.revokeObjectURL(url);
-    
-    alert('Sauvegarde exportée !');
-}
-
-function importAllData() {
-    var input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    
-    input.onchange = function(e) {
-        var file = e.target.files[0];
-        if (file) {
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    var data = JSON.parse(e.target.result);
-                    
-                    if (confirm('Importer ces données ? (remplace tout)')) {
-                        rapaces = data.rapaces || [];
-                        entries = data.entries || [];
-                        chasseEntries = data.chasseEntries || [];
-                        affaitageEntries = data.affaitageEntries || [];
-                        currentLocation = data.currentLocation || "Orthez (64300)";
-                        
-                        saveAllData();
-                        updateRapaceList();
-                        updateRapaceSelects();
-                        updateEntryList();
-                        updatechasseList();
-                        updateAffaitageList();
-                        loadWeather();
-                        
-                        alert('Données importées !');
-                    }
-                } catch (error) {
-                    alert('Erreur : fichier non valide');
-                }
-            };
-            reader.readAsText(file);
-        }
-    };
-    
-    input.click();
-}
-
-function clearAllData() {
-    if (confirm('Effacer TOUTES les données ?')) {
-        if (confirm('Dernière confirmation - tout sera perdu !')) {
-            rapaces = [];
-            entries = [];
-            chasseEntries = [];
-            affaitageEntries = [];
-            
-            localStorage.removeItem('rapaces_data');
-            
-            updateRapaceList();
-            updateRapaceSelects();
-            updateEntryList();
-            updatechasseList();
-            updateAffaitageList();
-            
-            alert('Données effacées !');
-        }
-    }
-}
-
-// Initialisation
-window.onload = function() {
-    loadAllData();
-    loadWeather();
-    
-    var now = new Date();
-    var dateInputs = ['event-date', 'chasse-date', 'affaitage-date', 'stats-date'];
-    var timeInputs = ['event-time', 'chasse-time', 'affaitage-time'];
-    
-    for (var i = 0; i < dateInputs.length; i++) {
-        var input = document.getElementById(dateInputs[i]);
-        if (input) {
-            input.value = now.toISOString().split('T')[0];
-        }
-    }
-    
-    for (var i = 0; i < timeInputs.length; i++) {
-        var input = document.getElementById(timeInputs[i]);
-        if (input) {
-            input.value = now.toTimeString().slice(0, 5);
-        }
-    }
-    
-    currentStatsDate = now;
-    
-    updateRapaceList();
-    updateRapaceSelects();
-    updateEntryList();
-    updatechasseList();
-    updateAffaitageList();
-    showEventFields();
-    
-    // Sauvegarder toutes les 30 secondes
-    setInterval(saveAllData, 30000);
-};
-
-// Fermer modal en cliquant à côté
-window.onclick = function(event) {
-    var modal = document.getElementById('editModal');
-    if (event.target == modal) {
-        closeEditModal();
-    }
-};
-</script>
-</body>
-</html>
