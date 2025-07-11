@@ -706,13 +706,17 @@
                 <button onclick="initFirebaseSync()" id="connect-drive-btn">🔗 Activer Firebase</button>
                 <button onclick="manualFirebaseSync()" id="manual-sync-btn" style="display: none;">⚡ Synchroniser maintenant</button>
                 <button onclick="forceUploadToFirebase()" id="force-upload-btn" style="display: none;" class="btn-warning">🚀 Forcer upload local → Firebase</button>
+                <button onclick="forceDownloadFromFirebase()" id="force-download-btn" style="display: none;" class="btn-warning">📥 Forcer download Firebase → local</button>
+                <button onclick="refreshAllData()" id="refresh-btn" style="display: none;">🔄 Actualiser tout</button>
                 <button onclick="disconnectFirebase()" id="disconnect-drive-btn" style="display: none;" class="btn-secondary">❌ Déconnecter</button>
             </div>
             <p style="font-size: 14px; color: #666;">
                 La synchronisation Firebase permet de garder vos données à jour sur tous vos appareils automatiquement.
             </p>
             <div style="font-size: 12px; color: #999; margin-top: 10px;">
-                <strong>🚀 Forcer upload :</strong> Utilisez ce bouton si Firebase a écrasé vos données récentes avec une ancienne version.
+                <strong>🚀 Forcer upload :</strong> Envoie vos données locales vers Firebase (écrase Firebase)<br>
+                <strong>📥 Forcer download :</strong> Télécharge les données Firebase vers cet appareil (écrase local)<br>
+                <strong>🔄 Actualiser tout :</strong> Recharge complètement les données
             </div>
         </div>
 
@@ -721,7 +725,7 @@
             <div class="checkbox-group">
                 <div class="checkbox-item">
                     <input type="checkbox" id="auto-sync-enabled" checked>
-                    <label for="auto-sync-enabled">Synchronisation automatique (toutes les 2 minutes)</label>
+                    <label for="auto-sync-enabled">Synchronisation automatique (toutes les 30 secondes)</label>
                 </div>
                 <div class="checkbox-item">
                     <input type="checkbox" id="sync-on-change-enabled" checked>
@@ -1042,6 +1046,78 @@ function forceUploadToFirebase() {
     syncToFirebase();
 }
 
+// Fonction pour forcer le téléchargement depuis Firebase
+function forceDownloadFromFirebase() {
+    if (!isFirebaseReady) {
+        addSyncHistoryEntry('❌ Firebase non connecté');
+        return;
+    }
+    
+    addSyncHistoryEntry('📥 Forçage du téléchargement depuis Firebase...');
+    
+    db.collection('users').doc(firebaseUserId).get()
+        .then((doc) => {
+            if (doc.exists) {
+                const firebaseData = doc.data();
+                
+                addSyncHistoryEntry('🔄 Écrasement des données locales...');
+                
+                // Forcer l'utilisation des données Firebase
+                rapaces = firebaseData.rapaces || [];
+                entries = firebaseData.entries || [];
+                chasseEntries = firebaseData.chasseEntries || [];
+                affaitageEntries = firebaseData.affaitageEntries || [];
+                currentLocation = firebaseData.currentLocation || currentLocation;
+                
+                // Mettre à jour l'interface
+                updateRapaceList();
+                updateRapaceSelects();
+                updateEntryList();
+                updatechasseList();
+                updateAffaitageList();
+                
+                // Sauvegarder localement
+                saveAllDataWithoutSync();
+                
+                addSyncHistoryEntry('✅ Données forcées depuis Firebase');
+                showMiniNotification('📥 Données forcées depuis le cloud');
+                
+                // Actualiser la page pour être sûr
+                setTimeout(() => {
+                    if (confirm('Données mises à jour ! Voulez-vous actualiser la page pour être sûr ?')) {
+                        location.reload();
+                    }
+                }, 1000);
+                
+            } else {
+                addSyncHistoryEntry('❌ Aucune donnée sur Firebase');
+            }
+        })
+        .catch((error) => {
+            console.error('Erreur téléchargement forcé:', error);
+            addSyncHistoryEntry('❌ Erreur téléchargement: ' + error.message);
+        });
+}
+
+// Fonction pour rafraîchir complètement les données
+function refreshAllData() {
+    addSyncHistoryEntry('🔄 Rafraîchissement complet...');
+    
+    // Recharger depuis Firebase
+    if (isFirebaseReady) {
+        forceDownloadFromFirebase();
+    } else {
+        // Recharger depuis le localStorage
+        loadAllData();
+        updateRapaceList();
+        updateRapaceSelects();
+        updateEntryList();
+        updatechasseList();
+        updateAffaitageList();
+        addSyncHistoryEntry('🔄 Données rechargées depuis le stockage local');
+    }
+}
+
 // Sauvegarder sans synchronisation automatique (pour éviter les boucles)
 function saveAllDataWithoutSync() {
     try {
@@ -1080,11 +1156,11 @@ function startAutoSync() {
     
     if (isFirebaseReady && document.getElementById('auto-sync-enabled') && document.getElementById('auto-sync-enabled').checked) {
         syncIntervalId = setInterval(function() {
+            addSyncHistoryEntry('🔄 Sync auto - vérification...');
             loadFromFirebase(); // Vérifier les mises à jour
-            syncToFirebase(); // Sauvegarder
-        }, 2 * 60 * 1000); // Toutes les 2 minutes
+        }, 30 * 1000); // Toutes les 30 secondes au lieu de 2 minutes
         
-        addSyncHistoryEntry('🔄 Synchronisation automatique activée (2 min)');
+        addSyncHistoryEntry('🔄 Synchronisation automatique activée (30 sec)');
     }
 }
 
@@ -1104,6 +1180,8 @@ function updateSyncUI() {
     const connectBtn = document.getElementById('connect-drive-btn');
     const syncBtn = document.getElementById('manual-sync-btn');
     const forceUploadBtn = document.getElementById('force-upload-btn');
+    const forceDownloadBtn = document.getElementById('force-download-btn');
+    const refreshBtn = document.getElementById('refresh-btn');
     const disconnectBtn = document.getElementById('disconnect-drive-btn');
     
     if (!statusEl) return; // Pas sur l'onglet sync
@@ -1121,6 +1199,8 @@ function updateSyncUI() {
         connectBtn.style.display = 'none';
         syncBtn.style.display = 'inline-block';
         if (forceUploadBtn) forceUploadBtn.style.display = 'inline-block';
+        if (forceDownloadBtn) forceDownloadBtn.style.display = 'inline-block';
+        if (refreshBtn) refreshBtn.style.display = 'inline-block';
         disconnectBtn.style.display = 'inline-block';
     } else {
         statusEl.textContent = '❌ Firebase non connecté';
@@ -1132,6 +1212,8 @@ function updateSyncUI() {
         connectBtn.style.display = 'inline-block';
         syncBtn.style.display = 'none';
         if (forceUploadBtn) forceUploadBtn.style.display = 'none';
+        if (forceDownloadBtn) forceDownloadBtn.style.display = 'none';
+        if (refreshBtn) refreshBtn.style.display = 'none';
         disconnectBtn.style.display = 'none';
     }
 }
