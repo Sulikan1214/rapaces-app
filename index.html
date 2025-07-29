@@ -998,44 +998,6 @@
         <h2 style="margin-top: 30px;">🏆 Statistiques par Leurre</h2>
         <div id="leurre-stats"></div>
     </div>
-        <h2>📁 Documents PDF</h2>
-        
-        <div class="form-group">
-            <label for="document-title">Titre du document :</label>
-            <input type="text" id="document-title" placeholder="Ex: Certificat sanitaire, Permis de détention...">
-        </div>
-        
-        <div class="form-group">
-            <label for="document-category">Catégorie :</label>
-            <select id="document-category">
-                <option value="certificat">Certificat</option>
-                <option value="permis">Permis</option>
-                <option value="sanitaire">Document sanitaire</option>
-                <option value="assurance">Assurance</option>
-                <option value="legal">Document légal</option>
-                <option value="autre">Autre</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label for="document-file">Fichier PDF :</label>
-            <div class="file-input-wrapper">
-                <input type="file" id="document-file" accept=".pdf" onchange="previewDocument(this)">
-                <label for="document-file" class="file-input-label">📄 Choisir un PDF</label>
-            </div>
-            <div id="document-preview-container"></div>
-        </div>
-        
-        <div class="form-group">
-            <label for="document-notes">Notes :</label>
-            <textarea id="document-notes" rows="3" placeholder="Notes sur le document..."></textarea>
-        </div>
-        
-        <button onclick="addDocument()">Ajouter le Document</button>
-        
-        <h2 style="margin-top: 40px;">Mes Documents</h2>
-        <div id="document-list"></div>
-    </div>
 
     <div id="documents" class="tab-content">
         <h2>📁 Documents PDF</h2>
@@ -1235,18 +1197,20 @@
 </div>
 
 <script>
-// Variables globales
+// Variables globales (sans documents)
 var rapaces = [];
 var entries = [];
 var chasseEntries = [];
 var affaitageEntries = [];
-var documents = []; // Nouvelle variable pour les documents
-var leurres = []; // Nouvelle variable pour les leurres
-var leurreSessions = []; // Nouvelle variable pour les sessions de leurre
+var leurres = [];
+var leurreSessions = [];
 var currentWeather = null;
 var currentLocation = "Orthez (64300)";
 var currentStatsDate = new Date();
 var editingRapaceId = null;
+
+// Variables et fonctions spécifiques à l'onglet documents
+var documents = [];
 
 // Variables pour la synchronisation
 var syncIntervalId = null;
@@ -1269,54 +1233,26 @@ let db = null;
 let isFirebaseReady = false;
 let firebaseUserId = null;
 
-// === NOUVELLES FONCTIONS POUR PHOTOS ET DOCUMENTS ===
+// === FONCTIONS POUR L'ONGLET DOCUMENTS (ISOLÉES) ===
 
-function previewRapacePhoto(input) {
-    const container = document.getElementById('photo-preview-container');
-    container.innerHTML = '';
-    
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        
-        // Vérifier la taille du fichier (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            alert('La photo est trop volumineuse. Taille maximale : 5MB');
-            input.value = '';
-            return;
+// Charger les documents depuis le localStorage
+function loadDocuments() {
+    try {
+        var savedData = localStorage.getItem('rapaces_documents');
+        if (savedData) {
+            documents = JSON.parse(savedData);
         }
-        
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.className = 'photo-preview';
-            container.appendChild(img);
-        };
-        reader.readAsDataURL(file);
+    } catch (e) {
+        console.error('Erreur chargement documents:', e);
     }
 }
 
-function previewEditPhoto(input) {
-    const container = document.getElementById('edit-photo-preview-container');
-    container.innerHTML = '';
-    
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        
-        if (file.size > 5 * 1024 * 1024) {
-            alert('La photo est trop volumineuse. Taille maximale : 5MB');
-            input.value = '';
-            return;
-        }
-        
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.className = 'photo-preview';
-            container.appendChild(img);
-        };
-        reader.readAsDataURL(file);
+// Sauvegarder les documents
+function saveDocuments() {
+    try {
+        localStorage.setItem('rapaces_documents', JSON.stringify(documents));
+    } catch (e) {
+        console.error('Erreur sauvegarde documents:', e);
     }
 }
 
@@ -1376,7 +1312,7 @@ function addDocument() {
         };
         
         documents.push(document);
-        saveAllData();
+        saveDocuments();
         updateDocumentList();
         
         // Nettoyer le formulaire
@@ -1455,12 +1391,61 @@ function deleteDocument(id) {
     
     if (confirm(`Êtes-vous sûr de vouloir supprimer le document "${doc.title}" ?`)) {
         documents = documents.filter(d => d.id !== id);
-        saveAllData();
+        saveDocuments();
         updateDocumentList();
     }
 }
 
-// === FONCTIONS POUR L'ONGLET LEURRE ===
+// === FONCTIONS POUR PHOTOS ET LEURRES ===
+
+function previewRapacePhoto(input) {
+    const container = document.getElementById('photo-preview-container');
+    container.innerHTML = '';
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Vérifier la taille du fichier (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('La photo est trop volumineuse. Taille maximale : 5MB');
+            input.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'photo-preview';
+            container.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function previewEditPhoto(input) {
+    const container = document.getElementById('edit-photo-preview-container');
+    container.innerHTML = '';
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        if (file.size > 5 * 1024 * 1024) {
+            alert('La photo est trop volumineuse. Taille maximale : 5MB');
+            input.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'photo-preview';
+            container.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    }
+}
 
 function previewLeurrePhoto(input) {
     const container = document.getElementById('leurre-photo-preview');
@@ -1485,6 +1470,8 @@ function previewLeurrePhoto(input) {
         reader.readAsDataURL(file);
     }
 }
+
+// === FONCTIONS POUR L'ONGLET LEURRE ===
 
 function addLeurre() {
     const nom = document.getElementById('leurre-nom').value.trim();
@@ -1892,6 +1879,8 @@ function deleteLeurre(id) {
     }
 }
 
+// === FONCTIONS FIREBASE ET SYNCHRONISATION ===
+
 // Charger Firebase
 function loadFirebase() {
     addSyncHistoryEntry('🔄 Chargement de Firebase...');
@@ -1956,7 +1945,7 @@ function initFirebase() {
     }
 }
 
-// Sauvegarder vers Firebase
+// Sauvegarder vers Firebase (sans documents)
 function syncToFirebase() {
     if (!isFirebaseReady || !db) {
         console.log('Firebase pas prêt pour la sync');
@@ -1968,7 +1957,8 @@ function syncToFirebase() {
         entries: entries,
         chasseEntries: chasseEntries,
         affaitageEntries: affaitageEntries,
-        documents: documents, // Ajout des documents
+        leurres: leurres,
+        leurreSessions: leurreSessions,
         currentLocation: currentLocation,
         lastSync: firebase.firestore.FieldValue.serverTimestamp(),
         deviceInfo: {
@@ -2033,7 +2023,8 @@ function loadFromFirebase() {
                     entries = firebaseData.entries || [];
                     chasseEntries = firebaseData.chasseEntries || [];
                     affaitageEntries = firebaseData.affaitageEntries || [];
-                    documents = firebaseData.documents || []; // Charger les documents
+                    leurres = firebaseData.leurres || [];
+                    leurreSessions = firebaseData.leurreSessions || [];
                     currentLocation = firebaseData.currentLocation || currentLocation;
                     
                     // Mettre à jour l'interface
@@ -2042,8 +2033,11 @@ function loadFromFirebase() {
                     updateEntryList();
                     updatechasseList();
                     updateAffaitageList();
-                    updateAffaitageSessionsHistory(); // Ajouter cette ligne
-                    updateDocumentList(); // Mettre à jour la liste des documents
+                    updateAffaitageSessionsHistory();
+                    updateLeurreInventory();
+                    updateLeurreSelects();
+                    updateLeurreSessionsList();
+                    updateLeurreStats();
                     
                     // Sauvegarder localement
                     saveAllDataWithoutSync();
@@ -2115,7 +2109,8 @@ function forceDownloadFromFirebase() {
                 entries = firebaseData.entries || [];
                 chasseEntries = firebaseData.chasseEntries || [];
                 affaitageEntries = firebaseData.affaitageEntries || [];
-                documents = firebaseData.documents || []; // Charger les documents
+                leurres = firebaseData.leurres || [];
+                leurreSessions = firebaseData.leurreSessions || [];
                 currentLocation = firebaseData.currentLocation || currentLocation;
                 
                 // Mettre à jour l'interface
@@ -2124,8 +2119,11 @@ function forceDownloadFromFirebase() {
                 updateEntryList();
                 updatechasseList();
                 updateAffaitageList();
-                updateAffaitageSessionsHistory(); // Ajouter cette ligne
-                updateDocumentList(); // Mettre à jour la liste des documents
+                updateAffaitageSessionsHistory();
+                updateLeurreInventory();
+                updateLeurreSelects();
+                updateLeurreSessionsList();
+                updateLeurreStats();
                 
                 // Sauvegarder localement
                 saveAllDataWithoutSync();
@@ -2165,8 +2163,11 @@ function refreshAllData() {
         updateEntryList();
         updatechasseList();
         updateAffaitageList();
-        updateAffaitageSessionsHistory(); // Ajouter cette ligne
-        updateDocumentList(); // Mettre à jour la liste des documents
+        updateAffaitageSessionsHistory();
+        updateLeurreInventory();
+        updateLeurreSelects();
+        updateLeurreSessionsList();
+        updateLeurreStats();
         addSyncHistoryEntry('🔄 Données rechargées depuis le stockage local');
     }
 }
@@ -2179,9 +2180,8 @@ function saveAllDataWithoutSync() {
             entries: entries,
             chasseEntries: chasseEntries,
             affaitageEntries: affaitageEntries,
-            documents: documents, // Ajouter les documents
-            leurres: leurres, // Ajouter les leurres
-            leurreSessions: leurreSessions, // Ajouter les sessions de leurre
+            leurres: leurres,
+            leurreSessions: leurreSessions,
             currentLocation: currentLocation,
             lastSave: new Date().toISOString()
         };
@@ -2214,7 +2214,7 @@ function startAutoSync() {
         syncIntervalId = setInterval(function() {
             addSyncHistoryEntry('🔄 Sync auto - vérification...');
             loadFromFirebase(); // Vérifier les mises à jour
-        }, 30 * 1000); // Toutes les 30 secondes au lieu de 2 minutes
+        }, 30 * 1000); // Toutes les 30 secondes
         
         addSyncHistoryEntry('🔄 Synchronisation automatique activée (30 sec)');
     }
@@ -2315,9 +2315,9 @@ function showMiniNotification(message) {
     }, 3000);
 }
 
-// === FONCTIONS EXISTANTES MODIFIÉES ===
+// === FONCTIONS PRINCIPALES DE L'APPLICATION ===
 
-// Sauvegarder avec sync Firebase
+// Sauvegarder avec sync Firebase (sans documents)
 function saveAllData() {
     try {
         var data = {
@@ -2325,7 +2325,8 @@ function saveAllData() {
             entries: entries,
             chasseEntries: chasseEntries,
             affaitageEntries: affaitageEntries,
-            documents: documents, // Ajouter les documents
+            leurres: leurres,
+            leurreSessions: leurreSessions,
             currentLocation: currentLocation,
             lastSave: new Date().toISOString()
         };
@@ -2362,9 +2363,8 @@ function loadAllData() {
             entries = data.entries || [];
             chasseEntries = data.chasseEntries || [];
             affaitageEntries = data.affaitageEntries || [];
-            documents = data.documents || []; // Charger les documents
-            leurres = data.leurres || []; // Charger les leurres
-            leurreSessions = data.leurreSessions || []; // Charger les sessions de leurre
+            leurres = data.leurres || [];
+            leurreSessions = data.leurreSessions || [];
             currentLocation = data.currentLocation || "Orthez (64300)";
             return true;
         }
@@ -2374,15 +2374,14 @@ function loadAllData() {
     return false;
 }
 
-// Météo avec OpenWeatherMap API
+// === FONCTIONS MÉTÉO ===
+
 function loadWeather() {
-    // Afficher un message de chargement
     var weatherElement = document.getElementById('weather-info');
     if (weatherElement) {
         weatherElement.innerHTML = '🌦️ <small>Chargement météo...</small>';
     }
     
-    // Essayer d'abord de géolocaliser automatiquement
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             function(position) {
@@ -2390,19 +2389,16 @@ function loadWeather() {
             },
             function(error) {
                 console.log("Géolocalisation échouée:", error.message);
-                // Si géolocalisation échoue, utiliser la ville configurée
                 loadWeatherByCity(currentLocation);
             },
-            { timeout: 10000, maximumAge: 300000 } // 10 sec timeout, 5 min cache
+            { timeout: 10000, maximumAge: 300000 }
         );
     } else {
-        // Pas de géolocalisation, utiliser la ville
         loadWeatherByCity(currentLocation);
     }
 }
 
 function loadWeatherByCoords(lat, lon) {
-    // Votre clé API OpenWeatherMap
     var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
     var url = "https://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&appid=" + apiKey + "&units=metric&lang=fr";
     
@@ -2413,22 +2409,17 @@ function loadWeatherByCoords(lat, lon) {
         })
         .then(data => {
             processWeatherData(data);
-            // Mettre à jour la localisation détectée
             currentLocation = data.name + " (" + data.sys.country + ")";
             saveAllData();
         })
         .catch(error => {
             console.log("Erreur API coords:", error);
-            // Essayer avec la ville configurée en fallback
             loadWeatherByCity(currentLocation);
         });
 }
 
 function loadWeatherByCity(cityName) {
-    // Extraire juste le nom de ville (enlever le code postal)
     var city = cityName.split("(")[0].trim();
-    
-    // Votre clé API OpenWeatherMap
     var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
     var url = "https://api.openweathermap.org/data/2.5/weather?q=" + encodeURIComponent(city) + ",FR&appid=" + apiKey + "&units=metric&lang=fr";
     
@@ -2442,36 +2433,28 @@ function loadWeatherByCity(cityName) {
         })
         .catch(error => {
             console.log("Erreur API ville:", error);
-            // Si l'API ne marche pas, utiliser la météo simulée
-            console.log("Passage en mode météo simulée");
             loadWeatherFallback();
         });
 }
 
 function processWeatherData(data) {
-    // Extraire les données de l'API OpenWeatherMap
     var temp = Math.round(data.main.temp);
     var description = data.weather[0].description;
     var humidity = data.main.humidity;
-    var windSpeed = Math.round(data.wind.speed * 3.6); // Convertir m/s en km/h
+    var windSpeed = Math.round(data.wind.speed * 3.6);
     var precipitation = 0;
     
-    // Calculer les précipitations si disponibles
     if (data.rain && data.rain["1h"]) {
-        precipitation = Math.round((data.rain["1h"] / 1) * 100); // Approximation
+        precipitation = Math.round((data.rain["1h"] / 1) * 100);
     } else if (data.snow && data.snow["1h"]) {
         precipitation = Math.round((data.snow["1h"] / 1) * 100);
     } else if (data.clouds && data.clouds.all > 80) {
-        precipitation = Math.floor(data.clouds.all / 4); // Estimation basée sur la couverture nuageuse
+        precipitation = Math.floor(data.clouds.all / 4);
     }
     
-    // Limiter les précipitations à 100%
     precipitation = Math.min(precipitation, 100);
-    
-    // Choisir l'icône selon les conditions
     var icon = getWeatherIcon(data.weather[0].main, data.weather[0].id);
     
-    // Formatter la météo complète
     var detailedWeather = temp + "°C\n" +
                          "Précipitations : " + precipitation + "%\n" +
                          "Humidité : " + humidity + "%\n" +
@@ -2493,7 +2476,6 @@ function processWeatherData(data) {
 }
 
 function getWeatherIcon(main, id) {
-    // Mapper les conditions OpenWeatherMap vers des emojis
     switch (main) {
         case "Clear":
             return "☀️";
@@ -2518,37 +2500,34 @@ function getWeatherIcon(main, id) {
 }
 
 function loadWeatherFallback() {
-    console.log("Mode météo simulée activé");
-    
-    // Météo simulée si l'API ne fonctionne pas
     var now = new Date();
     var month = now.getMonth();
     var hour = now.getHours();
     
     var conditions;
     
-    if (month >= 2 && month <= 4) { // Printemps
+    if (month >= 2 && month <= 4) {
         conditions = [
             {desc: "ensoleillé", temp: 15 + Math.floor(Math.random() * 8), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 20), humidity: 45 + Math.floor(Math.random() * 20)},
             {desc: "partiellement nuageux", temp: 12 + Math.floor(Math.random() * 7), icon: "⛅", precipitation: 10 + Math.floor(Math.random() * 30), humidity: 50 + Math.floor(Math.random() * 25)},
             {desc: "nuageux", temp: 10 + Math.floor(Math.random() * 6), icon: "☁️", precipitation: 20 + Math.floor(Math.random() * 40), humidity: 60 + Math.floor(Math.random() * 25)},
             {desc: "pluvieux", temp: 8 + Math.floor(Math.random() * 8), icon: "🌧️", precipitation: 70 + Math.floor(Math.random() * 30), humidity: 75 + Math.floor(Math.random() * 20)}
         ];
-    } else if (month >= 5 && month <= 7) { // Été
+    } else if (month >= 5 && month <= 7) {
         conditions = [
             {desc: "ensoleillé", temp: 20 + Math.floor(Math.random() * 10), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 10), humidity: 35 + Math.floor(Math.random() * 20)},
             {desc: "très ensoleillé", temp: 25 + Math.floor(Math.random() * 8), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 5), humidity: 30 + Math.floor(Math.random() * 15)},
             {desc: "chaud", temp: 28 + Math.floor(Math.random() * 7), icon: "🌡️", precipitation: 0 + Math.floor(Math.random() * 15), humidity: 25 + Math.floor(Math.random() * 20)},
             {desc: "orageux", temp: 22 + Math.floor(Math.random() * 6), icon: "⛈️", precipitation: 60 + Math.floor(Math.random() * 40), humidity: 70 + Math.floor(Math.random() * 25)}
         ];
-    } else if (month >= 8 && month <= 10) { // Automne
+    } else if (month >= 8 && month <= 10) {
         conditions = [
             {desc: "doux", temp: 12 + Math.floor(Math.random() * 10), icon: "🍂", precipitation: 10 + Math.floor(Math.random() * 30), humidity: 50 + Math.floor(Math.random() * 25)},
             {desc: "nuageux", temp: 8 + Math.floor(Math.random() * 8), icon: "☁️", precipitation: 25 + Math.floor(Math.random() * 45), humidity: 65 + Math.floor(Math.random() * 25)},
             {desc: "pluvieux", temp: 6 + Math.floor(Math.random() * 10), icon: "🌧️", precipitation: 70 + Math.floor(Math.random() * 30), humidity: 80 + Math.floor(Math.random() * 15)},
             {desc: "brumeux", temp: 5 + Math.floor(Math.random() * 8), icon: "🌫️", precipitation: 30 + Math.floor(Math.random() * 40), humidity: 85 + Math.floor(Math.random() * 10)}
         ];
-    } else { // Hiver
+    } else {
         conditions = [
             {desc: "frais", temp: 2 + Math.floor(Math.random() * 8), icon: "🌤️", precipitation: 15 + Math.floor(Math.random() * 35), humidity: 65 + Math.floor(Math.random() * 25)},
             {desc: "nuageux", temp: 0 + Math.floor(Math.random() * 10), icon: "☁️", precipitation: 30 + Math.floor(Math.random() * 50), humidity: 70 + Math.floor(Math.random() * 25)},
@@ -2559,13 +2538,11 @@ function loadWeatherFallback() {
     
     var weather = conditions[Math.floor(Math.random() * conditions.length)];
     
-    // Ajuster selon l'heure
     if (hour < 8 || hour > 20) {
         weather.temp = Math.max(weather.temp - 3, -5);
         weather.humidity = Math.min(weather.humidity + 10, 95);
     }
     
-    // Générer vitesse du vent
     var windSpeed = 3 + Math.floor(Math.random() * 15);
     
     var detailedWeather = weather.temp + "°C\n" +
@@ -2587,7 +2564,6 @@ function loadWeatherFallback() {
                                   "</span>";
     }
     
-    // Afficher une notification discrète
     setTimeout(function() {
         if (document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
             showMiniNotification('⚠️ Météo en mode hors ligne');
@@ -2597,11 +2573,8 @@ function loadWeatherFallback() {
 
 function refreshWeather() {
     console.log("🔄 Tentative de rechargement de la météo...");
-    
-    // Réessayer d'abord avec l'API
     loadWeather();
     
-    // Si après 10 secondes il n'y a pas de changement, forcer le fallback
     setTimeout(function() {
         var weatherElement = document.getElementById('weather-info');
         if (weatherElement && weatherElement.innerHTML.includes('Chargement')) {
@@ -2618,18 +2591,17 @@ function changeLocation() {
         saveAllData();
         console.log("📍 Nouvelle localisation:", currentLocation);
         
-        // Afficher un message de chargement
         var weatherElement = document.getElementById('weather-info');
         if (weatherElement) {
             weatherElement.innerHTML = '🌦️ <small>Chargement météo pour ' + currentLocation + '...</small>';
         }
         
-        // Charger la météo pour la nouvelle localisation
         loadWeatherByCity(currentLocation);
     }
 }
 
-// Calcul de l'âge
+// === FONCTIONS POUR LA GESTION DES RAPACES ===
+
 function calculateAge(birthDate) {
     var today = new Date();
     var birth = new Date(birthDate);
@@ -2643,7 +2615,6 @@ function calculateAge(birthDate) {
     return age;
 }
 
-// Onglets
 function showTab(tabName) {
     var contents = document.querySelectorAll('.tab-content');
     for (var i = 0; i < contents.length; i++) {
@@ -2657,7 +2628,6 @@ function showTab(tabName) {
     
     document.getElementById(tabName).classList.add('active');
     
-    var activeTab = null;
     var tabButtons = document.querySelectorAll('.tab');
     for (var i = 0; i < tabButtons.length; i++) {
         if (tabButtons[i].onclick && tabButtons[i].onclick.toString().includes(tabName)) {
@@ -2666,7 +2636,6 @@ function showTab(tabName) {
         }
     }
     
-    // Mettre à jour les listes selon l'onglet
     if (tabName === 'gestion') {
         updateRapaceList();
     } else if (tabName === 'suivi') {
@@ -2678,7 +2647,7 @@ function showTab(tabName) {
     } else if (tabName === 'affaitage') {
         updateRapaceSelects();
         updateAffaitageList();
-        updateAffaitageSessionsHistory(); // Ajouter cette ligne
+        updateAffaitageSessionsHistory();
     } else if (tabName === 'leurre') {
         updateRapaceSelects();
         updateLeurreInventory();
@@ -2686,7 +2655,8 @@ function showTab(tabName) {
         updateLeurreSessionsList();
         updateLeurreStats();
     } else if (tabName === 'documents') {
-        updateDocumentList(); // Mettre à jour la liste des documents
+        loadDocuments();
+        updateDocumentList();
     } else if (tabName === 'stats') {
         document.getElementById('stats-date').value = currentStatsDate.toISOString().split('T')[0];
         updateStats();
@@ -2695,17 +2665,16 @@ function showTab(tabName) {
     }
 }
 
-// Gestion des rapaces (MODIFIÉE pour inclure bague et photo)
 function addRapace() {
     var name = document.getElementById('rapace-name').value.trim();
     var species = document.getElementById('rapace-species').value.trim();
-    var bague = document.getElementById('rapace-bague').value.trim(); // Nouveau champ
+    var bague = document.getElementById('rapace-bague').value.trim();
     var birthdate = document.getElementById('rapace-birthdate').value;
     var sex = document.getElementById('rapace-sex').value;
     var poidsPlein = document.getElementById('rapace-poids-plein').value;
     var poidsVol = document.getElementById('rapace-poids-vol').value;
     var poidsChasse = document.getElementById('rapace-poids-chasse').value;
-    var photoInput = document.getElementById('rapace-photo'); // Nouveau champ
+    var photoInput = document.getElementById('rapace-photo');
     
     if (!name || !species) {
         alert('Veuillez remplir le nom et l\'espèce du rapace.');
@@ -2716,7 +2685,7 @@ function addRapace() {
         id: Date.now(),
         name: name,
         species: species,
-        bague: bague, // Nouveau champ
+        bague: bague,
         birthdate: birthdate,
         sex: sex,
         poidsPlein: poidsPlein ? parseInt(poidsPlein) : null,
@@ -2725,11 +2694,10 @@ function addRapace() {
         dateAdded: new Date().toISOString()
     };
     
-    // Ajouter la photo si présente
     if (photoInput.files && photoInput.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            rapace.photo = e.target.result; // base64
+            rapace.photo = e.target.result;
             finalizeAddRapace(rapace);
         };
         reader.readAsDataURL(photoInput.files[0]);
@@ -2744,17 +2712,16 @@ function finalizeAddRapace(rapace) {
     updateRapaceList();
     updateRapaceSelects();
     
-    // Nettoyer le formulaire
     document.getElementById('rapace-name').value = '';
     document.getElementById('rapace-species').value = '';
-    document.getElementById('rapace-bague').value = ''; // Nouveau champ
+    document.getElementById('rapace-bague').value = '';
     document.getElementById('rapace-birthdate').value = '';
     document.getElementById('rapace-sex').value = 'forme';
     document.getElementById('rapace-poids-plein').value = '';
     document.getElementById('rapace-poids-vol').value = '';
     document.getElementById('rapace-poids-chasse').value = '';
-    document.getElementById('rapace-photo').value = ''; // Nouveau champ
-    document.getElementById('photo-preview-container').innerHTML = ''; // Nouveau champ
+    document.getElementById('rapace-photo').value = '';
+    document.getElementById('photo-preview-container').innerHTML = '';
 }
 
 function updateRapaceList() {
@@ -2777,7 +2744,6 @@ function updateRapaceList() {
         html += '<button onclick="deleteRapace(' + rapace.id + ')" class="btn-danger">🗑️</button>';
         html += '</div>';
         
-        // Ajouter la photo si présente
         if (rapace.photo) {
             html += '<img src="' + rapace.photo + '" class="rapace-photo" alt="Photo de ' + rapace.name + '">';
         }
@@ -2785,7 +2751,6 @@ function updateRapaceList() {
         html += '<h3>' + rapace.name + '</h3>';
         html += '<p><strong>Espèce:</strong> ' + rapace.species + '</p>';
         
-        // Ajouter le numéro de bague si présent
         if (rapace.bague) {
             html += '<p><strong>Bague:</strong> ' + rapace.bague + '</p>';
         }
@@ -2796,7 +2761,6 @@ function updateRapaceList() {
             html += '<p><strong>Naissance:</strong> ' + new Date(rapace.birthdate).toLocaleDateString('fr-FR') + '</p>';
         }
         
-        // Afficher les poids de référence
         if (rapace.poidsPlein || rapace.poidsVol || rapace.poidsChasse) {
             html += '<div style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 5px;">';
             html += '<strong>Poids de référence:</strong><br>';
@@ -2829,7 +2793,6 @@ function updateRapaceSelects() {
         select.innerHTML = html;
         select.value = currentValue;
         
-        // Mettre à jour l'affichage du poids de chasse si on est sur l'onglet chasse
         if (select.id === 'chasse-rapace') {
             updatePoidsChaseReference();
         }
@@ -2868,14 +2831,13 @@ function editRapace(id) {
     
     document.getElementById('edit-name').value = rapace.name;
     document.getElementById('edit-species').value = rapace.species;
-    document.getElementById('edit-bague').value = rapace.bague || ''; // Nouveau champ
+    document.getElementById('edit-bague').value = rapace.bague || '';
     document.getElementById('edit-birthdate').value = rapace.birthdate || '';
     document.getElementById('edit-sex').value = rapace.sex;
     document.getElementById('edit-poids-plein').value = rapace.poidsPlein || '';
     document.getElementById('edit-poids-vol').value = rapace.poidsVol || '';
     document.getElementById('edit-poids-chasse').value = rapace.poidsChasse || '';
     
-    // Afficher la photo existante si présente
     var photoContainer = document.getElementById('edit-photo-preview-container');
     photoContainer.innerHTML = '';
     if (rapace.photo) {
@@ -2909,7 +2871,7 @@ function saveRapaceEdit() {
     
     rapace.name = name;
     rapace.species = species;
-    rapace.bague = document.getElementById('edit-bague').value.trim(); // Nouveau champ
+    rapace.bague = document.getElementById('edit-bague').value.trim();
     rapace.birthdate = document.getElementById('edit-birthdate').value;
     rapace.sex = document.getElementById('edit-sex').value;
     
@@ -2921,12 +2883,11 @@ function saveRapaceEdit() {
     rapace.poidsVol = poidsVol ? parseInt(poidsVol) : null;
     rapace.poidsChasse = poidsChasse ? parseInt(poidsChasse) : null;
     
-    // Gérer la nouvelle photo si présente
     var photoInput = document.getElementById('edit-photo');
     if (photoInput.files && photoInput.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            rapace.photo = e.target.result; // base64
+            rapace.photo = e.target.result;
             finalizeSaveRapaceEdit();
         };
         reader.readAsDataURL(photoInput.files[0]);
@@ -2949,7 +2910,6 @@ function deleteRapace(id) {
     if (confirm('Êtes-vous sûr de vouloir supprimer ' + rapace.name + ' ?')) {
         rapaces = rapaces.filter(r => r.id !== id);
         
-        // Supprimer aussi toutes les entrées liées
         entries = entries.filter(e => e.rapaceId !== id);
         chasseEntries = chasseEntries.filter(c => c.rapaceId !== id);
         affaitageEntries = affaitageEntries.filter(a => a.rapaceId !== id);
@@ -2960,11 +2920,12 @@ function deleteRapace(id) {
         updateEntryList();
         updatechasseList();
         updateAffaitageList();
-        updateAffaitageSessionsHistory(); // Ajouter cette ligne
+        updateAffaitageSessionsHistory();
     }
 }
 
-// Suivi quotidien
+// === FONCTIONS POUR LE SUIVI QUOTIDIEN ===
+
 function calculateWeightDifference() {
     var poidsAvant = parseFloat(document.getElementById('poids-avant').value) || 0;
     var poidsApres = parseFloat(document.getElementById('poids-apres').value) || 0;
@@ -2991,12 +2952,10 @@ function showEventFields() {
     var eventType = document.getElementById('event-type').value;
     var fields = ['nourriture-fields', 'vol-fields', 'comportement-fields', 'sante-fields', 'entrainement-fields'];
     
-    // Cacher tous les champs
     for (var i = 0; i < fields.length; i++) {
         document.getElementById(fields[i]).classList.remove('active');
     }
     
-    // Afficher les champs correspondants
     var targetField = eventType + '-fields';
     var targetElement = document.getElementById(targetField);
     if (targetElement) {
@@ -3035,7 +2994,6 @@ function addEntry() {
         timestamp: new Date().toISOString()
     };
     
-    // Ajouter les champs spécifiques selon le type
     if (eventType === 'nourriture') {
         entry.poidsAvant = document.getElementById('poids-avant').value;
         entry.poidsApres = document.getElementById('poids-apres').value;
@@ -3056,7 +3014,6 @@ function addEntry() {
     saveAllData();
     updateEntryList();
     
-    // Nettoyer le formulaire
     clearEntryForm();
 }
 
@@ -3067,7 +3024,6 @@ function clearEntryForm() {
     document.getElementById('difference-poids').value = '';
     document.getElementById('quantite-nourriture').value = '';
     
-    // Décocher les boutons radio
     var radios = document.querySelectorAll('input[name="reactivite"]');
     for (var i = 0; i < radios.length; i++) {
         radios[i].checked = false;
@@ -3087,7 +3043,6 @@ function updateEntryList() {
         filteredEntries = entries;
     }
     
-    // Trier par date/heure décroissante
     filteredEntries.sort((a, b) => {
         var dateTimeA = new Date(a.date + 'T' + a.time);
         var dateTimeB = new Date(b.date + 'T' + b.time);
@@ -3155,7 +3110,8 @@ function getEventTypeLabel(type) {
     }
 }
 
-// Chasse
+// === FONCTIONS POUR LA CHASSE ===
+
 function addChasse() {
     var rapaceId = document.getElementById('chasse-rapace').value;
     var date = document.getElementById('chasse-date').value;
@@ -3198,7 +3154,6 @@ function addChasse() {
     saveAllData();
     updatechasseList();
     
-    // Nettoyer le formulaire
     document.getElementById('chasse-notes').value = '';
     document.getElementById('chasse-poids-jour').value = '';
     var huntInputs = document.querySelectorAll('.hunt-item input[type="number"]');
@@ -3235,11 +3190,9 @@ function updatechasseList() {
         html += ' - ' + rapaceName + ' (Total: ' + total + ' prises)</div>';
         html += '<div class="content">';
         
-        // Afficher le poids du jour si renseigné
         if (chasse.poidsJour) {
             html += '<strong>Poids du jour:</strong> ' + chasse.poidsJour + 'g';
             
-            // Comparer avec le poids de chasse de référence si disponible
             if (rapace && rapace.poidsChasse) {
                 var diffPoids = chasse.poidsJour - rapace.poidsChasse;
                 var diffColor = diffPoids >= 0 ? '#28a745' : '#dc3545';
@@ -3273,7 +3226,8 @@ function updatechasseList() {
     list.innerHTML = html;
 }
 
-// Affaitage
+// === FONCTIONS POUR L'AFFAITAGE ===
+
 function addAffaitage() {
     var rapaceId = document.getElementById('affaitage-rapace').value;
     var date = document.getElementById('affaitage-date').value;
@@ -3293,7 +3247,6 @@ function addAffaitage() {
         time = new Date().toTimeString().split(' ')[0].substring(0, 5);
     }
     
-    // Calculer le jour de session
     var jourSession = calculateSessionDay(parseInt(rapaceId), date);
     
     var affaitage = {
@@ -3318,7 +3271,6 @@ function addAffaitage() {
     saveAllData();
     updateAffaitageList();
     
-    // Nettoyer le formulaire
     document.getElementById('affaitage-notes').value = '';
     document.getElementById('prise-nourriture').checked = false;
     document.getElementById('gant').checked = false;
@@ -3330,51 +3282,41 @@ function addAffaitage() {
 }
 
 function calculateSessionDay(rapaceId, currentDate) {
-    // Récupérer toutes les entrées d'affaitage pour ce rapace, triées par date
     var rapaceAffaitages = affaitageEntries
         .filter(a => a.rapaceId === rapaceId)
         .sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
     
-    // Si c'est la première entrée d'affaitage pour ce rapace
     if (rapaceAffaitages.length === 0) {
         return 1;
     }
     
-    // Trouver la dernière session active
     var sessionStartDate = null;
     var sessionNumber = 1;
     
-    // Parcourir toutes les entrées pour identifier les sessions
     for (var i = 0; i < rapaceAffaitages.length; i++) {
         var entry = rapaceAffaitages[i];
         
         if (entry.repriseAffaitage) {
-            // Nouvelle session démarre
             sessionStartDate = entry.date;
             sessionNumber++;
         } else if (sessionStartDate === null) {
-            // Première session (pas de reprise trouvée)
             sessionStartDate = entry.date;
         }
         
         if (entry.finAffaitage && i === rapaceAffaitages.length - 1) {
-            // Dernière entrée est une fin, nouvelle session va commencer
             sessionStartDate = currentDate;
             sessionNumber++;
         }
     }
     
-    // Si aucun point de départ trouvé, utiliser la première entrée
     if (sessionStartDate === null && rapaceAffaitages.length > 0) {
         sessionStartDate = rapaceAffaitages[0].date;
     }
     
-    // Si toujours pas de date de début, c'est le premier jour
     if (sessionStartDate === null) {
         sessionStartDate = currentDate;
     }
     
-    // Calculer la différence en jours
     var startDate = new Date(sessionStartDate);
     var current = new Date(currentDate);
     var timeDiff = current.getTime() - startDate.getTime();
@@ -3402,12 +3344,10 @@ function getSessionsHistory(rapaceId) {
     for (var i = 0; i < rapaceAffaitages.length; i++) {
         var entry = rapaceAffaitages[i];
         
-        // Si c'est une fin de session
         if (entry.finAffaitage) {
             currentSession.dateFin = entry.date;
             currentSession.statut = 'terminee';
             
-            // Calculer la durée
             var debut = new Date(currentSession.dateDebut);
             var fin = new Date(currentSession.dateFin);
             var diffTime = fin.getTime() - debut.getTime();
@@ -3416,9 +3356,7 @@ function getSessionsHistory(rapaceId) {
             sessions.push({...currentSession});
         }
         
-        // Si c'est une reprise (nouveau début de session)
         if (entry.repriseAffaitage) {
-            // Si la session précédente n'était pas fermée, la fermer
             if (currentSession.statut === 'en_cours' && sessions.length === 0) {
                 currentSession.dateFin = entry.date;
                 currentSession.statut = 'terminee';
@@ -3431,7 +3369,6 @@ function getSessionsHistory(rapaceId) {
                 sessions.push({...currentSession});
             }
             
-            // Démarrer une nouvelle session
             currentSession = {
                 numero: sessions.length + 1,
                 dateDebut: entry.date,
@@ -3442,14 +3379,12 @@ function getSessionsHistory(rapaceId) {
         }
     }
     
-    // Si la session actuelle est en cours, calculer sa durée jusqu'à maintenant
     if (currentSession.statut === 'en_cours') {
         var debut = new Date(currentSession.dateDebut);
         var maintenant = new Date();
         var diffTime = maintenant.getTime() - debut.getTime();
         currentSession.duree = Math.floor(diffTime / (1000 * 3600 * 24)) + 1;
         
-        // Ajouter seulement si ce n'est pas déjà ajouté
         var alreadyAdded = sessions.some(s => s.numero === currentSession.numero && s.statut === 'en_cours');
         if (!alreadyAdded) {
             sessions.push(currentSession);
@@ -3540,12 +3475,10 @@ function updateAffaitageList() {
             html += '<div class="date">' + new Date(affaitage.date + 'T' + affaitage.time).toLocaleDateString('fr-FR') + ' à ' + affaitage.time;
             html += ' - ' + rapaceName;
             
-            // Afficher le jour de session avec style
             if (affaitage.jourSession) {
                 html += '<span class="session-status session-jour">Jour ' + affaitage.jourSession + '</span>';
             }
             
-            // Afficher le statut de session avec styles
             if (affaitage.finAffaitage) {
                 html += '<span class="session-status session-fin">🔚 FIN</span>';
             }
@@ -3577,11 +3510,11 @@ function updateAffaitageList() {
         list.innerHTML = html;
     }
     
-    // Mettre à jour l'historique des sessions
     updateAffaitageSessionsHistory();
 }
 
-// Statistiques
+// === FONCTIONS POUR LES STATISTIQUES ===
+
 function showBirdStats() {
     var html = '<h3>📊 Statistiques complètes par oiseau</h3>';
     
@@ -3600,21 +3533,18 @@ function showBirdStats() {
         html += '<div class="day-card" style="margin: 20px 0; background: linear-gradient(135deg, #f8f9fa 0%, #e3f2fd 100%);">';
         html += '<h4 style="color: #1e3c72; margin-bottom: 20px; font-size: 1.8em; text-align: center; border-bottom: 2px solid #2a5298; padding-bottom: 10px;">';
         
-        // Ajouter la photo si disponible
         if (rapace.photo) {
             html += '<img src="' + rapace.photo + '" style="width: 60px; height: 60px; object-fit: cover; border-radius: 50%; margin-right: 15px; vertical-align: middle;">';
         }
         
         html += '🦅 ' + rapace.name + ' (' + rapace.species + ')';
         
-        // Ajouter le numéro de bague si disponible
         if (rapace.bague) {
             html += '<br><small style="font-size: 0.7em; color: #666;">Bague: ' + rapace.bague + '</small>';
         }
         
         html += '</h4>';
         
-        // === SECTION RESUME ===
         var totalEntries = birdEntries.length;
         var totalChasses = birdChasses.length;
         var totalAffaitages = birdAffaitages.length;
@@ -3652,8 +3582,7 @@ function showBirdStats() {
         html += '</div>';
         html += '</div>';
         
-        // Continuer avec le reste des statistiques détaillées...
-        html += '</div>'; // Fin carte rapace
+        html += '</div>';
     }
     
     document.getElementById('stats-content').innerHTML = html;
@@ -3680,7 +3609,6 @@ function generateWeightGraph(rapace) {
     var html = '<div class="day-card" style="margin: 15px 0;">';
     html += '<h4 style="color: #1e3c72; margin-bottom: 15px;">📈 ' + rapace.name + '</h4>';
     
-    // Récupérer les données de poids des 7 derniers jours
     var weightData = [];
     var today = new Date();
     
@@ -3698,7 +3626,6 @@ function generateWeightGraph(rapace) {
         
         var weight = null;
         if (dayEntries.length > 0) {
-            // Prendre la dernière pesée du jour
             var lastEntry = dayEntries[dayEntries.length - 1];
             weight = parseFloat(lastEntry.poidsApres);
         }
@@ -3709,7 +3636,6 @@ function generateWeightGraph(rapace) {
         });
     }
     
-    // Créer un graphique simple avec ASCII
     html += '<div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace; font-size: 12px; overflow-x: auto;">';
     
     var hasData = weightData.some(d => d.weight !== null);
@@ -3717,15 +3643,13 @@ function generateWeightGraph(rapace) {
     if (!hasData) {
         html += '<p style="color: #666; font-style: italic; font-family: Arial;">Aucune donnée de poids disponible sur les 7 derniers jours.</p>';
     } else {
-        // Trouver min et max pour l'échelle
         var weights = weightData.filter(d => d.weight !== null).map(d => d.weight);
         var minWeight = Math.min(...weights);
         var maxWeight = Math.max(...weights);
         var range = maxWeight - minWeight;
         
-        if (range === 0) range = 1; // Éviter division par zéro
+        if (range === 0) range = 1;
         
-        // Générer le graphique
         var graphHeight = 10;
         
         for (var y = graphHeight; y >= 0; y--) {
@@ -3749,21 +3673,18 @@ function generateWeightGraph(rapace) {
             html += line + '<br>';
         }
         
-        // Axe des x
         html += '      |';
         for (var x = 0; x < weightData.length; x++) {
             html += '───';
         }
         html += '<br>';
         
-        // Labels des dates
         html += '       ';
         for (var x = 0; x < weightData.length; x++) {
             html += weightData[x].date.substring(0, 3).padEnd(3);
         }
         html += '<br><br>';
         
-        // Légende avec poids de référence
         if (rapace.poidsChasse || rapace.poidsVol || rapace.poidsPlein) {
             html += '<div style="font-family: Arial; font-size: 12px; margin-top: 10px;">';
             html += '<strong>Poids de référence:</strong> ';
@@ -3773,7 +3694,6 @@ function generateWeightGraph(rapace) {
             html += '</div>';
         }
         
-        // Données numériques
         html += '<div style="font-family: Arial; font-size: 11px; margin-top: 10px; color: #666;">';
         html += '<strong>Données:</strong> ';
         for (var x = 0; x < weightData.length; x++) {
@@ -3829,7 +3749,6 @@ function generateStatsForDateHTML(date) {
     if (dayEntries.length === 0 && dayChasses.length === 0 && dayAffaitages.length === 0) {
         html += '<p style="color: #666; font-style: italic;">Aucune activité enregistrée ce jour.</p>';
     } else {
-        // Statistiques globales
         html += '<div class="stats-grid">';
         
         html += '<div class="stat-card">';
@@ -3847,7 +3766,6 @@ function generateStatsForDateHTML(date) {
         html += '<div class="value">' + dayAffaitages.length + '</div>';
         html += '</div>';
         
-        // Prises totales
         var totalPrises = 0;
         for (var i = 0; i < dayChasses.length; i++) {
             var chasse = dayChasses[i];
@@ -3860,27 +3778,25 @@ function generateStatsForDateHTML(date) {
         html += '</div>';
         
         html += '</div>';
-        
-        // Plus de détails si nécessaire...
     }
     
     html += '</div>';
     return html;
 }
 
-// Import/Export
+// === FONCTIONS D'IMPORT/EXPORT ===
+
 function exportAllData() {
     var data = {
         rapaces: rapaces,
         entries: entries,
         chasseEntries: chasseEntries,
         affaitageEntries: affaitageEntries,
-        documents: documents, // Inclure les documents
-        leurres: leurres, // Inclure les leurres
-        leurreSessions: leurreSessions, // Inclure les sessions de leurre
+        leurres: leurres,
+        leurreSessions: leurreSessions,
         currentLocation: currentLocation,
         exportDate: new Date().toISOString(),
-        version: "1.4" // Incrémenter la version pour l'onglet leurre
+        version: "1.4"
     };
     
     var dataStr = JSON.stringify(data, null, 2);
@@ -3911,9 +3827,8 @@ function importAllData() {
                         entries = data.entries || [];
                         chasseEntries = data.chasseEntries || [];
                         affaitageEntries = data.affaitageEntries || [];
-                        documents = data.documents || []; // Importer les documents
-                        leurres = data.leurres || []; // Importer les leurres
-                        leurreSessions = data.leurreSessions || []; // Importer les sessions de leurre
+                        leurres = data.leurres || [];
+                        leurreSessions = data.leurreSessions || [];
                         currentLocation = data.currentLocation || currentLocation;
                         
                         saveAllData();
@@ -3922,8 +3837,7 @@ function importAllData() {
                         updateEntryList();
                         updatechasseList();
                         updateAffaitageList();
-                        updateAffaitageSessionsHistory(); // Ajouter cette ligne
-                        updateDocumentList(); // Mettre à jour la liste des documents
+                        updateAffaitageSessionsHistory();
                         
                         alert('Données importées avec succès !');
                     }
@@ -3946,9 +3860,8 @@ function clearAllData() {
             entries = [];
             chasseEntries = [];
             affaitageEntries = [];
-            documents = []; // Vider les documents
-            leurres = []; // Vider les leurres
-            leurreSessions = []; // Vider les sessions de leurre
+            leurres = [];
+            leurreSessions = [];
             
             localStorage.removeItem('rapaces_data');
             
@@ -3957,29 +3870,27 @@ function clearAllData() {
             updateEntryList();
             updatechasseList();
             updateAffaitageList();
-            updateAffaitageSessionsHistory(); // Ajouter cette ligne
-            updateDocumentList(); // Mettre à jour la liste des documents
+            updateAffaitageSessionsHistory();
             
             alert('Toutes les données ont été supprimées.');
         }
     }
 }
 
-// Initialisation de l'application
+// === INITIALISATION DE L'APPLICATION ===
+
 function initApp() {
-    // Charger les données sauvegardées
     loadAllData();
+    loadDocuments();
     
-    // Mettre à jour l'interface
     updateRapaceList();
     updateRapaceSelects();
     updateEntryList();
     updatechasseList();
     updateAffaitageList();
-    updateAffaitageSessionsHistory(); // Ajouter cette ligne
-    updateDocumentList(); // Mettre à jour la liste des documents
+    updateAffaitageSessionsHistory();
+    updateDocumentList();
     
-    // Initialiser les dates
     var today = new Date().toISOString().split('T')[0];
     var now = new Date().toTimeString().split(' ')[0].substring(0, 5);
     
@@ -3993,25 +3904,17 @@ function initApp() {
     document.getElementById('session-time').value = now;
     document.getElementById('stats-date').value = today;
     
-    // Charger la météo
     loadWeather();
-    
-    // Afficher les champs de nourriture par défaut
     showEventFields();
-    
-    // Mettre à jour les statistiques
     updateStats();
     
-    // Initialiser la synchronisation si nécessaire
     setTimeout(function() {
         if (localStorage.getItem('firebaseUserId')) {
-            // L'utilisateur a déjà utilisé Firebase, essayer de se reconnecter
             addSyncHistoryEntry('🔄 Tentative de reconnexion automatique...');
             loadFirebase();
         }
     }, 2000);
     
-    // Initialiser l'affichage du poids de chasse dans la section chasse
     updatePoidsChaseReference();
 }
 
@@ -4030,4 +3933,3 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 </body>
 </html>
-        
