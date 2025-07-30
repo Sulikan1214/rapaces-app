@@ -768,6 +768,11 @@
         </div>
         
         <div class="form-group">
+            <label for="affaitage-poids">Poids (g) :</label>
+            <input type="number" id="affaitage-poids" min="0" placeholder="Ex: 1050">
+        </div>
+        
+        <div class="form-group">
             <label>Activités :</label>
             <div class="checkbox-group">
                 <div class="checkbox-item">
@@ -1980,84 +1985,6 @@ function syncToFirebase() {
             }
         })
         .catch((error) => {
-            console.error('Erreur sauvegarde Firebase:', error);
-            addSyncHistoryEntry('❌ Erreur sauvegarde: ' + error.message);
-        });
-}
-
-// Charger depuis Firebase
-function loadFromFirebase() {
-    if (!isFirebaseReady || !db) {
-        console.log('Firebase pas prêt pour le chargement');
-        return;
-    }
-    
-    db.collection('users').doc(firebaseUserId).get()
-        .then((doc) => {
-            if (doc.exists) {
-                const firebaseData = doc.data();
-                
-                // Comparer les timestamps pour voir quelle version est plus récente
-                const localData = localStorage.getItem('rapaces_data');
-                let localTimestamp = 0;
-                
-                if (localData) {
-                    try {
-                        const parsed = JSON.parse(localData);
-                        localTimestamp = parsed.lastSave ? new Date(parsed.lastSave).getTime() : 0;
-                    } catch (e) {
-                        localTimestamp = 0;
-                    }
-                }
-                
-                const firebaseTimestamp = firebaseData.lastSync ? firebaseData.lastSync.toDate().getTime() : 0;
-                
-                // Afficher les timestamps pour debug
-                addSyncHistoryEntry('🕐 Local: ' + new Date(localTimestamp).toLocaleString('fr-FR'));
-                addSyncHistoryEntry('🕐 Firebase: ' + new Date(firebaseTimestamp).toLocaleString('fr-FR'));
-                
-                // Ajouter une marge de sécurité de 30 secondes pour éviter les écrasements
-                if (firebaseTimestamp > (localTimestamp + 30000)) {
-                    // Firebase plus récent de plus de 30 secondes, utiliser ces données
-                    rapaces = firebaseData.rapaces || [];
-                    entries = firebaseData.entries || [];
-                    chasseEntries = firebaseData.chasseEntries || [];
-                    affaitageEntries = firebaseData.affaitageEntries || [];
-                    leurres = firebaseData.leurres || [];
-                    leurreSessions = firebaseData.leurreSessions || [];
-                    currentLocation = firebaseData.currentLocation || currentLocation;
-                    
-                    // Mettre à jour l'interface
-                    updateRapaceList();
-                    updateRapaceSelects();
-                    updateEntryList();
-                    updatechasseList();
-                    updateAffaitageList();
-                    updateAffaitageSessionsHistory();
-                    updateLeurreInventory();
-                    updateLeurreSelects();
-                    updateLeurreSessionsList();
-                    updateLeurreStats();
-                    
-                    // Sauvegarder localement
-                    saveAllDataWithoutSync();
-                    
-                    addSyncHistoryEntry('📥 Données chargées depuis Firebase');
-                    if (document.getElementById('sync-notifications').checked) {
-                        showMiniNotification('📥 Données mises à jour depuis le cloud');
-                    }
-                } else {
-                    addSyncHistoryEntry('📊 Données locales plus récentes ou égales - conservation');
-                    // Sauvegarder vers Firebase si les données locales sont plus récentes ou égales
-                    syncToFirebase();
-                }
-            } else {
-                addSyncHistoryEntry('📊 Aucune donnée Firebase, première utilisation');
-                // Première utilisation, sauvegarder les données locales vers Firebase
-                syncToFirebase();
-            }
-        })
-        .catch((error) => {
             console.error('Erreur chargement Firebase:', error);
             addSyncHistoryEntry('❌ Erreur chargement: ' + error.message);
         });
@@ -3233,6 +3160,7 @@ function addAffaitage() {
     var date = document.getElementById('affaitage-date').value;
     var time = document.getElementById('affaitage-time').value;
     var notes = document.getElementById('affaitage-notes').value.trim();
+    var poids = document.getElementById('affaitage-poids').value;
     
     if (!rapaceId) {
         alert('Veuillez sélectionner un rapace.');
@@ -3255,6 +3183,7 @@ function addAffaitage() {
         date: date,
         time: time,
         notes: notes,
+        poids: poids ? parseInt(poids) : null,
         weather: currentWeather,
         timestamp: new Date().toISOString(),
         jourSession: jourSession,
@@ -3272,6 +3201,7 @@ function addAffaitage() {
     updateAffaitageList();
     
     document.getElementById('affaitage-notes').value = '';
+    document.getElementById('affaitage-poids').value = '';
     document.getElementById('prise-nourriture').checked = false;
     document.getElementById('gant').checked = false;
     document.getElementById('filiere').checked = false;
@@ -3488,6 +3418,31 @@ function updateAffaitageList() {
             
             html += '</div>';
             html += '<div class="content">';
+            
+            if (affaitage.poids) {
+                html += '<strong>Poids:</strong> ' + affaitage.poids + 'g';
+                
+                // Comparaison avec les poids de référence du rapace
+                if (rapace && (rapace.poidsChasse || rapace.poidsVol || rapace.poidsPlein)) {
+                    var comparisons = [];
+                    if (rapace.poidsChasse) {
+                        var diffChasse = affaitage.poids - rapace.poidsChasse;
+                        var colorChasse = diffChasse >= 0 ? '#28a745' : '#dc3545';
+                        var signChasse = diffChasse >= 0 ? '+' : '';
+                        comparisons.push('<span style="color: ' + colorChasse + ';">🎯(' + signChasse + diffChasse + 'g)</span>');
+                    }
+                    if (rapace.poidsVol) {
+                        var diffVol = affaitage.poids - rapace.poidsVol;
+                        var colorVol = diffVol >= 0 ? '#28a745' : '#dc3545';
+                        var signVol = diffVol >= 0 ? '+' : '';
+                        comparisons.push('<span style="color: ' + colorVol + ';">🕊️(' + signVol + diffVol + 'g)</span>');
+                    }
+                    if (comparisons.length > 0) {
+                        html += ' ' + comparisons.join(' ');
+                    }
+                }
+                html += '<br>';
+            }
             
             var activites = [];
             if (affaitage.priseNourriture) activites.push('🍽️ Prise de nourriture');
@@ -3933,3 +3888,81 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 </body>
 </html>
+            console.error('Erreur sauvegarde Firebase:', error);
+            addSyncHistoryEntry('❌ Erreur sauvegarde: ' + error.message);
+        });
+}
+
+// Charger depuis Firebase
+function loadFromFirebase() {
+    if (!isFirebaseReady || !db) {
+        console.log('Firebase pas prêt pour le chargement');
+        return;
+    }
+    
+    db.collection('users').doc(firebaseUserId).get()
+        .then((doc) => {
+            if (doc.exists) {
+                const firebaseData = doc.data();
+                
+                // Comparer les timestamps pour voir quelle version est plus récente
+                const localData = localStorage.getItem('rapaces_data');
+                let localTimestamp = 0;
+                
+                if (localData) {
+                    try {
+                        const parsed = JSON.parse(localData);
+                        localTimestamp = parsed.lastSave ? new Date(parsed.lastSave).getTime() : 0;
+                    } catch (e) {
+                        localTimestamp = 0;
+                    }
+                }
+                
+                const firebaseTimestamp = firebaseData.lastSync ? firebaseData.lastSync.toDate().getTime() : 0;
+                
+                // Afficher les timestamps pour debug
+                addSyncHistoryEntry('🕐 Local: ' + new Date(localTimestamp).toLocaleString('fr-FR'));
+                addSyncHistoryEntry('🕐 Firebase: ' + new Date(firebaseTimestamp).toLocaleString('fr-FR'));
+                
+                // Ajouter une marge de sécurité de 30 secondes pour éviter les écrasements
+                if (firebaseTimestamp > (localTimestamp + 30000)) {
+                    // Firebase plus récent de plus de 30 secondes, utiliser ces données
+                    rapaces = firebaseData.rapaces || [];
+                    entries = firebaseData.entries || [];
+                    chasseEntries = firebaseData.chasseEntries || [];
+                    affaitageEntries = firebaseData.affaitageEntries || [];
+                    leurres = firebaseData.leurres || [];
+                    leurreSessions = firebaseData.leurreSessions || [];
+                    currentLocation = firebaseData.currentLocation || currentLocation;
+                    
+                    // Mettre à jour l'interface
+                    updateRapaceList();
+                    updateRapaceSelects();
+                    updateEntryList();
+                    updatechasseList();
+                    updateAffaitageList();
+                    updateAffaitageSessionsHistory();
+                    updateLeurreInventory();
+                    updateLeurreSelects();
+                    updateLeurreSessionsList();
+                    updateLeurreStats();
+                    
+                    // Sauvegarder localement
+                    saveAllDataWithoutSync();
+                    
+                    addSyncHistoryEntry('📥 Données chargées depuis Firebase');
+                    if (document.getElementById('sync-notifications').checked) {
+                        showMiniNotification('📥 Données mises à jour depuis le cloud');
+                    }
+                } else {
+                    addSyncHistoryEntry('📊 Données locales plus récentes ou égales - conservation');
+                    // Sauvegarder vers Firebase si les données locales sont plus récentes ou égales
+                    syncToFirebase();
+                }
+            } else {
+                addSyncHistoryEntry('📊 Aucune donnée Firebase, première utilisation');
+                // Première utilisation, sauvegarder les données locales vers Firebase
+                syncToFirebase();
+            }
+        })
+        .catch((error) => {
