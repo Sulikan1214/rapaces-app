@@ -434,6 +434,80 @@
             background: #f8f9fa;
             border-left-color: #6c757d;
         }
+
+        .affaitage-photo {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 2px solid #e3f2fd;
+            margin: 10px 15px 10px 0;
+            float: left;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .photo-container {
+            position: relative;
+            display: inline-block;
+            float: left;
+        }
+
+        .photo-delete-btn {
+            position: absolute;
+            top: -5px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .photo-delete-btn:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+
+        .chasse-photo {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 2px solid #e3f2fd;
+            margin: 10px 15px 10px 0;
+            float: left;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            cursor: pointer;
+        }
+
+        .chasse-content {
+            margin-left: 0;
+        }
+
+        .chasse-content::after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+
+        .affaitage-content {
+            margin-left: 0;
+        }
+
+        .affaitage-content::after {
+            content: "";
+            display: table;
+            clear: both;
+        }
     </style>
 </head>
 <body>
@@ -726,6 +800,15 @@
             <textarea id="chasse-notes" rows="3" placeholder="Observations sur la chasse..."></textarea>
         </div>
         
+        <div class="form-group">
+            <label for="chasse-photo">📷 Photo de la chasse :</label>
+            <div class="file-input-wrapper">
+                <input type="file" id="chasse-photo" accept="image/*" onchange="previewChassePhoto(this)">
+                <label for="chasse-photo" class="file-input-label">📷 Prendre/Choisir une photo</label>
+            </div>
+            <div id="chasse-photo-preview"></div>
+        </div>
+        
         <button onclick="addChasse()">Enregistrer la Chasse</button>
         
         <h2 style="margin-top: 40px;">Historique des Chasses</h2>
@@ -803,6 +886,15 @@
         <div class="form-group">
             <label for="affaitage-notes">Notes :</label>
             <textarea id="affaitage-notes" rows="3" placeholder="Observations sur l'affaitage..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="affaitage-photo">📷 Photo de la session :</label>
+            <div class="file-input-wrapper">
+                <input type="file" id="affaitage-photo" accept="image/*" onchange="previewAffaitagePhoto(this)">
+                <label for="affaitage-photo" class="file-input-label">📷 Prendre/Choisir une photo</label>
+            </div>
+            <div id="affaitage-photo-preview"></div>
         </div>
         
         <button onclick="addAffaitage()">Enregistrer l'Affaitage</button>
@@ -914,6 +1006,15 @@
     </div>
 </div>
 
+<!-- Modal pour affichage photo en grand -->
+<div id="photoModal" class="modal">
+    <div class="modal-content" style="max-width: 90%; max-height: 90%; padding: 10px; text-align: center;">
+        <span class="close" onclick="closePhotoModal()">&times;</span>
+        <img id="modal-photo" style="max-width: 100%; max-height: 80vh; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <p style="margin-top: 15px; color: #666; font-size: 14px;">📷 Photo de session d'affaitage</p>
+    </div>
+</div>
+
 <!-- Modal pour édition d'affaitage -->
 <div id="editAffaitageModal" class="modal">
     <div class="modal-content">
@@ -984,6 +1085,14 @@
         <div class="form-group">
             <label for="edit-affaitage-notes">Notes :</label>
             <textarea id="edit-affaitage-notes" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="edit-affaitage-photo">📷 Photo de la session :</label>
+            <div class="file-input-wrapper">
+                <input type="file" id="edit-affaitage-photo" accept="image/*" onchange="previewEditAffaitagePhoto(this)">
+                <label for="edit-affaitage-photo" class="file-input-label">📷 Changer la photo</label>
+            </div>
+            <div id="edit-affaitage-photo-preview"></div>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 20px;">
             <button onclick="saveAffaitageEdit()">💾 Sauvegarder</button>
@@ -1422,6 +1531,78 @@ function previewEditPhoto(input) {
     }
 }
 
+function previewAffaitagePhoto(input) {
+    var container = document.getElementById('affaitage-photo-preview');
+    container.innerHTML = '';
+    
+    if (input.files && input.files[0]) {
+        var file = input.files[0];
+        
+        if (file.size > 5 * 1024 * 1024) {
+            alert('La photo est trop volumineuse. Taille maximale : 5MB');
+            input.value = '';
+            return;
+        }
+        
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'photo-preview';
+            container.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function previewEditAffaitagePhoto(input) {
+    var container = document.getElementById('edit-affaitage-photo-preview');
+    container.innerHTML = '';
+    
+    if (input.files && input.files[0]) {
+        var file = input.files[0];
+        
+        if (file.size > 5 * 1024 * 1024) {
+            alert('La photo est trop volumineuse. Taille maximale : 5MB');
+            input.value = '';
+            return;
+        }
+        
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'photo-preview';
+            container.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function previewChassePhoto(input) {
+    var container = document.getElementById('chasse-photo-preview');
+    container.innerHTML = '';
+    
+    if (input.files && input.files[0]) {
+        var file = input.files[0];
+        
+        if (file.size > 5 * 1024 * 1024) {
+            alert('La photo est trop volumineuse. Taille maximale : 5MB');
+            input.value = '';
+            return;
+        }
+        
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'photo-preview';
+            container.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
 // === GESTION DU SUIVI QUOTIDIEN ===
 function showEventFields() {
     var eventType = document.getElementById('event-type').value;
@@ -1638,6 +1819,7 @@ function addChasse() {
     var time = document.getElementById('chasse-time').value;
     var notes = document.getElementById('chasse-notes').value.trim();
     var poidsJour = document.getElementById('chasse-poids-jour').value;
+    var photoInput = document.getElementById('chasse-photo');
     
     if (!rapaceId) {
         alert('Veuillez sélectionner un rapace.');
@@ -1670,6 +1852,19 @@ function addChasse() {
         autre: parseInt(document.getElementById('chasse-autre').value) || 0
     };
     
+    if (photoInput.files && photoInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            chasse.photo = e.target.result;
+            finalizeAddChasse(chasse);
+        };
+        reader.readAsDataURL(photoInput.files[0]);
+    } else {
+        finalizeAddChasse(chasse);
+    }
+}
+
+function finalizeAddChasse(chasse) {
     chasseEntries.push(chasse);
     saveAllData();
     updatechasseList();
@@ -1677,6 +1872,8 @@ function addChasse() {
     // Nettoyer le formulaire
     document.getElementById('chasse-notes').value = '';
     document.getElementById('chasse-poids-jour').value = '';
+    document.getElementById('chasse-photo').value = '';
+    document.getElementById('chasse-photo-preview').innerHTML = '';
     var huntInputs = document.querySelectorAll('.hunt-item input[type="number"]');
     for (var i = 0; i < huntInputs.length; i++) {
         huntInputs[i].value = '0';
@@ -1707,8 +1904,30 @@ function updatechasseList() {
         var total = chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
         
         html += '<div class="entry-item">';
+        html += '<div class="entry-actions">';
+        html += '<button onclick="editChasseEntry(' + chasse.id + ')" class="btn-warning" title="Modifier">✏️</button>';
+        html += '<button onclick="deleteChasseEntry(' + chasse.id + ')" class="btn-danger" title="Supprimer">🗑️</button>';
+        html += '</div>';
+        
+        html += '<div class="chasse-content">';
+        
+        // Afficher la photo s'il y en a une
+        if (chasse.photo) {
+            html += '<div class="photo-container">';
+            html += '<img src="' + chasse.photo + '" class="chasse-photo" alt="Photo de la chasse" title="Cliquez pour agrandir" onclick="showPhotoModal(\'' + chasse.photo + '\')">';
+            html += '<button class="photo-delete-btn" onclick="deleteChassePhoto(' + chasse.id + ')" title="Supprimer la photo">×</button>';
+            html += '</div>';
+        }
+        
         html += '<div class="date">' + new Date(chasse.date + 'T' + chasse.time).toLocaleDateString('fr-FR') + ' à ' + chasse.time;
-        html += ' - ' + rapaceName + ' (Total: ' + total + ' prises)</div>';
+        html += ' - ' + rapaceName + ' (Total: ' + total + ' prises)';
+        
+        // Indicateur photo
+        if (chasse.photo) {
+            html += ' <span style="color: #28a745; font-size: 16px;" title="Photo disponible">📷</span>';
+        }
+        
+        html += '</div>';
         html += '<div class="content">';
         
         if (chasse.poidsJour) {
@@ -1741,10 +1960,50 @@ function updatechasseList() {
         if (chasse.notes) {
             html += '<br><strong>Notes:</strong> ' + chasse.notes;
         }
-        html += '</div></div>';
+        html += '</div></div></div>';
     }
     
     list.innerHTML = html;
+}
+
+// Supprimer uniquement la photo d'une chasse
+function deleteChassePhoto(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
+        var entry = chasseEntries.find(e => e.id === id);
+        if (entry) {
+            delete entry.photo;
+            saveAllData();
+            updatechasseList();
+            
+            if (isFirebaseReady && document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
+                showMiniNotification('📷 Photo supprimée');
+            }
+        }
+    }
+}
+
+// Supprimer une entrée de chasse
+function deleteChasseEntry(id) {
+    var entry = chasseEntries.find(e => e.id === id);
+    if (!entry) return;
+    
+    var rapace = rapaces.find(r => r.id === entry.rapaceId);
+    var rapaceName = rapace ? rapace.name : 'Rapace supprimé';
+    
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette chasse de ' + rapaceName + ' du ' + new Date(entry.date).toLocaleDateString('fr-FR') + ' ?')) {
+        chasseEntries = chasseEntries.filter(e => e.id !== id);
+        saveAllData();
+        updatechasseList();
+        
+        if (isFirebaseReady && document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
+            showMiniNotification('🗑️ Chasse supprimée');
+        }
+    }
+}
+
+// Modifier une entrée de chasse (fonction basique - peut être étendue plus tard)
+function editChasseEntry(id) {
+    alert('Fonction d\'édition des chasses à développer prochainement !');
 }
 
 // === GESTION DE L'AFFAITAGE ===
@@ -1754,6 +2013,7 @@ function addAffaitage() {
     var time = document.getElementById('affaitage-time').value;
     var notes = document.getElementById('affaitage-notes').value.trim();
     var poids = document.getElementById('affaitage-poids').value;
+    var photoInput = document.getElementById('affaitage-photo');
     
     if (!rapaceId) {
         alert('Veuillez sélectionner un rapace.');
@@ -1790,6 +2050,19 @@ function addAffaitage() {
         repriseAffaitage: document.getElementById('reprise-affaitage').checked
     };
     
+    if (photoInput.files && photoInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            affaitage.photo = e.target.result;
+            finalizeAddAffaitage(affaitage);
+        };
+        reader.readAsDataURL(photoInput.files[0]);
+    } else {
+        finalizeAddAffaitage(affaitage);
+    }
+}
+
+function finalizeAddAffaitage(affaitage) {
     affaitageEntries.push(affaitage);
     saveAllData();
     updateAffaitageList();
@@ -1797,6 +2070,8 @@ function addAffaitage() {
     // Nettoyer le formulaire
     document.getElementById('affaitage-notes').value = '';
     document.getElementById('affaitage-poids').value = '';
+    document.getElementById('affaitage-photo').value = '';
+    document.getElementById('affaitage-photo-preview').innerHTML = '';
     document.getElementById('prise-nourriture').checked = false;
     document.getElementById('voliere').checked = false;
     document.getElementById('gant').checked = false;
@@ -1877,8 +2152,24 @@ function updateAffaitageList() {
         html += '<button onclick="editAffaitageEntry(' + affaitage.id + ')" class="btn-warning" title="Modifier">✏️</button>';
         html += '<button onclick="deleteAffaitageEntry(' + affaitage.id + ')" class="btn-danger" title="Supprimer">🗑️</button>';
         html += '</div>';
+        
+        html += '<div class="affaitage-content">';
+        
+        // Afficher la photo s'il y en a une
+        if (affaitage.photo) {
+            html += '<div class="photo-container">';
+            html += '<img src="' + affaitage.photo + '" class="affaitage-photo" alt="Photo de la session d\'affaitage" title="Cliquez pour agrandir" onclick="showPhotoModal(\'' + affaitage.photo + '\')">';
+            html += '<button class="photo-delete-btn" onclick="deleteAffaitagePhoto(' + affaitage.id + ')" title="Supprimer la photo">×</button>';
+            html += '</div>';
+        }
+        
         html += '<div class="date">' + new Date(affaitage.date + 'T' + affaitage.time).toLocaleDateString('fr-FR') + ' à ' + affaitage.time;
         html += ' - ' + rapaceName;
+        
+        // Indicateur photo
+        if (affaitage.photo) {
+            html += ' <span style="color: #28a745; font-size: 16px;" title="Photo disponible">📷</span>';
+        }
         
         if (affaitage.jourSession) {
             html += '<span class="session-status session-jour">Jour ' + affaitage.jourSession + '</span>';
@@ -1935,12 +2226,29 @@ function updateAffaitageList() {
         if (affaitage.notes) {
             html += '<br><strong>Notes:</strong> ' + affaitage.notes;
         }
-        html += '</div></div>';
+        html += '</div></div></div>';
     }
     
     list.innerHTML = html;
     
     updateAffaitageSessionsHistory();
+}
+
+// Supprimer uniquement la photo d'une entrée d'affaitage
+function deleteAffaitagePhoto(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
+        var entry = affaitageEntries.find(e => e.id === id);
+        if (entry) {
+            delete entry.photo;
+            saveAllData();
+            updateAffaitageList();
+            updateAffaitageSessionsHistory();
+            
+            if (isFirebaseReady && document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
+                showMiniNotification('📷 Photo supprimée');
+            }
+        }
+    }
 }
 
 // Supprimer une entrée d'affaitage
@@ -1987,6 +2295,16 @@ function editAffaitageEntry(id) {
     document.getElementById('edit-affaitage-poids').value = entry.poids || '';
     document.getElementById('edit-affaitage-notes').value = entry.notes || '';
     
+    // Afficher la photo existante s'il y en a une
+    var photoContainer = document.getElementById('edit-affaitage-photo-preview');
+    photoContainer.innerHTML = '';
+    if (entry.photo) {
+        var img = document.createElement('img');
+        img.src = entry.photo;
+        img.className = 'photo-preview';
+        photoContainer.appendChild(img);
+    }
+    
     // Cocher les activités
     document.getElementById('edit-prise-nourriture').checked = entry.priseNourriture || false;
     document.getElementById('edit-voliere').checked = entry.voliere || false;
@@ -2016,20 +2334,21 @@ function saveAffaitageEdit() {
     var time = document.getElementById('edit-affaitage-time').value;
     var notes = document.getElementById('edit-affaitage-notes').value.trim();
     var poids = document.getElementById('edit-affaitage-poids').value;
+    var photoInput = document.getElementById('edit-affaitage-photo');
     
     if (!rapaceId || !date || !time) {
         alert('Veuillez remplir tous les champs obligatoires.');
         return;
     }
     
-    // Trouver et mettre à jour l'entrée existante
+    // Trouver l'entrée existante
     var entryIndex = affaitageEntries.findIndex(e => e.id === editingAffaitageId);
     if (entryIndex === -1) return;
     
     var jourSession = calculateSessionDay(parseInt(rapaceId), date);
     
-    // Mettre à jour l'entrée
-    affaitageEntries[entryIndex] = {
+    // Préparer les données mises à jour
+    var updatedEntry = {
         ...affaitageEntries[entryIndex], // Garder l'ID et timestamp original
         rapaceId: parseInt(rapaceId),
         date: date,
@@ -2046,6 +2365,24 @@ function saveAffaitageEdit() {
         finAffaitage: document.getElementById('edit-fin-affaitage').checked,
         repriseAffaitage: document.getElementById('edit-reprise-affaitage').checked
     };
+    
+    // Gérer la photo
+    if (photoInput.files && photoInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            updatedEntry.photo = e.target.result;
+            finalizeSaveAffaitageEdit(updatedEntry, entryIndex);
+        };
+        reader.readAsDataURL(photoInput.files[0]);
+    } else {
+        // Garder la photo existante si aucune nouvelle photo n'est sélectionnée
+        finalizeSaveAffaitageEdit(updatedEntry, entryIndex);
+    }
+}
+
+function finalizeSaveAffaitageEdit(updatedEntry, entryIndex) {
+    // Mettre à jour l'entrée
+    affaitageEntries[entryIndex] = updatedEntry;
     
     saveAllData();
     updateAffaitageList();
@@ -2183,6 +2520,20 @@ function updateAffaitageSessionsHistory() {
     } else {
         historyDiv.innerHTML = html;
     }
+}
+
+// Afficher une photo en grand dans une modal
+function showPhotoModal(photoSrc) {
+    var modal = document.getElementById('photoModal');
+    var modalPhoto = document.getElementById('modal-photo');
+    
+    modalPhoto.src = photoSrc;
+    modal.style.display = 'block';
+}
+
+// Fermer la modal photo
+function closePhotoModal() {
+    document.getElementById('photoModal').style.display = 'none';
 }
 
 // === GESTION DES STATISTIQUES ===
@@ -3232,12 +3583,16 @@ function changeLocation() {
 window.onclick = function(event) {
     var editModal = document.getElementById('editModal');
     var editAffaitageModal = document.getElementById('editAffaitageModal');
+    var photoModal = document.getElementById('photoModal');
     
     if (event.target === editModal) {
         closeEditModal();
     }
     if (event.target === editAffaitageModal) {
         closeEditAffaitageModal();
+    }
+    if (event.target === photoModal) {
+        closePhotoModal();
     }
 }
 
