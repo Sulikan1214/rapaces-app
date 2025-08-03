@@ -62,12 +62,12 @@
 
         .tab {
             flex: 1;
-            min-width: 120px;
-            padding: 15px;
+            min-width: 100px;
+            padding: 15px 10px;
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             color: #666;
             transition: all 0.3s ease;
@@ -151,6 +151,10 @@
         button.btn-warning {
             background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
             color: #212529;
+        }
+
+        button.btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
         }
 
         .entry-item {
@@ -508,6 +512,120 @@
             display: table;
             clear: both;
         }
+
+        /* Styles pour l'onglet Documents */
+        .document-card {
+            background: #f0f4f8;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            border: 2px solid #e3f2fd;
+            position: relative;
+        }
+
+        .document-actions {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .document-preview {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 2px solid #e3f2fd;
+            margin-right: 15px;
+            float: left;
+        }
+
+        .document-icon {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e3f2fd;
+            border-radius: 10px;
+            margin-right: 15px;
+            float: left;
+            font-size: 30px;
+        }
+
+        .category-filter {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .category-btn {
+            padding: 8px 16px;
+            border: 2px solid #2a5298;
+            background: white;
+            color: #2a5298;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .category-btn.active {
+            background: #2a5298;
+            color: white;
+        }
+
+        /* Styles pour l'onglet Leurre */
+        .leurre-card {
+            background: #f0f4f8;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            border: 2px solid #e3f2fd;
+            position: relative;
+        }
+
+        .leurre-actions {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .leurre-photo {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 2px solid #e3f2fd;
+            margin-right: 15px;
+            float: left;
+        }
+
+        .efficacite-bar {
+            background: #e9ecef;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .efficacite-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            transition: width 0.3s ease;
+        }
+
+        .session-leurre {
+            background: #e8f5e8;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
@@ -542,10 +660,13 @@
         <button class="tab" onclick="showTab('suivi')">Suivi</button>
         <button class="tab" onclick="showTab('chasse')">Chasse</button>
         <button class="tab" onclick="showTab('affaitage')">Affaitage</button>
+        <button class="tab" onclick="showTab('leurre')">🎯 Leurre</button>
+        <button class="tab" onclick="showTab('documents')">📁 Documents</button>
         <button class="tab" onclick="showTab('sync')">Sync</button>
-        <button class="tab" onclick="showTab('stats')">Statistiques</button>
+        <button class="tab" onclick="showTab('stats')">Stats</button>
     </div>
 
+    <!-- Onglet Gestion -->
     <div id="gestion" class="tab-content active">
         <h2>Ajouter un Rapace</h2>
         <div class="form-group">
@@ -601,6 +722,7 @@
         <div id="rapace-list"></div>
     </div>
 
+    <!-- Onglet Suivi -->
     <div id="suivi" class="tab-content">
         <h2>Suivi Quotidien</h2>
         <div class="form-group">
@@ -735,6 +857,7 @@
         <div id="entry-list"></div>
     </div>
 
+    <!-- Onglet Chasse -->
     <div id="chasse" class="tab-content">
         <h2>Registre de Chasse</h2>
         <div class="form-group">
@@ -815,6 +938,7 @@
         <div id="chasse-list"></div>
     </div>
 
+    <!-- Onglet Affaitage -->
     <div id="affaitage" class="tab-content">
         <h2>Affaitage</h2>
         <div class="form-group">
@@ -901,31 +1025,232 @@
         
         <h2 style="margin-top: 40px;">Historique d'Affaitage</h2>
         <div id="affaitage-list"></div>
-        
-        <h2 style="margin-top: 30px;">📊 Historique des Sessions</h2>
-        <div id="affaitage-sessions-history"></div>
     </div>
 
-    <div id="stats" class="tab-content">
-        <h2>Statistiques</h2>
-        <div style="margin-bottom: 20px;">
-            <div class="day-navigation">
-                <button onclick="changeStatsDate(-1)">← Jour précédent</button>
-                <input type="date" id="stats-date" onchange="updateStats()">
-                <button onclick="changeStatsDate(1)">Jour suivant →</button>
-                <button onclick="showMultipleDays()">Voir 4 jours</button>
-                <button onclick="showBirdStats()">📊 Stats par oiseau</button>
-                <button onclick="showWeightGraphs()">📈 Graphiques poids</button>
+    <!-- NOUVEL ONGLET LEURRE -->
+    <div id="leurre" class="tab-content">
+        <h2>🎯 Gestion des Leurres</h2>
+        
+        <!-- Ajouter un nouveau leurre -->
+        <div class="day-card">
+            <h3>Ajouter un Leurre</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="leurre-nom">Nom du leurre :</label>
+                    <input type="text" id="leurre-nom" placeholder="Ex: Leurre plume rouge">
+                </div>
+                <div class="form-group">
+                    <label for="leurre-type">Type :</label>
+                    <select id="leurre-type">
+                        <option value="plume">Plume</option>
+                        <option value="fourrure">Fourrure</option>
+                        <option value="mixte">Mixte</option>
+                        <option value="proie-artificielle">Proie artificielle</option>
+                        <option value="drone">Drone + leurre</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                </div>
             </div>
-            <div style="margin-top: 10px;">
-                <button onclick="exportAllData()">💾 Exporter</button>
-                <button onclick="importAllData()" style="margin-left: 10px;">📁 Importer</button>
-                <button onclick="clearAllData()" class="btn-danger" style="margin-left: 10px;">🗑️ Vider</button>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="leurre-couleur">Couleur principale :</label>
+                    <input type="text" id="leurre-couleur" placeholder="Ex: Rouge, Brun, Blanc...">
+                </div>
+                <div class="form-group">
+                    <label for="leurre-taille">Taille (cm) :</label>
+                    <input type="number" id="leurre-taille" min="1" placeholder="Ex: 25">
+                </div>
+                <div class="form-group">
+                    <label for="leurre-poids-g">Poids (g) :</label>
+                    <input type="number" id="leurre-poids-g" min="1" placeholder="Ex: 150">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="leurre-description">Description :</label>
+                <textarea id="leurre-description" rows="2" placeholder="Description détaillée du leurre..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="leurre-photo">📷 Photo du leurre :</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="leurre-photo" accept="image/*" onchange="previewLeurrePhoto(this)">
+                    <label for="leurre-photo" class="file-input-label">📷 Prendre/Choisir une photo</label>
+                </div>
+                <div id="leurre-photo-preview"></div>
+            </div>
+            
+            <button onclick="addLeurre()">Créer le Leurre</button>
+        </div>
+
+        <!-- Session d'utilisation -->
+        <div class="day-card">
+            <h3>📝 Enregistrer une Session de Leurre</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="session-leurre">Leurre utilisé :</label>
+                    <select id="session-leurre">
+                        <option value="">Choisir un leurre</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="session-rapace">Rapace :</label>
+                    <select id="session-rapace">
+                        <option value="">Choisir un rapace</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="session-date">Date :</label>
+                    <input type="date" id="session-date">
+                </div>
+                <div class="form-group">
+                    <label for="session-time">Heure :</label>
+                    <input type="time" id="session-time">
+                </div>
+                <div class="form-group">
+                    <label for="session-duree">Durée (min) :</label>
+                    <input type="number" id="session-duree" min="1" placeholder="Ex: 30">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="session-reussite">Réussite :</label>
+                    <select id="session-reussite">
+                        <option value="excellente">Excellente - Rapace très réactif</option>
+                        <option value="bonne">Bonne - Rapace réactif</option>
+                        <option value="moyenne">Moyenne - Quelques hésitations</option>
+                        <option value="difficile">Difficile - Peu d'intérêt</option>
+                        <option value="echec">Échec - Aucun intérêt</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="session-nb-passes">Nombre de passes :</label>
+                    <input type="number" id="session-nb-passes" min="0" placeholder="Ex: 15">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Conditions :</label>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="session-vent-fort">
+                        <label for="session-vent-fort">💨 Vent fort</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="session-pluie">
+                        <label for="session-pluie">🌧️ Pluie</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="session-premiere-fois">
+                        <label for="session-premiere-fois">🆕 Première utilisation</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="session-rapace-affame">
+                        <label for="session-rapace-affame">🍖 Rapace affamé</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="session-notes">Notes de session :</label>
+                <textarea id="session-notes" rows="3" placeholder="Observations, comportement du rapace, amélioration à apporter..."></textarea>
+            </div>
+            
+            <button onclick="addSessionLeurre()">Enregistrer la Session</button>
+        </div>
+
+        <!-- Liste des leurres -->
+        <h2 style="margin-top: 40px;">🎯 Mes Leurres</h2>
+        <div id="leurre-list"></div>
+        
+        <!-- Historique des sessions -->
+        <h2 style="margin-top: 40px;">📊 Historique des Sessions</h2>
+        <div id="sessions-leurre-list"></div>
+    </div>
+
+    <!-- NOUVEL ONGLET DOCUMENTS -->
+    <div id="documents" class="tab-content">
+        <h2>📁 Gestion des Documents</h2>
+        
+        <!-- Ajouter un document -->
+        <div class="day-card">
+            <h3>📎 Ajouter un Document</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="doc-nom">Nom du document :</label>
+                    <input type="text" id="doc-nom" placeholder="Ex: Certificat vétérinaire">
+                </div>
+                <div class="form-group">
+                    <label for="doc-categorie">Catégorie :</label>
+                    <select id="doc-categorie">
+                        <option value="sante">🏥 Santé</option>
+                        <option value="legal">⚖️ Légal/Administratif</option>
+                        <option value="formation">🎓 Formation</option>
+                        <option value="equipement">🔧 Équipement</option>
+                        <option value="chasse">🏹 Chasse</option>
+                        <option value="elevage">🥚 Élevage</option>
+                        <option value="autre">📋 Autre</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="doc-rapace">Rapace concerné (optionnel) :</label>
+                    <select id="doc-rapace">
+                        <option value="">Général/Tous les rapaces</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="doc-date">Date du document :</label>
+                    <input type="date" id="doc-date">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="doc-description">Description :</label>
+                <textarea id="doc-description" rows="2" placeholder="Description ou résumé du document..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="doc-file">📁 Fichier :</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="doc-file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt" onchange="previewDocument(this)">
+                    <label for="doc-file" class="file-input-label">📁 Choisir un fichier</label>
+                </div>
+                <div id="doc-file-preview"></div>
+                <small style="color: #666;">Formats supportés: PDF, Word, Images, Texte</small>
+            </div>
+            
+            <button onclick="addDocument()">Ajouter le Document</button>
+        </div>
+
+        <!-- Filtres par catégorie -->
+        <div style="margin: 30px 0;">
+            <h3>🏷️ Filtrer par catégorie</h3>
+            <div class="category-filter">
+                <button class="category-btn active" onclick="filterDocuments('all')">Tous</button>
+                <button class="category-btn" onclick="filterDocuments('sante')">🏥 Santé</button>
+                <button class="category-btn" onclick="filterDocuments('legal')">⚖️ Légal</button>
+                <button class="category-btn" onclick="filterDocuments('formation')">🎓 Formation</button>
+                <button class="category-btn" onclick="filterDocuments('equipement')">🔧 Équipement</button>
+                <button class="category-btn" onclick="filterDocuments('chasse')">🏹 Chasse</button>
+                <button class="category-btn" onclick="filterDocuments('elevage')">🥚 Élevage</button>
+                <button class="category-btn" onclick="filterDocuments('autre')">📋 Autre</button>
             </div>
         </div>
-        <div id="stats-content"></div>
+
+        <!-- Liste des documents -->
+        <h2>📋 Mes Documents</h2>
+        <div id="documents-list"></div>
     </div>
 
+    <!-- Onglet Sync -->
     <div id="sync" class="tab-content">
         <h2>🔥 Synchronisation Firebase</h2>
         
@@ -948,11 +1273,6 @@
             <p style="font-size: 14px; color: #666;">
                 La synchronisation Firebase permet de garder vos données à jour sur tous vos appareils automatiquement.
             </p>
-            <div style="font-size: 12px; color: #999; margin-top: 10px;">
-                <strong>🚀 Forcer upload :</strong> Envoie vos données locales vers Firebase (écrase Firebase)<br>
-                <strong>📥 Forcer download :</strong> Télécharge les données Firebase vers cet appareil (écrase local)<br>
-                <strong>🔄 Actualiser tout :</strong> Recharge complètement les données
-            </div>
         </div>
 
         <div style="margin: 20px 0;">
@@ -974,35 +1294,32 @@
         </div>
 
         <div style="margin: 20px 0;">
-            <h3>📱 Instructions multi-appareils</h3>
-            <div class="day-card" style="background: #e8f4fd;">
-                <p><strong>1. Sur cet appareil :</strong></p>
-                <p>• Cliquez "🔗 Activer Firebase"</p>
-                <p>• Vos données seront sauvegardées automatiquement</p>
-                
-                <p><strong>2. Sur vos autres appareils :</strong></p>
-                <p>• Ouvrez cette application</p>
-                <p>• Allez dans l'onglet "Sync"</p>
-                <p>• Cliquez "Activer Firebase"</p>
-                <p>• Vos données se synchroniseront automatiquement !</p>
-            </div>
-        </div>
-
-        <div style="margin: 20px 0;">
             <h3>📊 Historique de synchronisation</h3>
             <div id="sync-history" style="max-height: 200px; overflow-y: auto;">
                 <p style="color: #666; font-style: italic;">Aucune synchronisation effectuée</p>
             </div>
         </div>
+    </div>
 
-        <div class="day-card" style="background: #e3f2fd;">
-            <h4>ℹ️ Comment ça marche</h4>
-            <p>• Vos données sont stockées de manière sécurisée sur Firebase</p>
-            <p>• Synchronisation automatique sur tous vos appareils</p>
-            <p>• Fonctionnement hors ligne avec synchronisation au retour de connexion</p>
-            <p>• En cas de conflit, la version la plus récente est conservée</p>
-            <p>• Données sauvegardées de manière permanente dans le cloud</p>
+    <!-- Onglet Stats -->
+    <div id="stats" class="tab-content">
+        <h2>Statistiques</h2>
+        <div style="margin-bottom: 20px;">
+            <div class="day-navigation">
+                <button onclick="changeStatsDate(-1)">← Jour précédent</button>
+                <input type="date" id="stats-date" onchange="updateStats()">
+                <button onclick="changeStatsDate(1)">Jour suivant →</button>
+                <button onclick="showMultipleDays()">Voir 4 jours</button>
+                <button onclick="showBirdStats()">📊 Stats par oiseau</button>
+                <button onclick="showWeightGraphs()">📈 Graphiques poids</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <button onclick="exportAllData()">💾 Exporter</button>
+                <button onclick="importAllData()" style="margin-left: 10px;">📁 Importer</button>
+                <button onclick="clearAllData()" class="btn-danger" style="margin-left: 10px;">🗑️ Vider</button>
+            </div>
         </div>
+        <div id="stats-content"></div>
     </div>
 </div>
 
@@ -1011,93 +1328,7 @@
     <div class="modal-content" style="max-width: 90%; max-height: 90%; padding: 10px; text-align: center;">
         <span class="close" onclick="closePhotoModal()">&times;</span>
         <img id="modal-photo" style="max-width: 100%; max-height: 80vh; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-        <p style="margin-top: 15px; color: #666; font-size: 14px;">📷 Photo de session d'affaitage</p>
-    </div>
-</div>
-
-<!-- Modal pour édition d'affaitage -->
-<div id="editAffaitageModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeEditAffaitageModal()">&times;</span>
-        <h2>Modifier l'Entrée d'Affaitage</h2>
-        <div class="form-group">
-            <label for="edit-affaitage-rapace">Rapace :</label>
-            <select id="edit-affaitage-rapace">
-                <option value="">Choisir un rapace</option>
-            </select>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="edit-affaitage-date">Date :</label>
-                <input type="date" id="edit-affaitage-date">
-            </div>
-            <div class="form-group">
-                <label for="edit-affaitage-time">Heure :</label>
-                <input type="time" id="edit-affaitage-time">
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="edit-affaitage-poids">Poids (g) :</label>
-            <input type="number" id="edit-affaitage-poids" min="0">
-        </div>
-        <div class="form-group">
-            <label>Activités :</label>
-            <div class="checkbox-group">
-                <div class="checkbox-item">
-                    <input type="checkbox" id="edit-voliere">
-                    <label for="edit-voliere">🏠 Volière</label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="edit-prise-nourriture">
-                    <label for="edit-prise-nourriture">🍽️ Prise de nourriture</label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="edit-gant">
-                    <label for="edit-gant">🧤 Gant</label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="edit-filiere">
-                    <label for="edit-filiere">🎯 Filière</label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="edit-bloc">
-                    <label for="edit-bloc">🧱 Bloc</label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="edit-libre">
-                    <label for="edit-libre">🕊️ Libre</label>
-                </div>
-            </div>
-        </div>
-        <div class="form-group">
-            <label>Gestion de session :</label>
-            <div class="checkbox-group">
-                <div class="checkbox-item">
-                    <input type="checkbox" id="edit-fin-affaitage">
-                    <label for="edit-fin-affaitage">🔚 Fin d'affaitage</label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="edit-reprise-affaitage">
-                    <label for="edit-reprise-affaitage">🔄 Reprise affaitage</label>
-                </div>
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="edit-affaitage-notes">Notes :</label>
-            <textarea id="edit-affaitage-notes" rows="3"></textarea>
-        </div>
-        <div class="form-group">
-            <label for="edit-affaitage-photo">📷 Photo de la session :</label>
-            <div class="file-input-wrapper">
-                <input type="file" id="edit-affaitage-photo" accept="image/*" onchange="previewEditAffaitagePhoto(this)">
-                <label for="edit-affaitage-photo" class="file-input-label">📷 Changer la photo</label>
-            </div>
-            <div id="edit-affaitage-photo-preview"></div>
-        </div>
-        <div style="display: flex; gap: 10px; margin-top: 20px;">
-            <button onclick="saveAffaitageEdit()">💾 Sauvegarder</button>
-            <button onclick="closeEditAffaitageModal()" class="btn-secondary">❌ Annuler</button>
-        </div>
+        <p style="margin-top: 15px; color: #666; font-size: 14px;">📷 Photo</p>
     </div>
 </div>
 
@@ -1164,11 +1395,14 @@ var rapaces = [];
 var entries = [];
 var chasseEntries = [];
 var affaitageEntries = [];
+var leurres = [];
+var sessionsLeurre = [];
+var documents = [];
 var currentWeather = null;
 var currentLocation = "Orthez (64300)";
 var currentStatsDate = new Date();
 var editingRapaceId = null;
-var editingAffaitageId = null;
+var currentDocumentFilter = 'all';
 
 // Variables pour la synchronisation
 var syncIntervalId = null;
@@ -1224,7 +1458,14 @@ function showTab(tabName) {
     } else if (tabName === 'affaitage') {
         updateRapaceSelects();
         updateAffaitageList();
-        updateAffaitageSessionsHistory();
+    } else if (tabName === 'leurre') {
+        updateRapaceSelects();
+        updateLeurreList();
+        updateSessionsLeurreList();
+        updateLeurreSelects();
+    } else if (tabName === 'documents') {
+        updateRapaceSelects();
+        updateDocumentsList();
     } else if (tabName === 'stats') {
         document.getElementById('stats-date').value = currentStatsDate.toISOString().split('T')[0];
         updateStats();
@@ -1346,7 +1587,7 @@ function updateRapaceList() {
 }
 
 function updateRapaceSelects() {
-    var selects = ['rapace-select', 'chasse-rapace', 'affaitage-rapace'];
+    var selects = ['rapace-select', 'chasse-rapace', 'affaitage-rapace', 'session-rapace', 'doc-rapace'];
     
     for (var s = 0; s < selects.length; s++) {
         var select = document.getElementById(selects[s]);
@@ -1471,6 +1712,8 @@ function deleteRapace(id) {
         entries = entries.filter(e => e.rapaceId !== id);
         chasseEntries = chasseEntries.filter(c => c.rapaceId !== id);
         affaitageEntries = affaitageEntries.filter(a => a.rapaceId !== id);
+        sessionsLeurre = sessionsLeurre.filter(s => s.rapaceId !== id);
+        documents = documents.filter(d => d.rapaceId !== id);
         
         saveAllData();
         updateRapaceList();
@@ -1478,7 +1721,9 @@ function deleteRapace(id) {
         updateEntryList();
         updatechasseList();
         updateAffaitageList();
-        updateAffaitageSessionsHistory();
+        updateLeurreList();
+        updateSessionsLeurreList();
+        updateDocumentsList();
     }
 }
 
@@ -1555,8 +1800,8 @@ function previewAffaitagePhoto(input) {
     }
 }
 
-function previewEditAffaitagePhoto(input) {
-    var container = document.getElementById('edit-affaitage-photo-preview');
+function previewChassePhoto(input) {
+    var container = document.getElementById('chasse-photo-preview');
     container.innerHTML = '';
     
     if (input.files && input.files[0]) {
@@ -1579,8 +1824,8 @@ function previewEditAffaitagePhoto(input) {
     }
 }
 
-function previewChassePhoto(input) {
-    var container = document.getElementById('chasse-photo-preview');
+function previewLeurrePhoto(input) {
+    var container = document.getElementById('leurre-photo-preview');
     container.innerHTML = '';
     
     if (input.files && input.files[0]) {
@@ -1600,6 +1845,42 @@ function previewChassePhoto(input) {
             container.appendChild(img);
         };
         reader.readAsDataURL(file);
+    }
+}
+
+function previewDocument(input) {
+    var container = document.getElementById('doc-file-preview');
+    container.innerHTML = '';
+    
+    if (input.files && input.files[0]) {
+        var file = input.files[0];
+        
+        if (file.size > 10 * 1024 * 1024) {
+            alert('Le fichier est trop volumineux. Taille maximale : 10MB');
+            input.value = '';
+            return;
+        }
+        
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            if (file.type.includes('image/')) {
+                var img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'photo-preview';
+                container.appendChild(img);
+            } else {
+                var info = document.createElement('div');
+                info.style.cssText = 'padding: 10px; background: #f0f4f8; border-radius: 8px; margin-top: 10px;';
+                info.innerHTML = '<strong>📁 ' + file.name + '</strong><br><small>Taille: ' + (file.size / 1024).toFixed(1) + ' KB</small>';
+                container.appendChild(info);
+            }
+        };
+        
+        if (file.type.includes('image/')) {
+            reader.readAsDataURL(file);
+        } else {
+            reader.readAsText(file);
+        }
     }
 }
 
@@ -1905,13 +2186,11 @@ function updatechasseList() {
         
         html += '<div class="entry-item">';
         html += '<div class="entry-actions">';
-        html += '<button onclick="editChasseEntry(' + chasse.id + ')" class="btn-warning" title="Modifier">✏️</button>';
         html += '<button onclick="deleteChasseEntry(' + chasse.id + ')" class="btn-danger" title="Supprimer">🗑️</button>';
         html += '</div>';
         
         html += '<div class="chasse-content">';
         
-        // Afficher la photo s'il y en a une
         if (chasse.photo) {
             html += '<div class="photo-container">';
             html += '<img src="' + chasse.photo + '" class="chasse-photo" alt="Photo de la chasse" title="Cliquez pour agrandir" onclick="showPhotoModal(\'' + chasse.photo + '\')">';
@@ -1922,7 +2201,6 @@ function updatechasseList() {
         html += '<div class="date">' + new Date(chasse.date + 'T' + chasse.time).toLocaleDateString('fr-FR') + ' à ' + chasse.time;
         html += ' - ' + rapaceName + ' (Total: ' + total + ' prises)';
         
-        // Indicateur photo
         if (chasse.photo) {
             html += ' <span style="color: #28a745; font-size: 16px;" title="Photo disponible">📷</span>';
         }
@@ -1966,7 +2244,6 @@ function updatechasseList() {
     list.innerHTML = html;
 }
 
-// Supprimer uniquement la photo d'une chasse
 function deleteChassePhoto(id) {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
         var entry = chasseEntries.find(e => e.id === id);
@@ -1974,15 +2251,10 @@ function deleteChassePhoto(id) {
             delete entry.photo;
             saveAllData();
             updatechasseList();
-            
-            if (isFirebaseReady && document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
-                showMiniNotification('📷 Photo supprimée');
-            }
         }
     }
 }
 
-// Supprimer une entrée de chasse
 function deleteChasseEntry(id) {
     var entry = chasseEntries.find(e => e.id === id);
     if (!entry) return;
@@ -1994,16 +2266,7 @@ function deleteChasseEntry(id) {
         chasseEntries = chasseEntries.filter(e => e.id !== id);
         saveAllData();
         updatechasseList();
-        
-        if (isFirebaseReady && document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
-            showMiniNotification('🗑️ Chasse supprimée');
-        }
     }
-}
-
-// Modifier une entrée de chasse (fonction basique - peut être étendue plus tard)
-function editChasseEntry(id) {
-    alert('Fonction d\'édition des chasses à développer prochainement !');
 }
 
 // === GESTION DE L'AFFAITAGE ===
@@ -2028,8 +2291,6 @@ function addAffaitage() {
         time = new Date().toTimeString().split(' ')[0].substring(0, 5);
     }
     
-    var jourSession = calculateSessionDay(parseInt(rapaceId), date);
-    
     var affaitage = {
         id: Date.now(),
         rapaceId: parseInt(rapaceId),
@@ -2039,7 +2300,6 @@ function addAffaitage() {
         poids: poids ? parseInt(poids) : null,
         weather: currentWeather,
         timestamp: new Date().toISOString(),
-        jourSession: jourSession,
         priseNourriture: document.getElementById('prise-nourriture').checked,
         voliere: document.getElementById('voliere').checked,
         gant: document.getElementById('gant').checked,
@@ -2082,50 +2342,6 @@ function finalizeAddAffaitage(affaitage) {
     document.getElementById('reprise-affaitage').checked = false;
 }
 
-function calculateSessionDay(rapaceId, currentDate) {
-    var rapaceAffaitages = affaitageEntries
-        .filter(a => a.rapaceId === rapaceId)
-        .sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
-    
-    if (rapaceAffaitages.length === 0) {
-        return 1;
-    }
-    
-    var sessionStartDate = null;
-    var sessionNumber = 1;
-    
-    for (var i = 0; i < rapaceAffaitages.length; i++) {
-        var entry = rapaceAffaitages[i];
-        
-        if (entry.repriseAffaitage) {
-            sessionStartDate = entry.date;
-            sessionNumber++;
-        } else if (sessionStartDate === null) {
-            sessionStartDate = entry.date;
-        }
-        
-        if (entry.finAffaitage && i === rapaceAffaitages.length - 1) {
-            sessionStartDate = currentDate;
-            sessionNumber++;
-        }
-    }
-    
-    if (sessionStartDate === null && rapaceAffaitages.length > 0) {
-        sessionStartDate = rapaceAffaitages[0].date;
-    }
-    
-    if (sessionStartDate === null) {
-        sessionStartDate = currentDate;
-    }
-    
-    var startDate = new Date(sessionStartDate);
-    var current = new Date(currentDate);
-    var timeDiff = current.getTime() - startDate.getTime();
-    var dayDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
-    
-    return Math.max(1, dayDiff + 1);
-}
-
 function updateAffaitageList() {
     var list = document.getElementById('affaitage-list');
     if (!list) return;
@@ -2149,13 +2365,11 @@ function updateAffaitageList() {
         
         html += '<div class="entry-item">';
         html += '<div class="entry-actions">';
-        html += '<button onclick="editAffaitageEntry(' + affaitage.id + ')" class="btn-warning" title="Modifier">✏️</button>';
         html += '<button onclick="deleteAffaitageEntry(' + affaitage.id + ')" class="btn-danger" title="Supprimer">🗑️</button>';
         html += '</div>';
         
         html += '<div class="affaitage-content">';
         
-        // Afficher la photo s'il y en a une
         if (affaitage.photo) {
             html += '<div class="photo-container">';
             html += '<img src="' + affaitage.photo + '" class="affaitage-photo" alt="Photo de la session d\'affaitage" title="Cliquez pour agrandir" onclick="showPhotoModal(\'' + affaitage.photo + '\')">';
@@ -2166,13 +2380,8 @@ function updateAffaitageList() {
         html += '<div class="date">' + new Date(affaitage.date + 'T' + affaitage.time).toLocaleDateString('fr-FR') + ' à ' + affaitage.time;
         html += ' - ' + rapaceName;
         
-        // Indicateur photo
         if (affaitage.photo) {
             html += ' <span style="color: #28a745; font-size: 16px;" title="Photo disponible">📷</span>';
-        }
-        
-        if (affaitage.jourSession) {
-            html += '<span class="session-status session-jour">Jour ' + affaitage.jourSession + '</span>';
         }
         
         if (affaitage.finAffaitage) {
@@ -2230,11 +2439,8 @@ function updateAffaitageList() {
     }
     
     list.innerHTML = html;
-    
-    updateAffaitageSessionsHistory();
 }
 
-// Supprimer uniquement la photo d'une entrée d'affaitage
 function deleteAffaitagePhoto(id) {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
         var entry = affaitageEntries.find(e => e.id === id);
@@ -2242,16 +2448,10 @@ function deleteAffaitagePhoto(id) {
             delete entry.photo;
             saveAllData();
             updateAffaitageList();
-            updateAffaitageSessionsHistory();
-            
-            if (isFirebaseReady && document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
-                showMiniNotification('📷 Photo supprimée');
-            }
         }
     }
 }
 
-// Supprimer une entrée d'affaitage
 function deleteAffaitageEntry(id) {
     var entry = affaitageEntries.find(e => e.id === id);
     if (!entry) return;
@@ -2263,266 +2463,523 @@ function deleteAffaitageEntry(id) {
         affaitageEntries = affaitageEntries.filter(e => e.id !== id);
         saveAllData();
         updateAffaitageList();
-        updateAffaitageSessionsHistory();
-        
-        // Confirmation de la suppression
-        if (isFirebaseReady && document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
-            showMiniNotification('🗑️ Entrée supprimée et sauvegardée');
-        }
     }
 }
 
-// Modifier une entrée d'affaitage
-function editAffaitageEntry(id) {
-    var entry = affaitageEntries.find(e => e.id === id);
-    if (!entry) return;
+// === GESTION DES LEURRES ===
+function addLeurre() {
+    var nom = document.getElementById('leurre-nom').value.trim();
+    var type = document.getElementById('leurre-type').value;
+    var couleur = document.getElementById('leurre-couleur').value.trim();
+    var taille = document.getElementById('leurre-taille').value;
+    var poids = document.getElementById('leurre-poids-g').value;
+    var description = document.getElementById('leurre-description').value.trim();
+    var photoInput = document.getElementById('leurre-photo');
     
-    editingAffaitageId = id;
-    
-    // Remplir le select des rapaces pour la modal d'édition
-    var select = document.getElementById('edit-affaitage-rapace');
-    var html = '<option value="">Choisir un rapace</option>';
-    for (var i = 0; i < rapaces.length; i++) {
-        var rapace = rapaces[i];
-        html += '<option value="' + rapace.id + '">' + rapace.name + ' (' + rapace.species + ')</option>';
-    }
-    select.innerHTML = html;
-    
-    // Remplir le formulaire avec les données existantes
-    document.getElementById('edit-affaitage-rapace').value = entry.rapaceId;
-    document.getElementById('edit-affaitage-date').value = entry.date;
-    document.getElementById('edit-affaitage-time').value = entry.time;
-    document.getElementById('edit-affaitage-poids').value = entry.poids || '';
-    document.getElementById('edit-affaitage-notes').value = entry.notes || '';
-    
-    // Afficher la photo existante s'il y en a une
-    var photoContainer = document.getElementById('edit-affaitage-photo-preview');
-    photoContainer.innerHTML = '';
-    if (entry.photo) {
-        var img = document.createElement('img');
-        img.src = entry.photo;
-        img.className = 'photo-preview';
-        photoContainer.appendChild(img);
-    }
-    
-    // Cocher les activités
-    document.getElementById('edit-prise-nourriture').checked = entry.priseNourriture || false;
-    document.getElementById('edit-voliere').checked = entry.voliere || false;
-    document.getElementById('edit-gant').checked = entry.gant || false;
-    document.getElementById('edit-filiere').checked = entry.filiere || false;
-    document.getElementById('edit-bloc').checked = entry.bloc || false;
-    document.getElementById('edit-libre').checked = entry.libre || false;
-    document.getElementById('edit-fin-affaitage').checked = entry.finAffaitage || false;
-    document.getElementById('edit-reprise-affaitage').checked = entry.repriseAffaitage || false;
-    
-    // Afficher la modal
-    document.getElementById('editAffaitageModal').style.display = 'block';
-}
-
-// Fermer la modal d'édition d'affaitage
-function closeEditAffaitageModal() {
-    document.getElementById('editAffaitageModal').style.display = 'none';
-    editingAffaitageId = null;
-}
-
-// Sauvegarder les modifications d'affaitage
-function saveAffaitageEdit() {
-    if (!editingAffaitageId) return;
-    
-    var rapaceId = document.getElementById('edit-affaitage-rapace').value;
-    var date = document.getElementById('edit-affaitage-date').value;
-    var time = document.getElementById('edit-affaitage-time').value;
-    var notes = document.getElementById('edit-affaitage-notes').value.trim();
-    var poids = document.getElementById('edit-affaitage-poids').value;
-    var photoInput = document.getElementById('edit-affaitage-photo');
-    
-    if (!rapaceId || !date || !time) {
-        alert('Veuillez remplir tous les champs obligatoires.');
+    if (!nom || !type) {
+        alert('Veuillez remplir le nom et le type du leurre.');
         return;
     }
     
-    // Trouver l'entrée existante
-    var entryIndex = affaitageEntries.findIndex(e => e.id === editingAffaitageId);
-    if (entryIndex === -1) return;
-    
-    var jourSession = calculateSessionDay(parseInt(rapaceId), date);
-    
-    // Préparer les données mises à jour
-    var updatedEntry = {
-        ...affaitageEntries[entryIndex], // Garder l'ID et timestamp original
-        rapaceId: parseInt(rapaceId),
-        date: date,
-        time: time,
-        notes: notes,
+    var leurre = {
+        id: Date.now(),
+        nom: nom,
+        type: type,
+        couleur: couleur,
+        taille: taille ? parseInt(taille) : null,
         poids: poids ? parseInt(poids) : null,
-        jourSession: jourSession,
-        priseNourriture: document.getElementById('edit-prise-nourriture').checked,
-        voliere: document.getElementById('edit-voliere').checked,
-        gant: document.getElementById('edit-gant').checked,
-        filiere: document.getElementById('edit-filiere').checked,
-        bloc: document.getElementById('edit-bloc').checked,
-        libre: document.getElementById('edit-libre').checked,
-        finAffaitage: document.getElementById('edit-fin-affaitage').checked,
-        repriseAffaitage: document.getElementById('edit-reprise-affaitage').checked
+        description: description,
+        dateAdded: new Date().toISOString(),
+        utilisations: 0,
+        efficacite: 0
     };
     
-    // Gérer la photo
     if (photoInput.files && photoInput.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            updatedEntry.photo = e.target.result;
-            finalizeSaveAffaitageEdit(updatedEntry, entryIndex);
+            leurre.photo = e.target.result;
+            finalizeAddLeurre(leurre);
         };
         reader.readAsDataURL(photoInput.files[0]);
     } else {
-        // Garder la photo existante si aucune nouvelle photo n'est sélectionnée
-        finalizeSaveAffaitageEdit(updatedEntry, entryIndex);
+        finalizeAddLeurre(leurre);
     }
 }
 
-function finalizeSaveAffaitageEdit(updatedEntry, entryIndex) {
-    // Mettre à jour l'entrée
-    affaitageEntries[entryIndex] = updatedEntry;
-    
+function finalizeAddLeurre(leurre) {
+    leurres.push(leurre);
     saveAllData();
-    updateAffaitageList();
-    updateAffaitageSessionsHistory();
-    closeEditAffaitageModal();
+    updateLeurreList();
+    updateLeurreSelects();
     
-    // S'assurer que les données sont sauvegardées sur Firebase
-    if (isFirebaseReady && document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
-        showMiniNotification('💾 Modifications sauvegardées');
-    }
+    // Nettoyer le formulaire
+    document.getElementById('leurre-nom').value = '';
+    document.getElementById('leurre-type').value = 'plume';
+    document.getElementById('leurre-couleur').value = '';
+    document.getElementById('leurre-taille').value = '';
+    document.getElementById('leurre-poids-g').value = '';
+    document.getElementById('leurre-description').value = '';
+    document.getElementById('leurre-photo').value = '';
+    document.getElementById('leurre-photo-preview').innerHTML = '';
 }
 
-function getSessionsHistory(rapaceId) {
-    var rapaceAffaitages = affaitageEntries
-        .filter(a => a.rapaceId === rapaceId)
-        .sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
+function updateLeurreSelects() {
+    var select = document.getElementById('session-leurre');
+    if (!select) return;
     
-    if (rapaceAffaitages.length === 0) return [];
+    var currentValue = select.value;
     
-    var sessions = [];
-    var currentSession = {
-        numero: 1,
-        dateDebut: rapaceAffaitages[0].date,
-        dateFin: null,
-        duree: 0,
-        statut: 'en_cours'
-    };
-    
-    for (var i = 0; i < rapaceAffaitages.length; i++) {
-        var entry = rapaceAffaitages[i];
-        
-        if (entry.finAffaitage) {
-            currentSession.dateFin = entry.date;
-            currentSession.statut = 'terminee';
-            
-            var debut = new Date(currentSession.dateDebut);
-            var fin = new Date(currentSession.dateFin);
-            var diffTime = fin.getTime() - debut.getTime();
-            currentSession.duree = Math.floor(diffTime / (1000 * 3600 * 24)) + 1;
-            
-            sessions.push({...currentSession});
-        }
-        
-        if (entry.repriseAffaitage) {
-            if (currentSession.statut === 'en_cours' && sessions.length === 0) {
-                currentSession.dateFin = entry.date;
-                currentSession.statut = 'terminee';
-                
-                var debut = new Date(currentSession.dateDebut);
-                var fin = new Date(entry.date);
-                var diffTime = fin.getTime() - debut.getTime();
-                currentSession.duree = Math.max(1, Math.floor(diffTime / (1000 * 3600 * 24)));
-                
-                sessions.push({...currentSession});
-            }
-            
-            currentSession = {
-                numero: sessions.length + 1,
-                dateDebut: entry.date,
-                dateFin: null,
-                duree: 0,
-                statut: 'en_cours'
-            };
-        }
+    var html = '<option value="">Choisir un leurre</option>';
+    for (var i = 0; i < leurres.length; i++) {
+        var leurre = leurres[i];
+        html += '<option value="' + leurre.id + '">' + leurre.nom + ' (' + leurre.type + ')</option>';
     }
     
-    if (currentSession.statut === 'en_cours') {
-        var debut = new Date(currentSession.dateDebut);
-        var maintenant = new Date();
-        var diffTime = maintenant.getTime() - debut.getTime();
-        currentSession.duree = Math.floor(diffTime / (1000 * 3600 * 24)) + 1;
-        
-        var alreadyAdded = sessions.some(s => s.numero === currentSession.numero && s.statut === 'en_cours');
-        if (!alreadyAdded) {
-            sessions.push(currentSession);
-        }
-    }
-    
-    return sessions;
+    select.innerHTML = html;
+    select.value = currentValue;
 }
 
-function updateAffaitageSessionsHistory() {
-    var historyDiv = document.getElementById('affaitage-sessions-history');
-    if (!historyDiv) return;
+function updateLeurreList() {
+    var list = document.getElementById('leurre-list');
+    if (!list) return;
     
-    if (rapaces.length === 0) {
-        historyDiv.innerHTML = '<p style="color: #666; font-style: italic;">Aucun rapace enregistré.</p>';
+    if (leurres.length === 0) {
+        list.innerHTML = '<p style="color: #666; font-style: italic;">Aucun leurre enregistré.</p>';
         return;
     }
     
     var html = '';
-    
-    for (var i = 0; i < rapaces.length; i++) {
-        var rapace = rapaces[i];
-        var sessions = getSessionsHistory(rapace.id);
+    for (var i = 0; i < leurres.length; i++) {
+        var leurre = leurres[i];
         
-        if (sessions.length === 0) continue;
+        html += '<div class="leurre-card">';
+        html += '<div class="leurre-actions">';
+        html += '<button onclick="deleteLeurre(' + leurre.id + ')" class="btn-danger">🗑️</button>';
+        html += '</div>';
         
-        html += '<div class="day-card" style="margin: 15px 0;">';
-        html += '<h4 style="color: #1e3c72; margin-bottom: 15px;">🦅 ' + rapace.name;
-        if (rapace.bague) {
-            html += ' <small style="color: #666;">(Bague: ' + rapace.bague + ')</small>';
+        if (leurre.photo) {
+            html += '<img src="' + leurre.photo + '" class="leurre-photo" alt="Photo de ' + leurre.nom + '">';
         }
-        html += '</h4>';
         
-        html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">';
+        html += '<h3>🎯 ' + leurre.nom + '</h3>';
+        html += '<p><strong>Type:</strong> ' + leurre.type.charAt(0).toUpperCase() + leurre.type.slice(1) + '</p>';
         
-        for (var j = 0; j < sessions.length; j++) {
-            var session = sessions[j];
-            var statusColor = session.statut === 'en_cours' ? '#28a745' : '#6c757d';
-            var statusIcon = session.statut === 'en_cours' ? '🔄' : '✅';
-            
-            html += '<div style="background: ' + (session.statut === 'en_cours' ? '#e8f5e8' : '#f8f9fa') + '; padding: 15px; border-radius: 10px; border-left: 4px solid ' + statusColor + ';">';
-            html += '<h5 style="color: ' + statusColor + '; margin-bottom: 10px;">' + statusIcon + ' Session ' + session.numero + '</h5>';
-            html += '<p><strong>Début:</strong> ' + new Date(session.dateDebut).toLocaleDateString('fr-FR') + '</p>';
-            
-            if (session.dateFin) {
-                html += '<p><strong>Fin:</strong> ' + new Date(session.dateFin).toLocaleDateString('fr-FR') + '</p>';
-            } else {
-                html += '<p><strong>En cours...</strong></p>';
-            }
-            
-            html += '<p><strong>Durée:</strong> ' + session.duree + ' jour' + (session.duree > 1 ? 's' : '') + '</p>';
-            html += '<p><strong>Statut:</strong> <span style="color: ' + statusColor + '; font-weight: bold;">' + 
-                    (session.statut === 'en_cours' ? 'En cours' : 'Terminée') + '</span></p>';
+        if (leurre.couleur) {
+            html += '<p><strong>Couleur:</strong> ' + leurre.couleur + '</p>';
+        }
+        
+        if (leurre.taille || leurre.poids) {
+            html += '<p><strong>Dimensions:</strong> ';
+            if (leurre.taille) html += leurre.taille + 'cm ';
+            if (leurre.poids) html += '• ' + leurre.poids + 'g';
+            html += '</p>';
+        }
+        
+        if (leurre.description) {
+            html += '<p><strong>Description:</strong> ' + leurre.description + '</p>';
+        }
+        
+        // Statistiques d'utilisation
+        html += '<div style="margin-top: 15px; padding: 10px; background: #e3f2fd; border-radius: 8px;">';
+        html += '<strong>📊 Statistiques:</strong><br>';
+        html += '• Utilisations: ' + leurre.utilisations + '<br>';
+        html += '• Efficacité moyenne: ' + leurre.efficacite.toFixed(1) + '%';
+        
+        if (leurre.efficacite > 0) {
+            html += '<div class="efficacite-bar">';
+            html += '<div class="efficacite-fill" style="width: ' + leurre.efficacite + '%"></div>';
             html += '</div>';
         }
-        
         html += '</div>';
+        
         html += '</div>';
     }
     
-    if (html === '') {
-        historyDiv.innerHTML = '<p style="color: #666; font-style: italic;">Aucune session d\'affaitage trouvée.</p>';
-    } else {
-        historyDiv.innerHTML = html;
+    list.innerHTML = html;
+}
+
+function deleteLeurre(id) {
+    var leurre = leurres.find(l => l.id === id);
+    if (!leurre) return;
+    
+    if (confirm('Êtes-vous sûr de vouloir supprimer le leurre "' + leurre.nom + '" ?')) {
+        leurres = leurres.filter(l => l.id !== id);
+        sessionsLeurre = sessionsLeurre.filter(s => s.leurreId !== id);
+        
+        saveAllData();
+        updateLeurreList();
+        updateLeurreSelects();
+        updateSessionsLeurreList();
     }
 }
 
-// Afficher une photo en grand dans une modal
+function addSessionLeurre() {
+    var leurreId = document.getElementById('session-leurre').value;
+    var rapaceId = document.getElementById('session-rapace').value;
+    var date = document.getElementById('session-date').value;
+    var time = document.getElementById('session-time').value;
+    var duree = document.getElementById('session-duree').value;
+    var reussite = document.getElementById('session-reussite').value;
+    var nbPasses = document.getElementById('session-nb-passes').value;
+    var notes = document.getElementById('session-notes').value.trim();
+    
+    if (!leurreId || !rapaceId) {
+        alert('Veuillez sélectionner un leurre et un rapace.');
+        return;
+    }
+    
+    if (!date) {
+        date = new Date().toISOString().split('T')[0];
+    }
+    
+    if (!time) {
+        time = new Date().toTimeString().split(' ')[0].substring(0, 5);
+    }
+    
+    var session = {
+        id: Date.now(),
+        leurreId: parseInt(leurreId),
+        rapaceId: parseInt(rapaceId),
+        date: date,
+        time: time,
+        duree: duree ? parseInt(duree) : null,
+        reussite: reussite,
+        nbPasses: nbPasses ? parseInt(nbPasses) : null,
+        notes: notes,
+        weather: currentWeather,
+        timestamp: new Date().toISOString(),
+        ventFort: document.getElementById('session-vent-fort').checked,
+        pluie: document.getElementById('session-pluie').checked,
+        premiereFois: document.getElementById('session-premiere-fois').checked,
+        rapaceAffame: document.getElementById('session-rapace-affame').checked
+    };
+    
+    sessionsLeurre.push(session);
+    
+    // Mettre à jour les statistiques du leurre
+    updateLeurreStats(parseInt(leurreId));
+    
+    saveAllData();
+    updateSessionsLeurreList();
+    updateLeurreList();
+    
+    // Nettoyer le formulaire
+    document.getElementById('session-duree').value = '';
+    document.getElementById('session-reussite').value = 'excellente';
+    document.getElementById('session-nb-passes').value = '';
+    document.getElementById('session-notes').value = '';
+    document.getElementById('session-vent-fort').checked = false;
+    document.getElementById('session-pluie').checked = false;
+    document.getElementById('session-premiere-fois').checked = false;
+    document.getElementById('session-rapace-affame').checked = false;
+}
+
+function updateLeurreStats(leurreId) {
+    var leurre = leurres.find(l => l.id === leurreId);
+    if (!leurre) return;
+    
+    var sessions = sessionsLeurre.filter(s => s.leurreId === leurreId);
+    leurre.utilisations = sessions.length;
+    
+    if (sessions.length > 0) {
+        var totalEfficacite = 0;
+        for (var i = 0; i < sessions.length; i++) {
+            var session = sessions[i];
+            switch (session.reussite) {
+                case 'excellente': totalEfficacite += 100; break;
+                case 'bonne': totalEfficacite += 80; break;
+                case 'moyenne': totalEfficacite += 60; break;
+                case 'difficile': totalEfficacite += 30; break;
+                case 'echec': totalEfficacite += 0; break;
+            }
+        }
+        leurre.efficacite = totalEfficacite / sessions.length;
+    } else {
+        leurre.efficacite = 0;
+    }
+}
+
+function updateSessionsLeurreList() {
+    var list = document.getElementById('sessions-leurre-list');
+    if (!list) return;
+    
+    var sortedSessions = [...sessionsLeurre].sort((a, b) => {
+        var dateTimeA = new Date(a.date + 'T' + a.time);
+        var dateTimeB = new Date(b.date + 'T' + b.time);
+        return dateTimeB - dateTimeA;
+    });
+    
+    if (sortedSessions.length === 0) {
+        list.innerHTML = '<p style="color: #666; font-style: italic;">Aucune session enregistrée.</p>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < sortedSessions.length; i++) {
+        var session = sortedSessions[i];
+        var leurre = leurres.find(l => l.id === session.leurreId);
+        var rapace = rapaces.find(r => r.id === session.rapaceId);
+        
+        var leurreNom = leurre ? leurre.nom : 'Leurre supprimé';
+        var rapaceNom = rapace ? rapace.name : 'Rapace supprimé';
+        
+        html += '<div class="session-leurre">';
+        html += '<div class="entry-actions">';
+        html += '<button onclick="deleteSessionLeurre(' + session.id + ')" class="btn-danger" title="Supprimer">🗑️</button>';
+        html += '</div>';
+        
+        html += '<div class="date">' + new Date(session.date + 'T' + session.time).toLocaleDateString('fr-FR') + ' à ' + session.time;
+        html += ' - ' + rapaceNom + ' avec ' + leurreNom + '</div>';
+        html += '<div class="content">';
+        
+        if (session.duree) {
+            html += '<strong>Durée:</strong> ' + session.duree + ' minutes<br>';
+        }
+        
+        var reussiteLabel = '';
+        var reussiteColor = '';
+        switch (session.reussite) {
+            case 'excellente': reussiteLabel = 'Excellente'; reussiteColor = '#28a745'; break;
+            case 'bonne': reussiteLabel = 'Bonne'; reussiteColor = '#20c997'; break;
+            case 'moyenne': reussiteLabel = 'Moyenne'; reussiteColor = '#ffc107'; break;
+            case 'difficile': reussiteLabel = 'Difficile'; reussiteColor = '#fd7e14'; break;
+            case 'echec': reussiteLabel = 'Échec'; reussiteColor = '#dc3545'; break;
+        }
+        
+        html += '<strong>Réussite:</strong> <span style="color: ' + reussiteColor + '; font-weight: bold;">' + reussiteLabel + '</span>';
+        
+        if (session.nbPasses) {
+            html += ' (' + session.nbPasses + ' passes)';
+        }
+        html += '<br>';
+        
+        var conditions = [];
+        if (session.ventFort) conditions.push('💨 Vent fort');
+        if (session.pluie) conditions.push('🌧️ Pluie');
+        if (session.premiereFois) conditions.push('🆕 Première fois');
+        if (session.rapaceAffame) conditions.push('🍖 Rapace affamé');
+        
+        if (conditions.length > 0) {
+            html += '<strong>Conditions:</strong> ' + conditions.join(', ') + '<br>';
+        }
+        
+        if (session.notes) {
+            html += '<strong>Notes:</strong> ' + session.notes;
+        }
+        html += '</div></div>';
+    }
+    
+    list.innerHTML = html;
+}
+
+function deleteSessionLeurre(id) {
+    var session = sessionsLeurre.find(s => s.id === id);
+    if (!session) return;
+    
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette session ?')) {
+        sessionsLeurre = sessionsLeurre.filter(s => s.id !== id);
+        
+        // Mettre à jour les stats du leurre
+        updateLeurreStats(session.leurreId);
+        
+        saveAllData();
+        updateSessionsLeurreList();
+        updateLeurreList();
+    }
+}
+
+// === GESTION DES DOCUMENTS ===
+function addDocument() {
+    var nom = document.getElementById('doc-nom').value.trim();
+    var categorie = document.getElementById('doc-categorie').value;
+    var rapaceId = document.getElementById('doc-rapace').value;
+    var date = document.getElementById('doc-date').value;
+    var description = document.getElementById('doc-description').value.trim();
+    var fileInput = document.getElementById('doc-file');
+    
+    if (!nom || !categorie) {
+        alert('Veuillez remplir le nom et la catégorie du document.');
+        return;
+    }
+    
+    var document_obj = {
+        id: Date.now(),
+        nom: nom,
+        categorie: categorie,
+        rapaceId: rapaceId ? parseInt(rapaceId) : null,
+        date: date,
+        description: description,
+        dateAdded: new Date().toISOString()
+    };
+    
+    if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document_obj.file = e.target.result;
+            document_obj.fileName = fileInput.files[0].name;
+            document_obj.fileType = fileInput.files[0].type;
+            document_obj.fileSize = fileInput.files[0].size;
+            finalizeAddDocument(document_obj);
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+    } else {
+        finalizeAddDocument(document_obj);
+    }
+}
+
+function finalizeAddDocument(document_obj) {
+    documents.push(document_obj);
+    saveAllData();
+    updateDocumentsList();
+    
+    // Nettoyer le formulaire
+    document.getElementById('doc-nom').value = '';
+    document.getElementById('doc-categorie').value = 'sante';
+    document.getElementById('doc-rapace').value = '';
+    document.getElementById('doc-date').value = '';
+    document.getElementById('doc-description').value = '';
+    document.getElementById('doc-file').value = '';
+    document.getElementById('doc-file-preview').innerHTML = '';
+}
+
+function filterDocuments(category) {
+    currentDocumentFilter = category;
+    
+    // Mettre à jour l'apparence des boutons
+    var buttons = document.querySelectorAll('.category-btn');
+    for (var i = 0; i < buttons.length; i++) {
+        buttons[i].classList.remove('active');
+    }
+    event.target.classList.add('active');
+    
+    updateDocumentsList();
+}
+
+function updateDocumentsList() {
+    var list = document.getElementById('documents-list');
+    if (!list) return;
+    
+    var filteredDocuments = documents;
+    if (currentDocumentFilter !== 'all') {
+        filteredDocuments = documents.filter(d => d.categorie === currentDocumentFilter);
+    }
+    
+    var sortedDocuments = [...filteredDocuments].sort((a, b) => {
+        return new Date(b.dateAdded) - new Date(a.dateAdded);
+    });
+    
+    if (sortedDocuments.length === 0) {
+        list.innerHTML = '<p style="color: #666; font-style: italic;">Aucun document trouvé.</p>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < sortedDocuments.length; i++) {
+        var doc = sortedDocuments[i];
+        var rapace = doc.rapaceId ? rapaces.find(r => r.id === doc.rapaceId) : null;
+        var rapaceNom = rapace ? rapace.name : null;
+        
+        html += '<div class="document-card">';
+        html += '<div class="document-actions">';
+        if (doc.file) {
+            html += '<button onclick="downloadDocument(' + doc.id + ')" class="btn-success" title="Télécharger">📥</button>';
+        }
+        html += '<button onclick="deleteDocument(' + doc.id + ')" class="btn-danger" title="Supprimer">🗑️</button>';
+        html += '</div>';
+        
+        // Icône ou aperçu
+        if (doc.file && doc.fileType && doc.fileType.includes('image/')) {
+            html += '<img src="' + doc.file + '" class="document-preview" alt="Aperçu">';
+        } else {
+            var icon = getDocumentIcon(doc.categorie, doc.fileType);
+            html += '<div class="document-icon">' + icon + '</div>';
+        }
+        
+        html += '<h3>📄 ' + doc.nom + '</h3>';
+        html += '<p><strong>Catégorie:</strong> ' + getCategorieLabel(doc.categorie) + '</p>';
+        
+        if (rapaceNom) {
+            html += '<p><strong>Rapace:</strong> ' + rapaceNom + '</p>';
+        }
+        
+        if (doc.date) {
+            html += '<p><strong>Date:</strong> ' + new Date(doc.date).toLocaleDateString('fr-FR') + '</p>';
+        }
+        
+        if (doc.description) {
+            html += '<p><strong>Description:</strong> ' + doc.description + '</p>';
+        }
+        
+        if (doc.fileName) {
+            html += '<div style="margin-top: 10px; padding: 8px; background: #e3f2fd; border-radius: 5px; font-size: 14px;">';
+            html += '<strong>Fichier:</strong> ' + doc.fileName;
+            if (doc.fileSize) {
+                html += ' (' + (doc.fileSize / 1024).toFixed(1) + ' KB)';
+            }
+            html += '</div>';
+        }
+        
+        html += '<p style="color: #666; font-size: 12px; margin-top: 10px;">Ajouté le ' + new Date(doc.dateAdded).toLocaleDateString('fr-FR') + '</p>';
+        html += '</div>';
+    }
+    
+    list.innerHTML = html;
+}
+
+function getCategorieLabel(categorie) {
+    switch (categorie) {
+        case 'sante': return '🏥 Santé';
+        case 'legal': return '⚖️ Légal/Administratif';
+        case 'formation': return '🎓 Formation';
+        case 'equipement': return '🔧 Équipement';
+        case 'chasse': return '🏹 Chasse';
+        case 'elevage': return '🥚 Élevage';
+        case 'autre': return '📋 Autre';
+        default: return categorie;
+    }
+}
+
+function getDocumentIcon(categorie, fileType) {
+    if (fileType) {
+        if (fileType.includes('pdf')) return '📄';
+        if (fileType.includes('word')) return '📝';
+        if (fileType.includes('image/')) return '🖼️';
+        if (fileType.includes('text')) return '📃';
+    }
+    
+    switch (categorie) {
+        case 'sante': return '🏥';
+        case 'legal': return '⚖️';
+        case 'formation': return '🎓';
+        case 'equipement': return '🔧';
+        case 'chasse': return '🏹';
+        case 'elevage': return '🥚';
+        default: return '📋';
+    }
+}
+
+function downloadDocument(id) {
+    var doc = documents.find(d => d.id === id);
+    if (!doc || !doc.file) return;
+    
+    var link = document.createElement('a');
+    link.href = doc.file;
+    link.download = doc.fileName || 'document';
+    link.click();
+}
+
+function deleteDocument(id) {
+    var doc = documents.find(d => d.id === id);
+    if (!doc) return;
+    
+    if (confirm('Êtes-vous sûr de vouloir supprimer le document "' + doc.nom + '" ?')) {
+        documents = documents.filter(d => d.id !== id);
+        saveAllData();
+        updateDocumentsList();
+    }
+}
+
+// === MODALES ===
 function showPhotoModal(photoSrc) {
     var modal = document.getElementById('photoModal');
     var modalPhoto = document.getElementById('modal-photo');
@@ -2531,7 +2988,6 @@ function showPhotoModal(photoSrc) {
     modal.style.display = 'block';
 }
 
-// Fermer la modal photo
 function closePhotoModal() {
     document.getElementById('photoModal').style.display = 'none';
 }
@@ -2569,11 +3025,12 @@ function generateStatsForDateHTML(date) {
     var dayEntries = entries.filter(e => e.date === dateStr);
     var dayChasses = chasseEntries.filter(c => c.date === dateStr);
     var dayAffaitages = affaitageEntries.filter(a => a.date === dateStr);
+    var daySessions = sessionsLeurre.filter(s => s.date === dateStr);
     
     var html = '<div class="day-card">';
     html += '<h4>' + date.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) + '</h4>';
     
-    if (dayEntries.length === 0 && dayChasses.length === 0 && dayAffaitages.length === 0) {
+    if (dayEntries.length === 0 && dayChasses.length === 0 && dayAffaitages.length === 0 && daySessions.length === 0) {
         html += '<p style="color: #666; font-style: italic;">Aucune activité enregistrée ce jour.</p>';
     } else {
         html += '<div class="stats-grid">';
@@ -2593,15 +3050,9 @@ function generateStatsForDateHTML(date) {
         html += '<div class="value">' + dayAffaitages.length + '</div>';
         html += '</div>';
         
-        var totalPrises = 0;
-        for (var i = 0; i < dayChasses.length; i++) {
-            var chasse = dayChasses[i];
-            totalPrises += chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
-        }
-        
         html += '<div class="stat-card">';
-        html += '<h3>🎯 Prises totales</h3>';
-        html += '<div class="value">' + totalPrises + '</div>';
+        html += '<h3>🎯 Sessions de leurre</h3>';
+        html += '<div class="value">' + daySessions.length + '</div>';
         html += '</div>';
         
         html += '</div>';
@@ -2625,6 +3076,7 @@ function showBirdStats() {
         var birdEntries = entries.filter(e => e.rapaceId === rapace.id);
         var birdChasses = chasseEntries.filter(c => c.rapaceId === rapace.id);
         var birdAffaitages = affaitageEntries.filter(a => a.rapaceId === rapace.id);
+        var birdSessions = sessionsLeurre.filter(s => s.rapaceId === rapace.id);
         
         html += '<div class="day-card" style="margin: 20px 0; background: linear-gradient(135deg, #f8f9fa 0%, #e3f2fd 100%);">';
         html += '<h4 style="color: #1e3c72; margin-bottom: 20px; font-size: 1.8em; text-align: center; border-bottom: 2px solid #2a5298; padding-bottom: 10px;">';
@@ -2644,12 +3096,7 @@ function showBirdStats() {
         var totalEntries = birdEntries.length;
         var totalChasses = birdChasses.length;
         var totalAffaitages = birdAffaitages.length;
-        var totalPrises = 0;
-        
-        for (var j = 0; j < birdChasses.length; j++) {
-            var chasse = birdChasses[j];
-            totalPrises += chasse.faisan + chasse.perdrix + chasse.lapin + chasse.lievre + chasse.canard + chasse.oie + chasse.autre;
-        }
+        var totalSessions = birdSessions.length;
         
         html += '<div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">';
         html += '<h5 style="color: #1e3c72; margin-bottom: 15px; font-size: 1.3em;">📈 Résumé</h5>';
@@ -2665,14 +3112,14 @@ function showBirdStats() {
         html += '<div style="font-size: 0.9em;">Chasses</div>';
         html += '</div>';
         
-        html += '<div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #ffc107, #e0a800); color: #212529; border-radius: 10px;">';
-        html += '<div style="font-size: 2em; font-weight: bold;">' + totalPrises + '</div>';
-        html += '<div style="font-size: 0.9em;">Prises</div>';
-        html += '</div>';
-        
         html += '<div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #6f42c1, #563d7c); color: white; border-radius: 10px;">';
         html += '<div style="font-size: 2em; font-weight: bold;">' + totalAffaitages + '</div>';
         html += '<div style="font-size: 0.9em;">Affaitages</div>';
+        html += '</div>';
+        
+        html += '<div style="text-align: center; padding: 15px; background: linear-gradient(135deg, #ffc107, #e0a800); color: #212529; border-radius: 10px;">';
+        html += '<div style="font-size: 2em; font-weight: bold;">' + totalSessions + '</div>';
+        html += '<div style="font-size: 0.9em;">Sessions leurre</div>';
         html += '</div>';
         
         html += '</div>';
@@ -2788,15 +3235,6 @@ function generateWeightGraph(rapace) {
             if (rapace.poidsPlein) html += '🍖 Plein: ' + rapace.poidsPlein + 'g';
             html += '</div>';
         }
-        
-        html += '<div style="font-family: Arial; font-size: 11px; margin-top: 10px; color: #666;">';
-        html += '<strong>Données:</strong> ';
-        for (var x = 0; x < weightData.length; x++) {
-            if (weightData[x].weight !== null) {
-                html += weightData[x].date + ': ' + weightData[x].weight + 'g; ';
-            }
-        }
-        html += '</div>';
     }
     
     html += '</div>';
@@ -2805,13 +3243,10 @@ function generateWeightGraph(rapace) {
     return html;
 }
 
-// === FONCTIONS FIREBASE ET SYNCHRONISATION ===
-
-// Charger Firebase
+// === FONCTIONS FIREBASE ===
 function loadFirebase() {
     addSyncHistoryEntry('🔄 Chargement de Firebase...');
     
-    // Charger les scripts Firebase
     const scripts = [
         'https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js',
         'https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js'
@@ -2838,12 +3273,10 @@ function loadFirebase() {
 
 function initFirebase() {
     try {
-        // Initialiser Firebase
         if (typeof firebase !== 'undefined') {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
             
-            // Générer un ID utilisateur unique
             firebaseUserId = prompt("Entrez un identifiant unique pour la synchronisation (le même sur tous les appareils) :", localStorage.getItem('firebaseUserId') || "");
             if (!firebaseUserId || firebaseUserId.trim() === "") {
                 alert("Identifiant requis pour activer la synchronisation.");
@@ -2856,10 +3289,7 @@ function initFirebase() {
             addSyncHistoryEntry('✅ Firebase initialisé avec succès');
             updateSyncUI();
             
-            // Première synchronisation
             loadFromFirebase();
-            
-            // Synchronisation automatique toutes les 30 secondes
             startAutoSync();
             
         } else {
@@ -2871,7 +3301,6 @@ function initFirebase() {
     }
 }
 
-// Sauvegarder vers Firebase
 function syncToFirebase() {
     if (!isFirebaseReady || !db) {
         console.log('Firebase pas prêt pour la sync');
@@ -2883,6 +3312,9 @@ function syncToFirebase() {
         entries: entries,
         chasseEntries: chasseEntries,
         affaitageEntries: affaitageEntries,
+        leurres: leurres,
+        sessionsLeurre: sessionsLeurre,
+        documents: documents,
         currentLocation: currentLocation,
         lastSync: firebase.firestore.FieldValue.serverTimestamp(),
         deviceInfo: {
@@ -2898,7 +3330,6 @@ function syncToFirebase() {
             lastSyncTime = new Date();
             updateSyncUI();
             
-            // Mini notification
             if (document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
                 showMiniNotification('☁️ Données synchronisées');
             }
@@ -2909,7 +3340,6 @@ function syncToFirebase() {
         });
 }
 
-// Charger depuis Firebase
 function loadFromFirebase() {
     if (!isFirebaseReady || !db) {
         console.log('Firebase pas prêt pour le chargement');
@@ -2921,7 +3351,6 @@ function loadFromFirebase() {
             if (doc.exists) {
                 const firebaseData = doc.data();
                 
-                // Comparer les timestamps pour voir quelle version est plus récente
                 const localData = localStorage.getItem('rapaces_data');
                 let localTimestamp = 0;
                 
@@ -2936,28 +3365,26 @@ function loadFromFirebase() {
                 
                 const firebaseTimestamp = firebaseData.lastSync ? firebaseData.lastSync.toDate().getTime() : 0;
                 
-                // Afficher les timestamps pour debug
-                addSyncHistoryEntry('🕐 Local: ' + new Date(localTimestamp).toLocaleString('fr-FR'));
-                addSyncHistoryEntry('🕐 Firebase: ' + new Date(firebaseTimestamp).toLocaleString('fr-FR'));
-                
-                // Ajouter une marge de sécurité de 30 secondes pour éviter les écrasements
                 if (firebaseTimestamp > (localTimestamp + 30000)) {
-                    // Firebase plus récent de plus de 30 secondes, utiliser ces données
                     rapaces = firebaseData.rapaces || [];
                     entries = firebaseData.entries || [];
                     chasseEntries = firebaseData.chasseEntries || [];
                     affaitageEntries = firebaseData.affaitageEntries || [];
+                    leurres = firebaseData.leurres || [];
+                    sessionsLeurre = firebaseData.sessionsLeurre || [];
+                    documents = firebaseData.documents || [];
                     currentLocation = firebaseData.currentLocation || currentLocation;
                     
-                    // Mettre à jour l'interface
                     updateRapaceList();
                     updateRapaceSelects();
                     updateEntryList();
                     updatechasseList();
                     updateAffaitageList();
-                    updateAffaitageSessionsHistory();
+                    updateLeurreList();
+                    updateSessionsLeurreList();
+                    updateDocumentsList();
+                    updateLeurreSelects();
                     
-                    // Sauvegarder localement
                     saveAllDataWithoutSync();
                     
                     addSyncHistoryEntry('📥 Données chargées depuis Firebase');
@@ -2965,13 +3392,11 @@ function loadFromFirebase() {
                         showMiniNotification('📥 Données mises à jour depuis le cloud');
                     }
                 } else {
-                    addSyncHistoryEntry('📊 Données locales plus récentes ou égales - conservation');
-                    // Sauvegarder vers Firebase si les données locales sont plus récentes ou égales
+                    addSyncHistoryEntry('📊 Données locales plus récentes - conservation');
                     syncToFirebase();
                 }
             } else {
                 addSyncHistoryEntry('📊 Aucune donnée Firebase, première utilisation');
-                // Première utilisation, sauvegarder les données locales vers Firebase
                 syncToFirebase();
             }
         })
@@ -2981,7 +3406,6 @@ function loadFromFirebase() {
         });
 }
 
-// Fonction de synchronisation manuelle Firebase
 function manualFirebaseSync() {
     if (!isFirebaseReady) {
         addSyncHistoryEntry('🔄 Initialisation Firebase...');
@@ -2990,12 +3414,9 @@ function manualFirebaseSync() {
     }
     
     addSyncHistoryEntry('🔄 Synchronisation manuelle lancée...');
-    
-    // D'abord charger depuis Firebase
     loadFromFirebase();
 }
 
-// Fonction pour forcer l'envoi des données locales vers Firebase
 function forceUploadToFirebase() {
     if (!isFirebaseReady) {
         addSyncHistoryEntry('❌ Firebase non connecté');
@@ -3006,7 +3427,6 @@ function forceUploadToFirebase() {
     syncToFirebase();
 }
 
-// Fonction pour forcer le téléchargement depuis Firebase
 function forceDownloadFromFirebase() {
     if (!isFirebaseReady) {
         addSyncHistoryEntry('❌ Firebase non connecté');
@@ -3022,28 +3442,30 @@ function forceDownloadFromFirebase() {
                 
                 addSyncHistoryEntry('🔄 Écrasement des données locales...');
                 
-                // Forcer l'utilisation des données Firebase
                 rapaces = firebaseData.rapaces || [];
                 entries = firebaseData.entries || [];
                 chasseEntries = firebaseData.chasseEntries || [];
                 affaitageEntries = firebaseData.affaitageEntries || [];
+                leurres = firebaseData.leurres || [];
+                sessionsLeurre = firebaseData.sessionsLeurre || [];
+                documents = firebaseData.documents || [];
                 currentLocation = firebaseData.currentLocation || currentLocation;
                 
-                // Mettre à jour l'interface
                 updateRapaceList();
                 updateRapaceSelects();
                 updateEntryList();
                 updatechasseList();
                 updateAffaitageList();
-                updateAffaitageSessionsHistory();
+                updateLeurreList();
+                updateSessionsLeurreList();
+                updateDocumentsList();
+                updateLeurreSelects();
                 
-                // Sauvegarder localement
                 saveAllDataWithoutSync();
                 
                 addSyncHistoryEntry('✅ Données forcées depuis Firebase');
                 showMiniNotification('📥 Données forcées depuis le cloud');
                 
-                // Actualiser la page pour être sûr
                 setTimeout(() => {
                     if (confirm('Données mises à jour ! Voulez-vous actualiser la page pour être sûr ?')) {
                         location.reload();
@@ -3060,33 +3482,31 @@ function forceDownloadFromFirebase() {
         });
 }
 
-// Fonction pour rafraîchir complètement les données
 function refreshAllData() {
     addSyncHistoryEntry('🔄 Rafraîchissement complet...');
     
-    // Recharger depuis Firebase
     if (isFirebaseReady) {
         forceDownloadFromFirebase();
     } else {
-        // Recharger depuis le localStorage
         loadAllData();
         updateRapaceList();
         updateRapaceSelects();
         updateEntryList();
         updatechasseList();
         updateAffaitageList();
-        updateAffaitageSessionsHistory();
+        updateLeurreList();
+        updateSessionsLeurreList();
+        updateDocumentsList();
+        updateLeurreSelects();
         addSyncHistoryEntry('🔄 Données rechargées depuis le stockage local');
     }
 }
 
-// Connecter Firebase
 function initFirebaseSync() {
     addSyncHistoryEntry('🔄 Connexion à Firebase...');
     loadFirebase();
 }
 
-// Déconnecter Firebase
 function disconnectFirebase() {
     isFirebaseReady = false;
     db = null;
@@ -3095,15 +3515,14 @@ function disconnectFirebase() {
     updateSyncUI();
 }
 
-// Démarrer la synchronisation automatique
 function startAutoSync() {
-    stopAutoSync(); // Arrêter l'ancien timer
+    stopAutoSync();
     
     if (isFirebaseReady && document.getElementById('auto-sync-enabled') && document.getElementById('auto-sync-enabled').checked) {
         syncIntervalId = setInterval(function() {
             addSyncHistoryEntry('🔄 Sync auto - vérification...');
-            loadFromFirebase(); // Vérifier les mises à jour
-        }, 30 * 1000); // Toutes les 30 secondes
+            loadFromFirebase();
+        }, 30 * 1000);
         
         addSyncHistoryEntry('🔄 Synchronisation automatique activée (30 sec)');
     }
@@ -3117,7 +3536,6 @@ function stopAutoSync() {
     }
 }
 
-// Mettre à jour l'interface de synchronisation pour Firebase
 function updateSyncUI() {
     const statusEl = document.getElementById('sync-status');
     const detailsEl = document.getElementById('sync-details');
@@ -3129,7 +3547,7 @@ function updateSyncUI() {
     const refreshBtn = document.getElementById('refresh-btn');
     const disconnectBtn = document.getElementById('disconnect-drive-btn');
     
-    if (!statusEl) return; // Pas sur l'onglet sync
+    if (!statusEl) return;
     
     if (isFirebaseReady) {
         statusEl.textContent = '✅ Firebase connecté';
@@ -3168,7 +3586,6 @@ function addSyncHistoryEntry(message) {
     var timeStr = now.toLocaleTimeString('fr-FR');
     syncHistory.unshift(timeStr + ' - ' + message);
     
-    // Garder seulement les 10 dernières entrées
     if (syncHistory.length > 10) {
         syncHistory = syncHistory.slice(0, 10);
     }
@@ -3204,7 +3621,6 @@ function showMiniNotification(message) {
     }, 3000);
 }
 
-// Sauvegarder sans synchronisation automatique (pour éviter les boucles)
 function saveAllDataWithoutSync() {
     try {
         var data = {
@@ -3212,6 +3628,9 @@ function saveAllDataWithoutSync() {
             entries: entries,
             chasseEntries: chasseEntries,
             affaitageEntries: affaitageEntries,
+            leurres: leurres,
+            sessionsLeurre: sessionsLeurre,
+            documents: documents,
             currentLocation: currentLocation,
             lastSave: new Date().toISOString()
         };
@@ -3221,21 +3640,7 @@ function saveAllDataWithoutSync() {
     }
 }
 
-// Compatibilité avec les anciennes fonctions Google Drive
-function initGoogleDriveSync() {
-    initFirebaseSync();
-}
-
-function manualSync() {
-    manualFirebaseSync();
-}
-
-function disconnectDrive() {
-    disconnectFirebase();
-}
-
 // === GESTION DES DONNÉES ===
-// Sauvegarder avec sync Firebase
 function saveAllData() {
     try {
         var data = {
@@ -3243,12 +3648,14 @@ function saveAllData() {
             entries: entries,
             chasseEntries: chasseEntries,
             affaitageEntries: affaitageEntries,
+            leurres: leurres,
+            sessionsLeurre: sessionsLeurre,
+            documents: documents,
             currentLocation: currentLocation,
             lastSave: new Date().toISOString()
         };
         localStorage.setItem('rapaces_data', JSON.stringify(data));
         
-        // Synchroniser avec Firebase si connecté et activé
         if (isFirebaseReady && document.getElementById('sync-on-change-enabled') && document.getElementById('sync-on-change-enabled').checked) {
             syncToFirebase();
         }
@@ -3266,6 +3673,9 @@ function loadAllData() {
             entries = data.entries || [];
             chasseEntries = data.chasseEntries || [];
             affaitageEntries = data.affaitageEntries || [];
+            leurres = data.leurres || [];
+            sessionsLeurre = data.sessionsLeurre || [];
+            documents = data.documents || [];
             currentLocation = data.currentLocation || "Orthez (64300)";
             return true;
         }
@@ -3281,9 +3691,12 @@ function exportAllData() {
         entries: entries,
         chasseEntries: chasseEntries,
         affaitageEntries: affaitageEntries,
+        leurres: leurres,
+        sessionsLeurre: sessionsLeurre,
+        documents: documents,
         currentLocation: currentLocation,
         exportDate: new Date().toISOString(),
-        version: "1.4"
+        version: "2.0"
     };
     
     var dataStr = JSON.stringify(data, null, 2);
@@ -3314,6 +3727,9 @@ function importAllData() {
                         entries = data.entries || [];
                         chasseEntries = data.chasseEntries || [];
                         affaitageEntries = data.affaitageEntries || [];
+                        leurres = data.leurres || [];
+                        sessionsLeurre = data.sessionsLeurre || [];
+                        documents = data.documents || [];
                         currentLocation = data.currentLocation || currentLocation;
                         
                         saveAllData();
@@ -3322,7 +3738,10 @@ function importAllData() {
                         updateEntryList();
                         updatechasseList();
                         updateAffaitageList();
-                        updateAffaitageSessionsHistory();
+                        updateLeurreList();
+                        updateSessionsLeurreList();
+                        updateDocumentsList();
+                        updateLeurreSelects();
                         
                         alert('Données importées avec succès !');
                     }
@@ -3345,6 +3764,9 @@ function clearAllData() {
             entries = [];
             chasseEntries = [];
             affaitageEntries = [];
+            leurres = [];
+            sessionsLeurre = [];
+            documents = [];
             
             localStorage.removeItem('rapaces_data');
             
@@ -3353,7 +3775,10 @@ function clearAllData() {
             updateEntryList();
             updatechasseList();
             updateAffaitageList();
-            updateAffaitageSessionsHistory();
+            updateLeurreList();
+            updateSessionsLeurreList();
+            updateDocumentsList();
+            updateLeurreSelects();
             
             alert('Toutes les données ont été supprimées.');
         }
@@ -3582,14 +4007,10 @@ function changeLocation() {
 // === GESTION DES MODALES ===
 window.onclick = function(event) {
     var editModal = document.getElementById('editModal');
-    var editAffaitageModal = document.getElementById('editAffaitageModal');
     var photoModal = document.getElementById('photoModal');
     
     if (event.target === editModal) {
         closeEditModal();
-    }
-    if (event.target === editAffaitageModal) {
-        closeEditAffaitageModal();
     }
     if (event.target === photoModal) {
         closePhotoModal();
@@ -3605,25 +4026,41 @@ function initApp() {
     updateEntryList();
     updatechasseList();
     updateAffaitageList();
-    updateAffaitageSessionsHistory();
+    updateLeurreList();
+    updateSessionsLeurreList();
+    updateDocumentsList();
+    updateLeurreSelects();
     
     var today = new Date().toISOString().split('T')[0];
     var now = new Date().toTimeString().split(' ')[0].substring(0, 5);
     
-    document.getElementById('event-date').value = today;
-    document.getElementById('event-time').value = now;
-    document.getElementById('chasse-date').value = today;
-    document.getElementById('chasse-time').value = now;
-    document.getElementById('affaitage-date').value = today;
-    document.getElementById('affaitage-time').value = now;
-    document.getElementById('stats-date').value = today;
+    var eventDateEl = document.getElementById('event-date');
+    var eventTimeEl = document.getElementById('event-time');
+    var chasseDateEl = document.getElementById('chasse-date');
+    var chasseTimeEl = document.getElementById('chasse-time');
+    var affaitageeDateEl = document.getElementById('affaitage-date');
+    var affaitageTimeEl = document.getElementById('affaitage-time');
+    var sessionDateEl = document.getElementById('session-date');
+    var sessionTimeEl = document.getElementById('session-time');
+    var docDateEl = document.getElementById('doc-date');
+    var statsDateEl = document.getElementById('stats-date');
+    
+    if (eventDateEl) eventDateEl.value = today;
+    if (eventTimeEl) eventTimeEl.value = now;
+    if (chasseDateEl) chasseDateEl.value = today;
+    if (chasseTimeEl) chasseTimeEl.value = now;
+    if (affaitageeDateEl) affaitageeDateEl.value = today;
+    if (affaitageTimeEl) affaitageTimeEl.value = now;
+    if (sessionDateEl) sessionDateEl.value = today;
+    if (sessionTimeEl) sessionTimeEl.value = now;
+    if (docDateEl) docDateEl.value = today;
+    if (statsDateEl) statsDateEl.value = today;
     
     loadWeather();
     showEventFields();
     updateStats();
     updatePoidsChaseReference();
     
-    // Tentative de reconnexion automatique Firebase
     setTimeout(function() {
         if (localStorage.getItem('firebaseUserId')) {
             addSyncHistoryEntry('🔄 Tentative de reconnexion automatique...');
@@ -3632,7 +4069,6 @@ function initApp() {
     }, 2000);
 }
 
-// Charger l'application au démarrage
 document.addEventListener('DOMContentLoaded', function() {
     initApp();
 });
