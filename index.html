@@ -1013,6 +1013,11 @@
         </div>
         
         <div class="form-group">
+            <label for="affaitage-evenement">🌟 Événement marquant (optionnel) :</label>
+            <textarea id="affaitage-evenement" rows="2" placeholder="Ex: Premier vol libre réussi, Refus de prendre la nourriture, Agressivité inhabituelle..."></textarea>
+        </div>
+        
+        <div class="form-group">
             <label for="affaitage-photo">📷 Photo de la session :</label>
             <div class="file-input-wrapper">
                 <input type="file" id="affaitage-photo" accept="image/*" onchange="previewAffaitagePhoto(this)">
@@ -1023,7 +1028,10 @@
         
         <button onclick="addAffaitage()">Enregistrer l'Affaitage</button>
         
-        <h2 style="margin-top: 40px;">Historique d'Affaitage</h2>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 40px;">
+            <h2>Historique d'Affaitage</h2>
+            <button onclick="showEvenementsMarquants()" class="btn-warning">🌟 Événements marquants</button>
+        </div>
         <div id="affaitage-list"></div>
     </div>
 
@@ -1329,6 +1337,17 @@
         <span class="close" onclick="closePhotoModal()">&times;</span>
         <img id="modal-photo" style="max-width: 100%; max-height: 80vh; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
         <p style="margin-top: 15px; color: #666; font-size: 14px;">📷 Photo</p>
+    </div>
+</div>
+
+<!-- Modal pour les événements marquants -->
+<div id="evenementsModal" class="modal">
+    <div class="modal-content" style="max-width: 80%; max-height: 90%;">
+        <span class="close" onclick="closeEvenementsModal()">&times;</span>
+        <h2 style="color: #1e3c72; margin-bottom: 20px;">🌟 Événements Marquants d'Affaitage</h2>
+        <div id="evenements-content" style="max-height: 70vh; overflow-y: auto;">
+            <!-- Contenu généré dynamiquement -->
+        </div>
     </div>
 </div>
 
@@ -2275,6 +2294,7 @@ function addAffaitage() {
     var date = document.getElementById('affaitage-date').value;
     var time = document.getElementById('affaitage-time').value;
     var notes = document.getElementById('affaitage-notes').value.trim();
+    var evenementMarquant = document.getElementById('affaitage-evenement').value.trim();
     var poids = document.getElementById('affaitage-poids').value;
     var photoInput = document.getElementById('affaitage-photo');
     
@@ -2297,6 +2317,7 @@ function addAffaitage() {
         date: date,
         time: time,
         notes: notes,
+        evenementMarquant: evenementMarquant,
         poids: poids ? parseInt(poids) : null,
         weather: currentWeather,
         timestamp: new Date().toISOString(),
@@ -2329,6 +2350,7 @@ function finalizeAddAffaitage(affaitage) {
     
     // Nettoyer le formulaire
     document.getElementById('affaitage-notes').value = '';
+    document.getElementById('affaitage-evenement').value = '';
     document.getElementById('affaitage-poids').value = '';
     document.getElementById('affaitage-photo').value = '';
     document.getElementById('affaitage-photo-preview').innerHTML = '';
@@ -2380,8 +2402,19 @@ function updateAffaitageList() {
         html += '<div class="date">' + new Date(affaitage.date + 'T' + affaitage.time).toLocaleDateString('fr-FR') + ' à ' + affaitage.time;
         html += ' - ' + rapaceName;
         
+        // Afficher la météo si disponible
+        if (affaitage.weather) {
+            var weatherInfo = affaitage.weather.split(',')[0]; // Prendre la première partie (description + température)
+            html += ' (' + weatherInfo + ')';
+        }
+        
         if (affaitage.photo) {
             html += ' <span style="color: #28a745; font-size: 16px;" title="Photo disponible">📷</span>';
+        }
+        
+        // Marquer les événements marquants
+        if (affaitage.evenementMarquant && affaitage.evenementMarquant.trim()) {
+            html += ' <span style="color: #ffc107; font-size: 16px;" title="Événement marquant">🌟</span>';
         }
         
         if (affaitage.finAffaitage) {
@@ -2432,6 +2465,13 @@ function updateAffaitageList() {
             html += '<strong>Activités:</strong> Aucune';
         }
         
+        // Afficher l'événement marquant s'il existe
+        if (affaitage.evenementMarquant && affaitage.evenementMarquant.trim()) {
+            html += '<br><div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 8px; margin: 8px 0; border-radius: 4px;">';
+            html += '<strong>🌟 ÉVÉNEMENT MARQUANT:</strong> ' + affaitage.evenementMarquant;
+            html += '</div>';
+        }
+        
         if (affaitage.notes) {
             html += '<br><strong>Notes:</strong> ' + affaitage.notes;
         }
@@ -2464,6 +2504,78 @@ function deleteAffaitageEntry(id) {
         saveAllData();
         updateAffaitageList();
     }
+}
+
+// === GESTION DES ÉVÉNEMENTS MARQUANTS ===
+function showEvenementsMarquants() {
+    var modal = document.getElementById('evenementsModal');
+    var content = document.getElementById('evenements-content');
+    
+    // Filtrer les affaitages avec événements marquants
+    var evenements = affaitageEntries.filter(a => a.evenementMarquant && a.evenementMarquant.trim());
+    
+    if (evenements.length === 0) {
+        content.innerHTML = '<p style="color: #666; font-style: italic; text-align: center; padding: 40px;">Aucun événement marquant enregistré pour le moment.</p>';
+    } else {
+        // Grouper par rapace
+        var evenementsParRapace = {};
+        for (var i = 0; i < evenements.length; i++) {
+            var evt = evenements[i];
+            var rapace = rapaces.find(r => r.id === evt.rapaceId);
+            var rapaceName = rapace ? rapace.name : 'Rapace supprimé';
+            
+            if (!evenementsParRapace[rapaceName]) {
+                evenementsParRapace[rapaceName] = [];
+            }
+            evenementsParRapace[rapaceName].push(evt);
+        }
+        
+        var html = '';
+        
+        // Afficher par rapace
+        for (var rapaceName in evenementsParRapace) {
+            var rapaceEvenements = evenementsParRapace[rapaceName];
+            
+            // Trier par date (plus récent d'abord)
+            rapaceEvenements.sort((a, b) => {
+                var dateTimeA = new Date(a.date + 'T' + a.time);
+                var dateTimeB = new Date(b.date + 'T' + b.time);
+                return dateTimeB - dateTimeA;
+            });
+            
+            html += '<div style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 2px solid #e3f2fd;">';
+            html += '<h3 style="color: #1e3c72; margin-bottom: 15px; font-size: 1.4em;">🦅 ' + rapaceName + '</h3>';
+            
+            for (var j = 0; j < rapaceEvenements.length; j++) {
+                var evt = rapaceEvenements[j];
+                
+                html += '<div style="margin: 15px 0; padding: 15px; background: white; border-radius: 8px; border-left: 4px solid #ffc107;">';
+                html += '<div style="display: flex; align-items: center; margin-bottom: 8px;">';
+                html += '<span style="color: #ffc107; font-size: 18px; margin-right: 8px;">🌟</span>';
+                html += '<strong style="color: #1e3c72;">' + new Date(evt.date + 'T' + evt.time).toLocaleDateString('fr-FR') + ' à ' + evt.time + '</strong>';
+                
+                // Afficher la météo si disponible
+                if (evt.weather) {
+                    var weatherInfo = evt.weather.split(',')[0]; // Prendre la première partie
+                    html += '<span style="margin-left: 15px; color: #666; font-size: 0.9em;">(' + weatherInfo + ')</span>';
+                }
+                
+                html += '</div>';
+                html += '<div style="color: #333; line-height: 1.4;">' + evt.evenementMarquant + '</div>';
+                html += '</div>';
+            }
+            
+            html += '</div>';
+        }
+        
+        content.innerHTML = html;
+    }
+    
+    modal.style.display = 'block';
+}
+
+function closeEvenementsModal() {
+    document.getElementById('evenementsModal').style.display = 'none';
 }
 
 // === GESTION DES LEURRES ===
@@ -2990,6 +3102,23 @@ function showPhotoModal(photoSrc) {
 
 function closePhotoModal() {
     document.getElementById('photoModal').style.display = 'none';
+}
+
+// === GESTION DES MODALES ===
+window.onclick = function(event) {
+    var editModal = document.getElementById('editModal');
+    var photoModal = document.getElementById('photoModal');
+    var evenementsModal = document.getElementById('evenementsModal');
+    
+    if (event.target === editModal) {
+        closeEditModal();
+    }
+    if (event.target === photoModal) {
+        closePhotoModal();
+    }
+    if (event.target === evenementsModal) {
+        closeEvenementsModal();
+    }
 }
 
 // === GESTION DES STATISTIQUES ===
@@ -4001,19 +4130,6 @@ function changeLocation() {
         }
         
         loadWeatherByCity(currentLocation);
-    }
-}
-
-// === GESTION DES MODALES ===
-window.onclick = function(event) {
-    var editModal = document.getElementById('editModal');
-    var photoModal = document.getElementById('photoModal');
-    
-    if (event.target === editModal) {
-        closeEditModal();
-    }
-    if (event.target === photoModal) {
-        closePhotoModal();
     }
 }
 
