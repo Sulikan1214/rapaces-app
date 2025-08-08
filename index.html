@@ -1351,6 +1351,36 @@
     </div>
 </div>
 
+<!-- Modal pour édition affaitage -->
+<div id="editAffaitageModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditAffaitageModal()">&times;</span>
+        <h2>Modifier l'Affaitage</h2>
+        
+        <div id="edit-affaitage-info" style="background: #f0f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #666;">
+            <!-- Infos sur l'affaitage à modifier -->
+        </div>
+        
+        <div class="form-group">
+            <label for="edit-affaitage-notes">Notes :</label>
+            <textarea id="edit-affaitage-notes" rows="3" placeholder="Observations sur l'affaitage..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="edit-affaitage-evenement">🌟 Événement marquant (optionnel) :</label>
+            <textarea id="edit-affaitage-evenement" rows="2" placeholder="Ex: Premier vol libre réussi, Refus de prendre la nourriture, Agressivité inhabituelle..."></textarea>
+            <div style="margin-top: 10px;">
+                <button onclick="clearEvenementMarquant()" class="btn-secondary" style="font-size: 12px; padding: 6px 12px;">🗑️ Effacer l'événement marquant</button>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button onclick="saveAffaitageEdit()">💾 Sauvegarder</button>
+            <button onclick="closeEditAffaitageModal()" class="btn-secondary">❌ Annuler</button>
+        </div>
+    </div>
+</div>
+
 <!-- Modal pour édition rapaces -->
 <div id="editModal" class="modal">
     <div class="modal-content">
@@ -1421,6 +1451,7 @@ var currentWeather = null;
 var currentLocation = "Orthez (64300)";
 var currentStatsDate = new Date();
 var editingRapaceId = null;
+var editingAffaitageId = null;
 var currentDocumentFilter = 'all';
 
 // Variables pour la synchronisation
@@ -1440,9 +1471,9 @@ const firebaseConfig = {
 };
 
 // Variables Firebase
-let db = null;
-let isFirebaseReady = false;
-let firebaseUserId = null;
+var db = null;
+var isFirebaseReady = false;
+var firebaseUserId = null;
 
 // === GESTION DES ONGLETS ===
 function showTab(tabName) {
@@ -2364,6 +2395,74 @@ function finalizeAddAffaitage(affaitage) {
     document.getElementById('reprise-affaitage').checked = false;
 }
 
+// === NOUVELLES FONCTIONS DE MODIFICATION D'AFFAITAGE ===
+function editAffaitageEntry(id) {
+    var affaitage = affaitageEntries.find(a => a.id === id);
+    if (!affaitage) return;
+    
+    var rapace = rapaces.find(r => r.id === affaitage.rapaceId);
+    var rapaceName = rapace ? rapace.name : 'Rapace supprimé';
+    
+    editingAffaitageId = id;
+    
+    // Remplir les informations de l'affaitage
+    var infoDiv = document.getElementById('edit-affaitage-info');
+    infoDiv.innerHTML = '<strong>📅 ' + new Date(affaitage.date + 'T' + affaitage.time).toLocaleDateString('fr-FR') + ' à ' + affaitage.time + '</strong><br>' +
+                        '<strong>🦅 Rapace:</strong> ' + rapaceName + '<br>' +
+                        (affaitage.poids ? '<strong>⚖️ Poids:</strong> ' + affaitage.poids + 'g<br>' : '') +
+                        '<strong>🎯 Activités:</strong> ' + getActivitiesText(affaitage);
+    
+    // Remplir les champs modifiables
+    document.getElementById('edit-affaitage-notes').value = affaitage.notes || '';
+    document.getElementById('edit-affaitage-evenement').value = affaitage.evenementMarquant || '';
+    
+    document.getElementById('editAffaitageModal').style.display = 'block';
+}
+
+function getActivitiesText(affaitage) {
+    var activites = [];
+    if (affaitage.priseNourriture) activites.push('🍽️ Prise de nourriture');
+    if (affaitage.voliere) activites.push('🏠 Volière');
+    if (affaitage.gant) activites.push('🧤 Gant');
+    if (affaitage.filiere) activites.push('🎯 Filière');
+    if (affaitage.bloc) activites.push('🧱 Bloc');
+    if (affaitage.libre) activites.push('🕊️ Libre');
+    
+    return activites.length > 0 ? activites.join(', ') : 'Aucune';
+}
+
+function closeEditAffaitageModal() {
+    document.getElementById('editAffaitageModal').style.display = 'none';
+    editingAffaitageId = null;
+}
+
+function clearEvenementMarquant() {
+    if (confirm('Êtes-vous sûr de vouloir effacer l\'événement marquant ?')) {
+        document.getElementById('edit-affaitage-evenement').value = '';
+    }
+}
+
+function saveAffaitageEdit() {
+    if (!editingAffaitageId) return;
+    
+    var affaitage = affaitageEntries.find(a => a.id === editingAffaitageId);
+    if (!affaitage) return;
+    
+    // Sauvegarder les modifications
+    affaitage.notes = document.getElementById('edit-affaitage-notes').value.trim();
+    affaitage.evenementMarquant = document.getElementById('edit-affaitage-evenement').value.trim();
+    
+    // Ajouter une note de modification
+    affaitage.lastModified = new Date().toISOString();
+    
+    saveAllData();
+    updateAffaitageList();
+    closeEditAffaitageModal();
+    
+    // Afficher une confirmation
+    showMiniNotification('✅ Affaitage modifié avec succès');
+}
+
 function updateAffaitageList() {
     var list = document.getElementById('affaitage-list');
     if (!list) return;
@@ -2387,6 +2486,7 @@ function updateAffaitageList() {
         
         html += '<div class="entry-item">';
         html += '<div class="entry-actions">';
+        html += '<button onclick="editAffaitageEntry(' + affaitage.id + ')" class="btn-warning" title="Modifier">✏️</button>';
         html += '<button onclick="deleteAffaitageEntry(' + affaitage.id + ')" class="btn-danger" title="Supprimer">🗑️</button>';
         html += '</div>';
         
@@ -2415,6 +2515,11 @@ function updateAffaitageList() {
         // Marquer les événements marquants
         if (affaitage.evenementMarquant && affaitage.evenementMarquant.trim()) {
             html += ' <span style="color: #ffc107; font-size: 16px;" title="Événement marquant">🌟</span>';
+        }
+        
+        // Indicateur de modification
+        if (affaitage.lastModified) {
+            html += ' <span style="color: #17a2b8; font-size: 12px;" title="Modifié le ' + new Date(affaitage.lastModified).toLocaleDateString('fr-FR') + '">✏️</span>';
         }
         
         if (affaitage.finAffaitage) {
@@ -2553,6 +2658,11 @@ function showEvenementsMarquants() {
                 html += '<div style="display: flex; align-items: center; margin-bottom: 8px;">';
                 html += '<span style="color: #ffc107; font-size: 18px; margin-right: 8px;">🌟</span>';
                 html += '<strong style="color: #1e3c72;">' + new Date(evt.date + 'T' + evt.time).toLocaleDateString('fr-FR') + ' à ' + evt.time + '</strong>';
+                
+                // Indicateur de modification
+                if (evt.lastModified) {
+                    html += '<span style="margin-left: 10px; color: #17a2b8; font-size: 11px;" title="Modifié le ' + new Date(evt.lastModified).toLocaleDateString('fr-FR') + ' à ' + new Date(evt.lastModified).toLocaleTimeString('fr-FR') + '">✏️ modifié</span>';
+                }
                 
                 // Afficher la météo si disponible
                 if (evt.weather) {
@@ -3091,33 +3201,171 @@ function deleteDocument(id) {
     }
 }
 
-// === MODALES ===
-function showPhotoModal(photoSrc) {
-    var modal = document.getElementById('photoModal');
-    var modalPhoto = document.getElementById('modal-photo');
+// === GESTION DE LA MÉTÉO ===
+function loadWeather() {
+    var weatherElement = document.getElementById('weather-info');
+    if (weatherElement) {
+        weatherElement.innerHTML = '🌦️ <small>Chargement météo...</small>';
+    }
     
-    modalPhoto.src = photoSrc;
-    modal.style.display = 'block';
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                loadWeatherByCoords(position.coords.latitude, position.coords.longitude);
+            },
+            function(error) {
+                console.log("Géolocalisation échouée:", error.message);
+                loadWeatherByCity(currentLocation);
+            },
+            { timeout: 10000, maximumAge: 300000 }
+        );
+    } else {
+        loadWeatherByCity(currentLocation);
+    }
 }
 
-function closePhotoModal() {
-    document.getElementById('photoModal').style.display = 'none';
+function loadWeatherByCoords(lat, lon) {
+    var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
+    var url = "https://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&appid=" + apiKey + "&units=metric&lang=fr";
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('API Error: ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            processWeatherData(data);
+            currentLocation = data.name + " (" + data.sys.country + ")";
+            saveAllData();
+        })
+        .catch(error => {
+            console.log("Erreur API coords:", error);
+            loadWeatherByCity(currentLocation);
+        });
 }
 
-// === GESTION DES MODALES ===
-window.onclick = function(event) {
-    var editModal = document.getElementById('editModal');
-    var photoModal = document.getElementById('photoModal');
-    var evenementsModal = document.getElementById('evenementsModal');
+function loadWeatherByCity(cityName) {
+    var city = cityName.split("(")[0].trim();
+    var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
+    var url = "https://api.openweathermap.org/data/2.5/weather?q=" + encodeURIComponent(city) + ",FR&appid=" + apiKey + "&units=metric&lang=fr";
     
-    if (event.target === editModal) {
-        closeEditModal();
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('API Error: ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            processWeatherData(data);
+        })
+        .catch(error => {
+            console.log("Erreur API ville:", error);
+            loadWeatherFallback();
+        });
+}
+
+function processWeatherData(data) {
+    var temp = Math.round(data.main.temp);
+    var description = data.weather[0].description;
+    var humidity = data.main.humidity;
+    var windSpeed = Math.round(data.wind.speed * 3.6);
+    var precipitation = 0;
+    
+    if (data.rain && data.rain["1h"]) {
+        precipitation = Math.round((data.rain["1h"] / 1) * 100);
+    } else if (data.snow && data.snow["1h"]) {
+        precipitation = Math.round((data.snow["1h"] / 1) * 100);
+    } else if (data.clouds && data.clouds.all > 80) {
+        precipitation = Math.floor(data.clouds.all / 4);
     }
-    if (event.target === photoModal) {
-        closePhotoModal();
+    
+    precipitation = Math.min(precipitation, 100);
+    var icon = getWeatherIcon(data.weather[0].main, data.weather[0].id);
+    
+    var detailedWeather = temp + "°C\n" +
+                         "Précipitations : " + precipitation + "%\n" +
+                         "Humidité : " + humidity + "%\n" +
+                         "Vent : " + windSpeed + " km/h";
+    
+    currentWeather = description + ", " + detailedWeather + " à " + currentLocation;
+    
+    var weatherElement = document.getElementById('weather-info');
+    if (weatherElement) {
+        weatherElement.innerHTML = icon + " <strong>" + description.charAt(0).toUpperCase() + description.slice(1) + "</strong><br>" +
+                                  "<span style='font-size: 12px; line-height: 1.4;'>" +
+                                  temp + "°C<br>" +
+                                  "Précipitations : " + precipitation + "%<br>" +
+                                  "Humidité : " + humidity + "%<br>" +
+                                  "Vent : " + windSpeed + " km/h<br>" +
+                                  "<em>" + currentLocation + "</em>" +
+                                  "</span>";
     }
-    if (event.target === evenementsModal) {
-        closeEvenementsModal();
+}
+
+function getWeatherIcon(main, id) {
+    switch (main) {
+        case "Clear":
+            return "☀️";
+        case "Clouds":
+            return id < 803 ? "⛅" : "☁️";
+        case "Rain":
+            return "🌧️";
+        case "Drizzle":
+            return "🌦️";
+        case "Thunderstorm":
+            return "⛈️";
+        case "Snow":
+            return "❄️";
+        case "Mist":
+        case "Fog":
+            return "🌫️";
+        case "Haze":
+            return "🌤️";
+        default:
+            return "🌤️";
+    }
+}
+
+function loadWeatherFallback() {
+    var weatherElement = document.getElementById('weather-info');
+    if (weatherElement) {
+        weatherElement.innerHTML = '🌤️ <strong>Mode hors ligne</strong><br>' +
+                                  '<span style="font-size: 12px; line-height: 1.4;">' +
+                                  '15°C<br>' +
+                                  'Précipitations : 20%<br>' +
+                                  'Humidité : 60%<br>' +
+                                  'Vent : 10 km/h<br>' +
+                                  '<em style="color: #ffeb3b;">' + currentLocation + ' (Mode hors ligne)</em>' +
+                                  '</span>';
+    }
+    currentWeather = "Mode hors ligne, 15°C, 20% précipitations, 60% humidité, vent 10 km/h à " + currentLocation;
+}
+
+function refreshWeather() {
+    console.log("🔄 Tentative de rechargement de la météo...");
+    loadWeather();
+    
+    setTimeout(function() {
+        var weatherElement = document.getElementById('weather-info');
+        if (weatherElement && weatherElement.innerHTML.includes('Chargement')) {
+            console.log("⚠️ Timeout météo, passage en mode hors ligne");
+            loadWeatherFallback();
+        }
+    }, 10000);
+}
+
+function changeLocation() {
+    var newLocation = prompt("Entrez votre localisation (ex: Paris, Toulouse, Lyon...) :", currentLocation);
+    if (newLocation && newLocation.trim()) {
+        currentLocation = newLocation.trim();
+        saveAllData();
+        console.log("📍 Nouvelle localisation:", currentLocation);
+        
+        var weatherElement = document.getElementById('weather-info');
+        if (weatherElement) {
+            weatherElement.innerHTML = '🌦️ <small>Chargement météo pour ' + currentLocation + '...</small>';
+        }
+        
+        loadWeatherByCity(currentLocation);
     }
 }
 
@@ -3314,47 +3562,16 @@ function generateWeightGraph(rapace) {
     if (!hasData) {
         html += '<p style="color: #666; font-style: italic; font-family: Arial;">Aucune donnée de poids disponible sur les 7 derniers jours.</p>';
     } else {
-        var weights = weightData.filter(d => d.weight !== null).map(d => d.weight);
-        var minWeight = Math.min(...weights);
-        var maxWeight = Math.max(...weights);
-        var range = maxWeight - minWeight;
+        html += '<p style="color: #666; font-family: Arial;">Graphique simplifié des poids récents</p>';
         
-        if (range === 0) range = 1;
-        
-        var graphHeight = 10;
-        
-        for (var y = graphHeight; y >= 0; y--) {
-            var line = '';
-            var value = minWeight + (range * y / graphHeight);
-            line += (Math.round(value) + 'g').padStart(6) + ' |';
-            
-            for (var x = 0; x < weightData.length; x++) {
-                var dataPoint = weightData[x];
-                if (dataPoint.weight !== null) {
-                    var normalizedWeight = (dataPoint.weight - minWeight) / range * graphHeight;
-                    if (Math.round(normalizedWeight) === y) {
-                        line += ' ● ';
-                    } else {
-                        line += '   ';
-                    }
-                } else {
-                    line += '   ';
-                }
+        for (var x = 0; x < weightData.length; x++) {
+            var dataPoint = weightData[x];
+            if (dataPoint.weight !== null) {
+                html += dataPoint.date + ': ' + dataPoint.weight + 'g<br>';
+            } else {
+                html += dataPoint.date + ': -<br>';
             }
-            html += line + '<br>';
         }
-        
-        html += '      |';
-        for (var x = 0; x < weightData.length; x++) {
-            html += '───';
-        }
-        html += '<br>';
-        
-        html += '       ';
-        for (var x = 0; x < weightData.length; x++) {
-            html += weightData[x].date.substring(0, 3).padEnd(3);
-        }
-        html += '<br><br>';
         
         if (rapace.poidsChasse || rapace.poidsVol || rapace.poidsPlein) {
             html += '<div style="font-family: Arial; font-size: 12px; margin-top: 10px;">';
@@ -3370,448 +3587,6 @@ function generateWeightGraph(rapace) {
     html += '</div>';
     
     return html;
-}
-
-// === FONCTIONS FIREBASE ===
-function loadFirebase() {
-    addSyncHistoryEntry('🔄 Chargement de Firebase...');
-    
-    const scripts = [
-        'https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js',
-        'https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js'
-    ];
-    
-    let scriptsLoaded = 0;
-    
-    scripts.forEach(src => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = () => {
-            scriptsLoaded++;
-            if (scriptsLoaded === scripts.length) {
-                initFirebase();
-            }
-        };
-        script.onerror = () => {
-            console.error('Erreur chargement Firebase:', src);
-            addSyncHistoryEntry('❌ Erreur chargement Firebase');
-        };
-        document.head.appendChild(script);
-    });
-}
-
-function initFirebase() {
-    try {
-        if (typeof firebase !== 'undefined') {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            
-            firebaseUserId = prompt("Entrez un identifiant unique pour la synchronisation (le même sur tous les appareils) :", localStorage.getItem('firebaseUserId') || "");
-            if (!firebaseUserId || firebaseUserId.trim() === "") {
-                alert("Identifiant requis pour activer la synchronisation.");
-                return;
-            }
-            firebaseUserId = firebaseUserId.trim();
-            localStorage.setItem('firebaseUserId', firebaseUserId);
-            
-            isFirebaseReady = true;
-            addSyncHistoryEntry('✅ Firebase initialisé avec succès');
-            updateSyncUI();
-            
-            loadFromFirebase();
-            startAutoSync();
-            
-        } else {
-            throw new Error('Firebase non chargé');
-        }
-    } catch (error) {
-        console.error('Erreur initialisation Firebase:', error);
-        addSyncHistoryEntry('❌ Erreur initialisation: ' + error.message);
-    }
-}
-
-function syncToFirebase() {
-    if (!isFirebaseReady || !db) {
-        console.log('Firebase pas prêt pour la sync');
-        return;
-    }
-    
-    const data = {
-        rapaces: rapaces,
-        entries: entries,
-        chasseEntries: chasseEntries,
-        affaitageEntries: affaitageEntries,
-        leurres: leurres,
-        sessionsLeurre: sessionsLeurre,
-        documents: documents,
-        currentLocation: currentLocation,
-        lastSync: firebase.firestore.FieldValue.serverTimestamp(),
-        deviceInfo: {
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            timestamp: new Date().toISOString()
-        }
-    };
-    
-    db.collection('users').doc(firebaseUserId).set(data, { merge: true })
-        .then(() => {
-            addSyncHistoryEntry('📤 Données sauvegardées sur Firebase');
-            lastSyncTime = new Date();
-            updateSyncUI();
-            
-            if (document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
-                showMiniNotification('☁️ Données synchronisées');
-            }
-        })
-        .catch((error) => {
-            console.error('Erreur sauvegarde Firebase:', error);
-            addSyncHistoryEntry('❌ Erreur sauvegarde: ' + error.message);
-        });
-}
-
-function loadFromFirebase() {
-    if (!isFirebaseReady || !db) {
-        console.log('Firebase pas prêt pour le chargement');
-        return;
-    }
-    
-    db.collection('users').doc(firebaseUserId).get()
-        .then((doc) => {
-            if (doc.exists) {
-                const firebaseData = doc.data();
-                
-                const localData = localStorage.getItem('rapaces_data');
-                let localTimestamp = 0;
-                
-                if (localData) {
-                    try {
-                        const parsed = JSON.parse(localData);
-                        localTimestamp = parsed.lastSave ? new Date(parsed.lastSave).getTime() : 0;
-                    } catch (e) {
-                        localTimestamp = 0;
-                    }
-                }
-                
-                const firebaseTimestamp = firebaseData.lastSync ? firebaseData.lastSync.toDate().getTime() : 0;
-                
-                if (firebaseTimestamp > (localTimestamp + 30000)) {
-                    rapaces = firebaseData.rapaces || [];
-                    entries = firebaseData.entries || [];
-                    chasseEntries = firebaseData.chasseEntries || [];
-                    affaitageEntries = firebaseData.affaitageEntries || [];
-                    leurres = firebaseData.leurres || [];
-                    sessionsLeurre = firebaseData.sessionsLeurre || [];
-                    documents = firebaseData.documents || [];
-                    currentLocation = firebaseData.currentLocation || currentLocation;
-                    
-                    updateRapaceList();
-                    updateRapaceSelects();
-                    updateEntryList();
-                    updatechasseList();
-                    updateAffaitageList();
-                    updateLeurreList();
-                    updateSessionsLeurreList();
-                    updateDocumentsList();
-                    updateLeurreSelects();
-                    
-                    saveAllDataWithoutSync();
-                    
-                    addSyncHistoryEntry('📥 Données chargées depuis Firebase');
-                    if (document.getElementById('sync-notifications') && document.getElementById('sync-notifications').checked) {
-                        showMiniNotification('📥 Données mises à jour depuis le cloud');
-                    }
-                } else {
-                    addSyncHistoryEntry('📊 Données locales plus récentes - conservation');
-                    syncToFirebase();
-                }
-            } else {
-                addSyncHistoryEntry('📊 Aucune donnée Firebase, première utilisation');
-                syncToFirebase();
-            }
-        })
-        .catch((error) => {
-            console.error('Erreur chargement Firebase:', error);
-            addSyncHistoryEntry('❌ Erreur chargement: ' + error.message);
-        });
-}
-
-function manualFirebaseSync() {
-    if (!isFirebaseReady) {
-        addSyncHistoryEntry('🔄 Initialisation Firebase...');
-        loadFirebase();
-        return;
-    }
-    
-    addSyncHistoryEntry('🔄 Synchronisation manuelle lancée...');
-    loadFromFirebase();
-}
-
-function forceUploadToFirebase() {
-    if (!isFirebaseReady) {
-        addSyncHistoryEntry('❌ Firebase non connecté');
-        return;
-    }
-    
-    addSyncHistoryEntry('🚀 Forçage des données locales vers Firebase...');
-    syncToFirebase();
-}
-
-function forceDownloadFromFirebase() {
-    if (!isFirebaseReady) {
-        addSyncHistoryEntry('❌ Firebase non connecté');
-        return;
-    }
-    
-    addSyncHistoryEntry('📥 Forçage du téléchargement depuis Firebase...');
-    
-    db.collection('users').doc(firebaseUserId).get()
-        .then((doc) => {
-            if (doc.exists) {
-                const firebaseData = doc.data();
-                
-                addSyncHistoryEntry('🔄 Écrasement des données locales...');
-                
-                rapaces = firebaseData.rapaces || [];
-                entries = firebaseData.entries || [];
-                chasseEntries = firebaseData.chasseEntries || [];
-                affaitageEntries = firebaseData.affaitageEntries || [];
-                leurres = firebaseData.leurres || [];
-                sessionsLeurre = firebaseData.sessionsLeurre || [];
-                documents = firebaseData.documents || [];
-                currentLocation = firebaseData.currentLocation || currentLocation;
-                
-                updateRapaceList();
-                updateRapaceSelects();
-                updateEntryList();
-                updatechasseList();
-                updateAffaitageList();
-                updateLeurreList();
-                updateSessionsLeurreList();
-                updateDocumentsList();
-                updateLeurreSelects();
-                
-                saveAllDataWithoutSync();
-                
-                addSyncHistoryEntry('✅ Données forcées depuis Firebase');
-                showMiniNotification('📥 Données forcées depuis le cloud');
-                
-                setTimeout(() => {
-                    if (confirm('Données mises à jour ! Voulez-vous actualiser la page pour être sûr ?')) {
-                        location.reload();
-                    }
-                }, 1000);
-                
-            } else {
-                addSyncHistoryEntry('❌ Aucune donnée sur Firebase');
-            }
-        })
-        .catch((error) => {
-            console.error('Erreur téléchargement forcé:', error);
-            addSyncHistoryEntry('❌ Erreur téléchargement: ' + error.message);
-        });
-}
-
-function refreshAllData() {
-    addSyncHistoryEntry('🔄 Rafraîchissement complet...');
-    
-    if (isFirebaseReady) {
-        forceDownloadFromFirebase();
-    } else {
-        loadAllData();
-        updateRapaceList();
-        updateRapaceSelects();
-        updateEntryList();
-        updatechasseList();
-        updateAffaitageList();
-        updateLeurreList();
-        updateSessionsLeurreList();
-        updateDocumentsList();
-        updateLeurreSelects();
-        addSyncHistoryEntry('🔄 Données rechargées depuis le stockage local');
-    }
-}
-
-function initFirebaseSync() {
-    addSyncHistoryEntry('🔄 Connexion à Firebase...');
-    loadFirebase();
-}
-
-function disconnectFirebase() {
-    isFirebaseReady = false;
-    db = null;
-    stopAutoSync();
-    addSyncHistoryEntry('❌ Firebase déconnecté');
-    updateSyncUI();
-}
-
-function startAutoSync() {
-    stopAutoSync();
-    
-    if (isFirebaseReady && document.getElementById('auto-sync-enabled') && document.getElementById('auto-sync-enabled').checked) {
-        syncIntervalId = setInterval(function() {
-            addSyncHistoryEntry('🔄 Sync auto - vérification...');
-            loadFromFirebase();
-        }, 30 * 1000);
-        
-        addSyncHistoryEntry('🔄 Synchronisation automatique activée (30 sec)');
-    }
-}
-
-function stopAutoSync() {
-    if (syncIntervalId) {
-        clearInterval(syncIntervalId);
-        syncIntervalId = null;
-        addSyncHistoryEntry('⏹️ Synchronisation automatique arrêtée');
-    }
-}
-
-function updateSyncUI() {
-    const statusEl = document.getElementById('sync-status');
-    const detailsEl = document.getElementById('sync-details');
-    const lastSyncEl = document.getElementById('last-sync-time');
-    const connectBtn = document.getElementById('connect-drive-btn');
-    const syncBtn = document.getElementById('manual-sync-btn');
-    const forceUploadBtn = document.getElementById('force-upload-btn');
-    const forceDownloadBtn = document.getElementById('force-download-btn');
-    const refreshBtn = document.getElementById('refresh-btn');
-    const disconnectBtn = document.getElementById('disconnect-drive-btn');
-    
-    if (!statusEl) return;
-    
-    if (isFirebaseReady) {
-        statusEl.textContent = '✅ Firebase connecté';
-        statusEl.style.color = 'green';
-        detailsEl.textContent = '🔄 Synchronisation automatique active';
-        detailsEl.style.color = 'green';
-        
-        if (lastSyncTime) {
-            lastSyncEl.textContent = 'Dernière sync : ' + lastSyncTime.toLocaleString('fr-FR');
-        }
-        
-        connectBtn.style.display = 'none';
-        syncBtn.style.display = 'inline-block';
-        if (forceUploadBtn) forceUploadBtn.style.display = 'inline-block';
-        if (forceDownloadBtn) forceDownloadBtn.style.display = 'inline-block';
-        if (refreshBtn) refreshBtn.style.display = 'inline-block';
-        disconnectBtn.style.display = 'inline-block';
-    } else {
-        statusEl.textContent = '❌ Firebase non connecté';
-        statusEl.style.color = 'red';
-        detailsEl.textContent = 'Cliquez pour activer la synchronisation automatique';
-        detailsEl.style.color = '#666';
-        lastSyncEl.textContent = 'Dernière sync : Jamais';
-        
-        connectBtn.style.display = 'inline-block';
-        syncBtn.style.display = 'none';
-        if (forceUploadBtn) forceUploadBtn.style.display = 'none';
-        if (forceDownloadBtn) forceDownloadBtn.style.display = 'none';
-        if (refreshBtn) refreshBtn.style.display = 'none';
-        disconnectBtn.style.display = 'none';
-    }
-}
-
-function addSyncHistoryEntry(message) {
-    var now = new Date();
-    var timeStr = now.toLocaleTimeString('fr-FR');
-    syncHistory.unshift(timeStr + ' - ' + message);
-    
-    if (syncHistory.length > 10) {
-        syncHistory = syncHistory.slice(0, 10);
-    }
-    
-    var historyEl = document.getElementById('sync-history');
-    if (historyEl) {
-        historyEl.innerHTML = syncHistory.map(entry => 
-            '<p style="margin: 5px 0; font-size: 14px;">' + entry + '</p>'
-        ).join('');
-    }
-}
-
-function showMiniNotification(message) {
-    var notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #4285f4;
-        color: white;
-        padding: 10px 15px;
-        border-radius: 5px;
-        z-index: 10000;
-        font-size: 14px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    `;
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(function() {
-        notification.remove();
-    }, 3000);
-}
-
-function saveAllDataWithoutSync() {
-    try {
-        var data = {
-            rapaces: rapaces,
-            entries: entries,
-            chasseEntries: chasseEntries,
-            affaitageEntries: affaitageEntries,
-            leurres: leurres,
-            sessionsLeurre: sessionsLeurre,
-            documents: documents,
-            currentLocation: currentLocation,
-            lastSave: new Date().toISOString()
-        };
-        localStorage.setItem('rapaces_data', JSON.stringify(data));
-    } catch (e) {
-        console.error('Erreur sauvegarde:', e);
-    }
-}
-
-// === GESTION DES DONNÉES ===
-function saveAllData() {
-    try {
-        var data = {
-            rapaces: rapaces,
-            entries: entries,
-            chasseEntries: chasseEntries,
-            affaitageEntries: affaitageEntries,
-            leurres: leurres,
-            sessionsLeurre: sessionsLeurre,
-            documents: documents,
-            currentLocation: currentLocation,
-            lastSave: new Date().toISOString()
-        };
-        localStorage.setItem('rapaces_data', JSON.stringify(data));
-        
-        if (isFirebaseReady && document.getElementById('sync-on-change-enabled') && document.getElementById('sync-on-change-enabled').checked) {
-            syncToFirebase();
-        }
-    } catch (e) {
-        console.error('Erreur sauvegarde:', e);
-    }
-}
-
-function loadAllData() {
-    try {
-        var savedData = localStorage.getItem('rapaces_data');
-        if (savedData) {
-            var data = JSON.parse(savedData);
-            rapaces = data.rapaces || [];
-            entries = data.entries || [];
-            chasseEntries = data.chasseEntries || [];
-            affaitageEntries = data.affaitageEntries || [];
-            leurres = data.leurres || [];
-            sessionsLeurre = data.sessionsLeurre || [];
-            documents = data.documents || [];
-            currentLocation = data.currentLocation || "Orthez (64300)";
-            return true;
-        }
-    } catch (e) {
-        console.error('Erreur chargement:', e);
-    }
-    return false;
 }
 
 function exportAllData() {
@@ -3914,223 +3689,176 @@ function clearAllData() {
     }
 }
 
-// === GESTION DE LA MÉTÉO ===
-function loadWeather() {
-    var weatherElement = document.getElementById('weather-info');
-    if (weatherElement) {
-        weatherElement.innerHTML = '🌦️ <small>Chargement météo...</small>';
-    }
-    
-    if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                loadWeatherByCoords(position.coords.latitude, position.coords.longitude);
-            },
-            function(error) {
-                console.log("Géolocalisation échouée:", error.message);
-                loadWeatherByCity(currentLocation);
-            },
-            { timeout: 10000, maximumAge: 300000 }
-        );
-    } else {
-        loadWeatherByCity(currentLocation);
-    }
+// === FONCTIONS FIREBASE SIMPLIFIÉES ===
+var db = null;
+var isFirebaseReady = false;
+var firebaseUserId = null;
+
+function initFirebaseSync() {
+    alert('Fonctionnalité Firebase en cours de développement');
 }
 
-function loadWeatherByCoords(lat, lon) {
-    var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
-    var url = "https://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&appid=" + apiKey + "&units=metric&lang=fr";
-    
-    fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error('API Error: ' + response.status);
-            return response.json();
-        })
-        .then(data => {
-            processWeatherData(data);
-            currentLocation = data.name + " (" + data.sys.country + ")";
-            saveAllData();
-        })
-        .catch(error => {
-            console.log("Erreur API coords:", error);
-            loadWeatherByCity(currentLocation);
-        });
+function manualFirebaseSync() {
+    alert('Synchronisation Firebase non disponible');
 }
 
-function loadWeatherByCity(cityName) {
-    var city = cityName.split("(")[0].trim();
-    var apiKey = "b4d68d2dedd2d6d43f81f804010b0673";
-    var url = "https://api.openweathermap.org/data/2.5/weather?q=" + encodeURIComponent(city) + ",FR&appid=" + apiKey + "&units=metric&lang=fr";
-    
-    fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error('API Error: ' + response.status);
-            return response.json();
-        })
-        .then(data => {
-            processWeatherData(data);
-        })
-        .catch(error => {
-            console.log("Erreur API ville:", error);
-            loadWeatherFallback();
-        });
+function forceUploadToFirebase() {
+    alert('Upload Firebase non disponible');
 }
 
-function processWeatherData(data) {
-    var temp = Math.round(data.main.temp);
-    var description = data.weather[0].description;
-    var humidity = data.main.humidity;
-    var windSpeed = Math.round(data.wind.speed * 3.6);
-    var precipitation = 0;
+function forceDownloadFromFirebase() {
+    alert('Download Firebase non disponible');
+}
+
+function refreshAllData() {
+    loadAllData();
+    updateRapaceList();
+    updateRapaceSelects();
+    updateEntryList();
+    updatechasseList();
+    updateAffaitageList();
+    updateLeurreList();
+    updateSessionsLeurreList();
+    updateDocumentsList();
+    updateLeurreSelects();
+    addSyncHistoryEntry('🔄 Données rechargées depuis le stockage local');
+}
+
+function disconnectFirebase() {
+    alert('Firebase non connecté');
+}
+
+function updateSyncUI() {
+    var statusEl = document.getElementById('sync-status');
+    var detailsEl = document.getElementById('sync-details');
+    var lastSyncEl = document.getElementById('last-sync-time');
     
-    if (data.rain && data.rain["1h"]) {
-        precipitation = Math.round((data.rain["1h"] / 1) * 100);
-    } else if (data.snow && data.snow["1h"]) {
-        precipitation = Math.round((data.snow["1h"] / 1) * 100);
-    } else if (data.clouds && data.clouds.all > 80) {
-        precipitation = Math.floor(data.clouds.all / 4);
-    }
-    
-    precipitation = Math.min(precipitation, 100);
-    var icon = getWeatherIcon(data.weather[0].main, data.weather[0].id);
-    
-    var detailedWeather = temp + "°C\n" +
-                         "Précipitations : " + precipitation + "%\n" +
-                         "Humidité : " + humidity + "%\n" +
-                         "Vent : " + windSpeed + " km/h";
-    
-    currentWeather = description + ", " + detailedWeather + " à " + currentLocation;
-    
-    var weatherElement = document.getElementById('weather-info');
-    if (weatherElement) {
-        weatherElement.innerHTML = icon + " <strong>" + description.charAt(0).toUpperCase() + description.slice(1) + "</strong><br>" +
-                                  "<span style='font-size: 12px; line-height: 1.4;'>" +
-                                  temp + "°C<br>" +
-                                  "Précipitations : " + precipitation + "%<br>" +
-                                  "Humidité : " + humidity + "%<br>" +
-                                  "Vent : " + windSpeed + " km/h<br>" +
-                                  "<em>" + currentLocation + "</em>" +
-                                  "</span>";
+    if (statusEl) {
+        statusEl.textContent = '❌ Firebase non connecté';
+        statusEl.style.color = 'red';
+        detailsEl.textContent = 'Fonctionnalité en développement';
+        detailsEl.style.color = '#666';
+        lastSyncEl.textContent = 'Dernière sync : Jamais';
     }
 }
 
-function getWeatherIcon(main, id) {
-    switch (main) {
-        case "Clear":
-            return "☀️";
-        case "Clouds":
-            return id < 803 ? "⛅" : "☁️";
-        case "Rain":
-            return "🌧️";
-        case "Drizzle":
-            return "🌦️";
-        case "Thunderstorm":
-            return "⛈️";
-        case "Snow":
-            return "❄️";
-        case "Mist":
-        case "Fog":
-            return "🌫️";
-        case "Haze":
-            return "🌤️";
-        default:
-            return "🌤️";
-    }
-}
-
-function loadWeatherFallback() {
+function addSyncHistoryEntry(message) {
     var now = new Date();
-    var month = now.getMonth();
-    var hour = now.getHours();
+    var timeStr = now.toLocaleTimeString('fr-FR');
+    syncHistory.unshift(timeStr + ' - ' + message);
     
-    var conditions;
-    
-    if (month >= 2 && month <= 4) {
-        conditions = [
-            {desc: "ensoleillé", temp: 15 + Math.floor(Math.random() * 8), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 20), humidity: 45 + Math.floor(Math.random() * 20)},
-            {desc: "partiellement nuageux", temp: 12 + Math.floor(Math.random() * 7), icon: "⛅", precipitation: 10 + Math.floor(Math.random() * 30), humidity: 50 + Math.floor(Math.random() * 25)},
-            {desc: "nuageux", temp: 10 + Math.floor(Math.random() * 6), icon: "☁️", precipitation: 20 + Math.floor(Math.random() * 40), humidity: 60 + Math.floor(Math.random() * 25)},
-            {desc: "pluvieux", temp: 8 + Math.floor(Math.random() * 8), icon: "🌧️", precipitation: 70 + Math.floor(Math.random() * 30), humidity: 75 + Math.floor(Math.random() * 20)}
-        ];
-    } else if (month >= 5 && month <= 7) {
-        conditions = [
-            {desc: "ensoleillé", temp: 20 + Math.floor(Math.random() * 10), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 10), humidity: 35 + Math.floor(Math.random() * 20)},
-            {desc: "très ensoleillé", temp: 25 + Math.floor(Math.random() * 8), icon: "☀️", precipitation: 0 + Math.floor(Math.random() * 5), humidity: 30 + Math.floor(Math.random() * 15)},
-            {desc: "chaud", temp: 28 + Math.floor(Math.random() * 7), icon: "🌡️", precipitation: 0 + Math.floor(Math.random() * 15), humidity: 25 + Math.floor(Math.random() * 20)},
-            {desc: "orageux", temp: 22 + Math.floor(Math.random() * 6), icon: "⛈️", precipitation: 60 + Math.floor(Math.random() * 40), humidity: 70 + Math.floor(Math.random() * 25)}
-        ];
-    } else if (month >= 8 && month <= 10) {
-        conditions = [
-            {desc: "doux", temp: 12 + Math.floor(Math.random() * 10), icon: "🍂", precipitation: 10 + Math.floor(Math.random() * 30), humidity: 50 + Math.floor(Math.random() * 25)},
-            {desc: "nuageux", temp: 8 + Math.floor(Math.random() * 8), icon: "☁️", precipitation: 25 + Math.floor(Math.random() * 45), humidity: 65 + Math.floor(Math.random() * 25)},
-            {desc: "pluvieux", temp: 6 + Math.floor(Math.random() * 10), icon: "🌧️", precipitation: 70 + Math.floor(Math.random() * 30), humidity: 80 + Math.floor(Math.random() * 15)},
-            {desc: "brumeux", temp: 5 + Math.floor(Math.random() * 8), icon: "🌫️", precipitation: 30 + Math.floor(Math.random() * 40), humidity: 85 + Math.floor(Math.random() * 10)}
-        ];
-    } else {
-        conditions = [
-            {desc: "frais", temp: 2 + Math.floor(Math.random() * 8), icon: "🌤️", precipitation: 15 + Math.floor(Math.random() * 35), humidity: 65 + Math.floor(Math.random() * 25)},
-            {desc: "nuageux", temp: 0 + Math.floor(Math.random() * 10), icon: "☁️", precipitation: 30 + Math.floor(Math.random() * 50), humidity: 70 + Math.floor(Math.random() * 25)},
-            {desc: "pluvieux", temp: 3 + Math.floor(Math.random() * 8), icon: "🌧️", precipitation: 75 + Math.floor(Math.random() * 25), humidity: 85 + Math.floor(Math.random() * 10)},
-            {desc: "froid", temp: -2 + Math.floor(Math.random() * 8), icon: "❄️", precipitation: 40 + Math.floor(Math.random() * 40), humidity: 80 + Math.floor(Math.random() * 15)}
-        ];
+    if (syncHistory.length > 10) {
+        syncHistory = syncHistory.slice(0, 10);
     }
     
-    var weather = conditions[Math.floor(Math.random() * conditions.length)];
-    
-    if (hour < 8 || hour > 20) {
-        weather.temp = Math.max(weather.temp - 3, -5);
-        weather.humidity = Math.min(weather.humidity + 10, 95);
-    }
-    
-    var windSpeed = 3 + Math.floor(Math.random() * 15);
-    
-    var detailedWeather = weather.temp + "°C\n" +
-                         "Précipitations : " + weather.precipitation + "%\n" +
-                         "Humidité : " + weather.humidity + "%\n" +
-                         "Vent : " + windSpeed + " km/h";
-    
-    currentWeather = weather.desc + ", " + detailedWeather + " à " + currentLocation;
-    
-    var weatherElement = document.getElementById('weather-info');
-    if (weatherElement) {
-        weatherElement.innerHTML = weather.icon + " <strong>" + weather.desc.charAt(0).toUpperCase() + weather.desc.slice(1) + "</strong><br>" +
-                                  "<span style='font-size: 12px; line-height: 1.4;'>" +
-                                  weather.temp + "°C<br>" +
-                                  "Précipitations : " + weather.precipitation + "%<br>" +
-                                  "Humidité : " + weather.humidity + "%<br>" +
-                                  "Vent : " + windSpeed + " km/h<br>" +
-                                  "<em style='color: #ffeb3b;'>" + currentLocation + " (Mode hors ligne)</em>" +
-                                  "</span>";
+    var historyEl = document.getElementById('sync-history');
+    if (historyEl) {
+        historyEl.innerHTML = syncHistory.map(entry => 
+            '<p style="margin: 5px 0; font-size: 14px;">' + entry + '</p>'
+        ).join('');
     }
 }
 
-function refreshWeather() {
-    console.log("🔄 Tentative de rechargement de la météo...");
-    loadWeather();
+function showMiniNotification(message) {
+    var notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4285f4;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        z-index: 10000;
+        font-size: 14px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
     
     setTimeout(function() {
-        var weatherElement = document.getElementById('weather-info');
-        if (weatherElement && weatherElement.innerHTML.includes('Chargement')) {
-            console.log("⚠️ Timeout météo, passage en mode hors ligne");
-            loadWeatherFallback();
-        }
-    }, 10000);
+        notification.remove();
+    }, 3000);
 }
 
-function changeLocation() {
-    var newLocation = prompt("Entrez votre localisation (ex: Paris, Toulouse, Lyon...) :", currentLocation);
-    if (newLocation && newLocation.trim()) {
-        currentLocation = newLocation.trim();
-        saveAllData();
-        console.log("📍 Nouvelle localisation:", currentLocation);
-        
-        var weatherElement = document.getElementById('weather-info');
-        if (weatherElement) {
-            weatherElement.innerHTML = '🌦️ <small>Chargement météo pour ' + currentLocation + '...</small>';
-        }
-        
-        loadWeatherByCity(currentLocation);
+// === GESTION DES MODALES ===
+window.onclick = function(event) {
+    var editModal = document.getElementById('editModal');
+    var editAffaitageModal = document.getElementById('editAffaitageModal');
+    var photoModal = document.getElementById('photoModal');
+    var evenementsModal = document.getElementById('evenementsModal');
+    
+    if (event.target === editModal) {
+        closeEditModal();
     }
+    if (event.target === editAffaitageModal) {
+        closeEditAffaitageModal();
+    }
+    if (event.target === photoModal) {
+        closePhotoModal();
+    }
+    if (event.target === evenementsModal) {
+        closeEvenementsModal();
+    }
+}
+
+// === MODALES ===
+function showPhotoModal(photoSrc) {
+    var modal = document.getElementById('photoModal');
+    var modalPhoto = document.getElementById('modal-photo');
+    
+    modalPhoto.src = photoSrc;
+    modal.style.display = 'block';
+}
+
+function closePhotoModal() {
+    document.getElementById('photoModal').style.display = 'none';
+}
+
+// === GESTION DES DONNÉES ===
+function saveAllData() {
+    try {
+        var data = {
+            rapaces: rapaces,
+            entries: entries,
+            chasseEntries: chasseEntries,
+            affaitageEntries: affaitageEntries,
+            leurres: leurres,
+            sessionsLeurre: sessionsLeurre,
+            documents: documents,
+            currentLocation: currentLocation,
+            lastSave: new Date().toISOString()
+        };
+        localStorage.setItem('rapaces_data', JSON.stringify(data));
+        
+        if (isFirebaseReady && document.getElementById('sync-on-change-enabled') && document.getElementById('sync-on-change-enabled').checked) {
+            syncToFirebase();
+        }
+    } catch (e) {
+        console.error('Erreur sauvegarde:', e);
+    }
+}
+
+function loadAllData() {
+    try {
+        var savedData = localStorage.getItem('rapaces_data');
+        if (savedData) {
+            var data = JSON.parse(savedData);
+            rapaces = data.rapaces || [];
+            entries = data.entries || [];
+            chasseEntries = data.chasseEntries || [];
+            affaitageEntries = data.affaitageEntries || [];
+            leurres = data.leurres || [];
+            sessionsLeurre = data.sessionsLeurre || [];
+            documents = data.documents || [];
+            currentLocation = data.currentLocation || "Orthez (64300)";
+            return true;
+        }
+    } catch (e) {
+        console.error('Erreur chargement:', e);
+    }
+    return false;
 }
 
 // === INITIALISATION DE L'APPLICATION ===
@@ -4176,13 +3904,7 @@ function initApp() {
     showEventFields();
     updateStats();
     updatePoidsChaseReference();
-    
-    setTimeout(function() {
-        if (localStorage.getItem('firebaseUserId')) {
-            addSyncHistoryEntry('🔄 Tentative de reconnexion automatique...');
-            loadFirebase();
-        }
-    }, 2000);
+    updateSyncUI();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
