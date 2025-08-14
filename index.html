@@ -3912,526 +3912,1715 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- === ENHANCEMENTS — août 2025 === -->
+<!-- === SAFE PATCH: Fauconniers minimal + selecteurs (août 2025) === -->
 <script>
-// ====== Données & helpers Fauconniers ======
-window.fauconniers = window.fauconniers || [];
-
-function getFauconnierName(id) {
-  if (!id && id !== 0) return null;
-  var f = (window.fauconniers || []).find(x => x.id === parseInt(id));
-  return f ? f.nom : null;
-}
-
-// Sauvegarde/chargement: inclure les fauconniers
-(function patchStorage(){
-  const _origSave = window.saveAllData;
-  window.saveAllData = function() {
-    try {
-      var data = {
-        rapaces: window.rapaces || [],
-        entries: window.entries || [],
-        chasseEntries: window.chasseEntries || [],
-        affaitageEntries: window.affaitageEntries || [],
-        leurres: window.leurres || [],
-        sessionsLeurre: window.sessionsLeurre || [],
-        documents: window.documents || [],
-        currentLocation: window.currentLocation || "Orthez (64300)",
-        fauconniers: window.fauconniers || [],
-        lastSave: new Date().toISOString()
-      };
-      localStorage.setItem('rapaces_data', JSON.stringify(data));
-    } catch(e){ console.error('Erreur sauvegarde:', e); }
-    if (typeof _origSave === "function") {
-      try { _origSave(); } catch(e) { /* ignore */ }
-    }
-  };
-
-  const _origLoad = window.loadAllData;
-  window.loadAllData = function() {
-    try {
-      var saved = localStorage.getItem('rapaces_data');
-      if (saved) {
-        var data = JSON.parse(saved);
-        window.rapaces = data.rapaces || [];
-        window.entries = data.entries || [];
-        window.chasseEntries = data.chasseEntries || [];
-        window.affaitageEntries = data.affaitageEntries || [];
-        window.leurres = data.leurres || [];
-        window.sessionsLeurre = data.sessionsLeurre || [];
-        window.documents = data.documents || [];
-        window.currentLocation = data.currentLocation || window.currentLocation || "Orthez (64300)";
-        window.fauconniers = data.fauconniers || [];
-        return true;
-      }
-    } catch(e){ console.error('Erreur chargement:', e); }
-    if (typeof _origLoad === "function") {
-      try { return _origLoad(); } catch(e) { return false; }
-    }
-    return false;
-  };
-})();
-
-// ====== Injection UI Fauconniers & sélecteurs ======
-function ensureEnhancementUI() {
-  // Bloc gestion Fauconniers (dans l'onglet Gestion)
-  var gestion = document.getElementById('gestion');
-  if (gestion && !document.getElementById('fauconnier-manager')) {
-    var wrapper = document.createElement('div');
-    wrapper.innerHTML = `
-      <h2 style="margin-top: 40px;">👤 Fauconniers</h2>
-      <div id="fauconnier-manager" class="day-card">
-        <h3>Gérer les fauconniers</h3>
-        <div class="form-row">
-          <div class="form-group" style="flex:1;">
-            <label for="fauconnier-nom">Nom :</label>
-            <input type="text" id="fauconnier-nom" placeholder="Ex: Philippe">
-          </div>
-          <div class="form-group" style="align-self:flex-end;">
-            <button id="btn-add-fauconnier" type="button">Ajouter</button>
-          </div>
-        </div>
-        <div id="fauconnier-list" style="margin-top:10px;"></div>
-      </div>
-    `;
-    gestion.appendChild(wrapper);
-    document.getElementById('btn-add-fauconnier').addEventListener('click', addFauconnier);
+(function(){
+  // --- Utils ---
+  function onReady(fn){
+    if (document.readyState === 'interactive' || document.readyState === 'complete') fn();
+    else document.addEventListener('DOMContentLoaded', fn);
   }
 
-  // Sélecteurs Fauconnier pour chaque section
-  function addFSelect(afterInputId, newId, labelText) {
-    var after = document.getElementById(afterInputId);
-    if (!after) return;
-    // trouver le container .form-group parent pour l'insérer juste après
-    var parentFG = after.closest('.form-group') || after.parentElement;
-    if (!document.getElementById(newId)) {
-      var fg = document.createElement('div');
-      fg.className = 'form-group';
-      fg.innerHTML = `
-        <label for="${newId}">${labelText} :</label>
-        <select id="${newId}">
-          <option value="">Choisir</option>
-        </select>
-      `;
-      parentFG.parentElement.insertBefore(fg, parentFG.nextSibling);
-    }
+  // --- Data (ne touche pas à saveAllData/loadAllData si ça n'existe pas) ---
+  window.fauconniers = window.fauconniers || [];
+  function persist(){
+    try { if (typeof window.saveAllData === 'function') window.saveAllData(); } catch(e){ console.warn(e); }
   }
-  addFSelect('rapace-select','suivi-fauconnier','Fauconnier');
-  addFSelect('chasse-rapace','chasse-fauconnier','Fauconnier');
-  addFSelect('affaitage-rapace','affaitage-fauconnier','Fauconnier');
-  addFSelect('session-rapace','session-fauconnier','Fauconnier');
 
-  // Ajout de l'input photo dans la modale d'édition d'affaitage
-  var modal = document.getElementById('editAffaitageModal');
-  if (modal && !document.getElementById('edit-affaitage-photo')) {
-    var content = modal.querySelector('.modal-content');
-    var btnRow = Array.from(content.children).reverse().find(el => el.tagName === 'DIV' && el.innerHTML && el.innerHTML.includes('Sauvegarder'));
-    var photoGroup = document.createElement('div');
-    photoGroup.className = 'form-group';
-    photoGroup.innerHTML = `
-      <label for="edit-affaitage-photo">📷 Ajouter / remplacer une photo :</label>
-      <div class="file-input-wrapper">
-        <input type="file" id="edit-affaitage-photo" accept="image/*">
-        <label for="edit-affaitage-photo" class="file-input-label">📷 Prendre/Choisir une photo</label>
-      </div>
-      <div id="edit-affaitage-photo-preview" style="margin-top:8px;"></div>
-    `;
-    if (btnRow) content.insertBefore(photoGroup, btnRow);
-    else content.appendChild(photoGroup);
-    document.getElementById('edit-affaitage-photo').addEventListener('change', function(ev){
-      var prev = document.getElementById('edit-affaitage-photo-preview');
-      prev.innerHTML = '';
-      var f = ev.target.files && ev.target.files[0];
-      if (!f) return;
-      var reader = new FileReader();
-      reader.onload = function(e){
-        var img = document.createElement('img');
-        img.src = e.target.result;
-        img.className = 'photo-preview';
-        prev.appendChild(img);
-      };
-      reader.readAsDataURL(f);
+  // --- UI: bouton flottant + modale très simple ---
+  function ensureFloatingUI(){
+    if (document.getElementById('btn-fc-float')) return;
+    var b = document.createElement('button');
+    b.id = 'btn-fc-float';
+    b.type = 'button';
+    b.textContent = '👤 Fauconniers';
+    Object.assign(b.style, { position:'fixed', right:'12px', bottom:'12px', zIndex:99999, padding:'10px 14px', borderRadius:'999px' });
+    document.body.appendChild(b);
+    b.addEventListener('click', openModal);
+
+    var m = document.createElement('div');
+    m.id = 'fc-modal';
+    Object.assign(m.style, { position:'fixed', inset:'0', background:'rgba(0,0,0,0.35)', display:'none', zIndex:100000 });
+    m.innerHTML = '<div style="max-width:520px;margin:8vh auto;background:#fff;border-radius:12px;padding:16px;">'
+                + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+                + '<h3 style="margin:0">👤 Fauconniers</h3><button id="fc-close" type="button">✖</button></div>'
+                + '<div class="form-row" style="margin-top:10px;gap:8px;"><input type="text" id="fc-name" placeholder="Nom (ex: Philippe)" style="flex:1">'
+                + '<button id="fc-add" type="button">Ajouter</button></div>'
+                + '<div id="fc-list" style="margin-top:12px;max-height:40vh;overflow:auto;"></div>'
+                + '</div>';
+    document.body.appendChild(m);
+    m.addEventListener('click', e=>{ if(e.target===m) closeModal(); });
+    m.querySelector('#fc-close').addEventListener('click', closeModal);
+    m.querySelector('#fc-add').addEventListener('click', function(){
+      var nom = (document.getElementById('fc-name').value||'').trim();
+      if(!nom){ alert('Saisis un nom'); return; }
+      window.fauconniers.push({ id: Date.now(), nom });
+      document.getElementById('fc-name').value='';
+      renderList();
+      refreshSelectors();
+      persist();
     });
   }
-}
 
-// Liste + sélecteurs Fauconniers
-function updateFauconnierSelects() {
-  var selects = ['suivi-fauconnier','chasse-fauconnier','affaitage-fauconnier','session-fauconnier'];
-  selects.forEach(function(id){
-    var sel = document.getElementById(id);
-    if (!sel) return;
-    var current = sel.value;
-    var html = '<option value=\"\">Choisir</option>';
-    (window.fauconniers || []).forEach(function(f){
-      html += '<option value=\"'+f.id+'\">'+f.nom+'</option>';
+  function openModal(){ renderList(); document.getElementById('fc-modal').style.display='block'; }
+  function closeModal(){ var m=document.getElementById('fc-modal'); if(m) m.style.display='none'; }
+  function renderList(){
+    var box = document.getElementById('fc-list'); if (!box) return;
+    var arr = window.fauconniers||[];
+    if (!arr.length){ box.innerHTML = '<p style="color:#666">Aucun fauconnier.</p>'; return; }
+    var html = '<ul style="list-style:none;margin:0;padding:0">';
+    arr.forEach(f=>{
+      html += '<li style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed #eee;">'
+           +  '<span>'+f.nom+'</span>'
+           +  '<button type="button" onclick="(function(id){ window.fauconniers = (window.fauconniers||[]).filter(x=>x.id!==id); ('
+           +  'document.getElementById(\\'fc-list\\')&&('
+           +  'document.getElementById(\\'fc-list\\').innerHTML=\'\'); );'
+           +  '})( '+f.id+' )">Supprimer</button>'
+           +  '</li>';
     });
-    sel.innerHTML = html;
-    sel.value = current;
-  });
-}
-
-function updateFauconnierList() {
-  var list = document.getElementById('fauconnier-list');
-  if (!list) return;
-  if (!window.fauconniers || window.fauconniers.length === 0) {
-    list.innerHTML = '<p style="color:#666;font-style:italic;">Aucun fauconnier enregistré.</p>';
-    return;
+    html += '</ul>';
+    box.innerHTML = html;
   }
-  var html = '';
-  window.fauconniers.forEach(function(f){
-    html += '<div class="entry-item" style="padding:10px;">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
-    html += '<div>👤 <strong>'+f.nom+'</strong></div>';
-    html += '<div><button class="btn-danger" onclick="deleteFauconnier('+f.id+')">🗑️</button></div>';
-    html += '</div></div>';
-  });
-  list.innerHTML = html;
-}
 
-function addFauconnier() {
-  var input = document.getElementById('fauconnier-nom');
-  if (!input) return;
-  var nom = (input.value || '').trim();
-  if (!nom) { alert('Entrez un nom de fauconnier.'); return; }
-  var f = { id: Date.now(), nom: nom };
-  window.fauconniers.push(f);
-  input.value = '';
-  saveAllData();
-  updateFauconnierList();
-  updateFauconnierSelects();
-  if (window.showMiniNotification) showMiniNotification('✅ Fauconnier ajouté');
-}
+  // --- Sélecteurs (Suivi + Affaitage) : créés si absents ---
+  function ensureSelector(sectionId, selectId, label){
+    var sec = document.getElementById(sectionId);
+    if (!sec || document.getElementById(selectId)) return;
+    var grp = document.createElement('div');
+    grp.className = 'form-group';
+    grp.innerHTML = '<label for="'+selectId+'">'+label+' :</label>'
+                  + '<select id="'+selectId+'"><option value="">Choisir</option></select>';
+    sec.insertBefore(grp, sec.firstChild);
+  }
 
-function deleteFauconnier(id) {
-  if (!confirm('Supprimer ce fauconnier ? Les historiques garderont l\\'ID (affiché comme "Fauconnier supprimé").')) return;
-  window.fauconniers = (window.fauconniers || []).filter(f => f.id !== id);
-  saveAllData();
-  updateFauconnierList();
-  updateFauconnierSelects();
-}
+  function refreshSelectors(){
+    ['suivi-fauconnier','affaitage-fauconnier'].forEach(function(id){
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      var keep = sel.value;
+      sel.innerHTML = '<option value="">Choisir</option>' + (window.fauconniers||[]).map(f=>'<option value="'+f.id+'">'+f.nom+'</option>').join('');
+      if (keep) sel.value = keep;
+    });
+  }
 
-// ====== Saisie: inclure fauconnierId ======
-(function patchAdders(){
-  // Suivi
-  const _origAddEntry = window.addEntry;
-  window.addEntry = function() {
-    if (typeof _origAddEntry === 'function') {
+  // --- Hooks très prudents (seulement si fonctions existent) ---
+  function hookAddEntry(){
+    if (typeof window.addEntry !== 'function') return; // Suivi
+    if (window.__safe_hooked_addEntry) return;
+    window.__safe_hooked_addEntry = true;
+    var _orig = window.addEntry;
+    window.addEntry = function(){
+      var before = (window.entries||[]).length;
+      var res; try { res = _orig.apply(this, arguments); } catch(e){ console.warn(e); }
       try {
-        _origAddEntry();
-      } catch(e){ console.warn('fallback addEntry', e); }
-    }
-    // Récupérer la dernière entrée (celle qu'on vient d'ajouter) et lui injecter le fauconnier
-    try {
-      var rapaceId = parseInt(document.getElementById('rapace-select').value || '0');
-      var fId = document.getElementById('suivi-fauconnier') ? parseInt(document.getElementById('suivi-fauconnier').value || '0') : null;
-      if (rapaceId && window.entries && window.entries.length) {
-        // Trouver la plus récente pour ce rapace à l'instant (heuristique)
-        var last = window.entries[window.entries.length - 1];
-        if (last && last.rapaceId === rapaceId) {
-          last.fauconnierId = fId || null;
-          saveAllData();
-          updateEntryList();
+        if ((window.entries||[]).length > before){
+          var last = window.entries[window.entries.length-1];
+          var fsel = document.getElementById('suivi-fauconnier');
+          var fid = fsel && fsel.value ? parseInt(fsel.value) : null;
+          last.fauconnierId = fid || null;
+          persist();
+          if (typeof window.updateEntryList==='function') window.updateEntryList();
         }
-      }
-    } catch(e){ /* noop */ }
-  };
+      } catch(e){}
+      return res;
+    };
+  }
 
-  // Chasse
-  const _origAddChasse = window.addChasse;
-  window.addChasse = function() {
-    var beforeCount = (window.chasseEntries||[]).length;
-    if (typeof _origAddChasse === 'function') {
-      try { _origAddChasse(); } catch(e){ console.warn('fallback addChasse', e); }
-    }
-    try {
-      var fId = document.getElementById('chasse-fauconnier') ? parseInt(document.getElementById('chasse-fauconnier').value || '0') : null;
-      if ((window.chasseEntries||[]).length > beforeCount) {
-        var last = window.chasseEntries[window.chasseEntries.length-1];
-        last.fauconnierId = fId || null;
-        saveAllData();
-        if (typeof updatechasseList==='function') updatechasseList();
-      }
-    } catch(e){ /*noop*/ }
-  };
-
-  // Affaitage
-  const _origAddAff = window.addAffaitage;
-  window.addAffaitage = function() {
-    var beforeCount = (window.affaitageEntries||[]).length;
-    if (typeof _origAddAff === 'function') {
-      try { _origAddAff(); } catch(e){ console.warn('fallback addAffaitage', e); }
-    }
-    try {
-      var fId = document.getElementById('affaitage-fauconnier') ? parseInt(document.getElementById('affaitage-fauconnier').value || '0') : null;
-      if ((window.affaitageEntries||[]).length > beforeCount) {
-        var last = window.affaitageEntries[window.affaitageEntries.length-1];
-        last.fauconnierId = fId || null;
-        // Capturer la température (extraction simple du texte météo)
-        if (last.weather && !last.temperature) {
-          var m = /([+-]?[0-9]+(?:\\.[0-9]+)?)\\s*°C/.exec(last.weather);
-          if (m) last.temperature = m[1] + '°C';
+  function hookAddAffaitage(){
+    if (typeof window.addAffaitage !== 'function') return;
+    if (window.__safe_hooked_addAff) return;
+    window.__safe_hooked_addAff = true;
+    var _orig = window.addAffaitage;
+    window.addAffaitage = function(){
+      var before = (window.affaitageEntries||[]).length;
+      var res; try { res = _orig.apply(this, arguments); } catch(e){ console.warn(e); }
+      try {
+        if ((window.affaitageEntries||[]).length > before){
+          var last = window.affaitageEntries[window.affaitageEntries.length-1];
+          var fsel = document.getElementById('affaitage-fauconnier');
+          var fid = fsel && fsel.value ? parseInt(fsel.value) : null;
+          last.fauconnierId = fid || null;
+          persist();
+          if (typeof window.updateAffaitageList==='function') window.updateAffaitageList();
         }
-        saveAllData();
-        if (typeof updateAffaitageList==='function') updateAffaitageList();
-      }
-    } catch(e){ /*noop*/ }
-  };
+      } catch(e){}
+      return res;
+    };
+  }
 
-  // Session Leurre
-  const _origAddSess = window.addSessionLeurre;
-  window.addSessionLeurre = function() {
-    var beforeCount = (window.sessionsLeurre||[]).length;
-    if (typeof _origAddSess === 'function') {
-      try { _origAddSess(); } catch(e){ console.warn('fallback addSessionLeurre', e); }
-    }
+  // --- Minimal init ---
+  onReady(function(){
+    ensureFloatingUI();
+    ensureSelector('suivi', 'suivi-fauconnier', 'Fauconnier');
+    ensureSelector('affaitage', 'affaitage-fauconnier', 'Fauconnier');
+    refreshSelectors();
+    hookAddEntry();
+    hookAddAffaitage();
+  });
+
+  // En cas de SPA/DOM tardif : retenter quelques fois
+  var tries = 0;
+  var id = setInterval(function(){
+    tries++;
     try {
-      var fId = document.getElementById('session-fauconnier') ? parseInt(document.getElementById('session-fauconnier').value || '0') : null;
-      if ((window.sessionsLeurre||[]).length > beforeCount) {
-        var last = window.sessionsLeurre[window.sessionsLeurre.length-1];
-        last.fauconnierId = fId || null;
-        saveAllData();
-        if (typeof updateSessionsLeurreList==='function') updateSessionsLeurreList();
-      }
-    } catch(e){ /*noop*/ }
-  };
+      ensureFloatingUI();
+      ensureSelector('suivi', 'suivi-fauconnier', 'Fauconnier');
+      ensureSelector('affaitage', 'affaitage-fauconnier', 'Fauconnier');
+      refreshSelectors();
+      hookAddEntry();
+      hookAddAffaitage();
+      if (tries >= 10) clearInterval(id);
+    } catch(e){ if (tries >= 10) clearInterval(id); }
+  }, 800);
 })();
+</script>
 
-// ====== Pré-remplissage du poids Affaitage ======
-function prefillAffaitageWeight() {
-  var rapaceSel = document.getElementById('affaitage-rapace');
-  var poidsInput = document.getElementById('affaitage-poids');
-  if (!rapaceSel || !poidsInput) return;
-  if (poidsInput.value) return; // ne pas écraser si l'utilisateur a déjà tapé
-  var rapaceId = parseInt(rapaceSel.value || '0');
-  if (!rapaceId) return;
-  // Dernier poids d'affaitage pour ce rapace
-  var list = (window.affaitageEntries || []).filter(a=>a.rapaceId===rapaceId && a.poids!=null);
-  list.sort(function(a,b){ return new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time); });
-  var val = null;
-  if (list.length > 0) val = list[0].poids;
-  else {
-    var R = (window.rapaces||[]).find(r=>r.id===rapaceId);
-    val = (R && (R.poidsVol || R.poidsChasse || R.poidsPlein)) || null;
+
+<!-- === SAFE++ INTEGRATION (août 2025) — intégration directe dans les listes === -->
+<script>
+(function(){
+  function onReady(fn){
+    if (document.readyState === 'interactive' || document.readyState === 'complete') fn();
+    else document.addEventListener('DOMContentLoaded', fn);
   }
-  if (val!=null) poidsInput.value = val;
-}
 
-// ====== Filtrage & affichage avec Fauconnier + compteur de jours ======
-function sessionStartDateFor(rapaceId, untilDateTime) {
-  // Chercher la dernière "repriseAffaitage" avant la date courante
-  var arr = (window.affaitageEntries || []).filter(a=>a.rapaceId===rapaceId);
-  if (!arr.length) return null;
-  arr.sort(function(a,b){ return new Date(a.date+'T'+a.time)-new Date(b.date+'T'+b.time); });
-  var start = null;
-  for (var i=0;i<arr.length;i++){
-    var dt = new Date(arr[i].date+'T'+arr[i].time);
-    if (untilDateTime && dt>untilDateTime) break;
-    if (!start) start = dt; // premier affaitage
-    if (arr[i].repriseAffaitage) start = dt; // redéfinit le début
-    if (arr[i].finAffaitage) start = null;   // stoppe jusqu'à prochaine reprise
+  // Helpers
+  function getFauconnierName(id){
+    var f = (window.fauconniers||[]).find(x=>x.id===id);
+    return f ? f.nom : null;
   }
-  return start;
-}
+  function parseTempFromWeather(w){
+    if (!w) return null;
+    var m = /([+-]?[0-9]+(?:\.[0-9]+)?)\s*°C/.exec(w);
+    return m ? (m[1] + '°C') : null;
+  }
+  function sessionStartDateFor(rapaceId, untilDateTime){
+    var arr = (window.affaitageEntries||[]).filter(a=>a.rapaceId===rapaceId);
+    if (!arr.length) return null;
+    arr.sort((a,b)=> new Date(a.date+'T'+a.time) - new Date(b.date+'T'+b.time));
+    var start = null;
+    for (var i=0;i<arr.length;i++){
+      var dt = new Date(arr[i].date+'T'+arr[i].time);
+      if (untilDateTime && dt > untilDateTime) break;
+      if (!start) start = dt;
+      if (arr[i].repriseAffaitage) start = dt;
+      if (arr[i].finAffaitage) start = null;
+    }
+    return start;
+  }
+  function ensureSearch(sectionId, listId){
+    var sec = document.getElementById(sectionId);
+    var list = document.getElementById(listId);
+    if (!sec || !list || document.getElementById('search-'+sectionId)) return;
+    var box = document.createElement('div');
+    box.className = 'form-group';
+    box.innerHTML = '<label>🔎 Rechercher :</label><input type="text" id="search-'+sectionId+'" placeholder="Filtrer le texte visible...">';
+    sec.insertBefore(box, sec.firstChild);
+    box.querySelector('input').addEventListener('input', function(){
+      var q = (this.value||'').toLowerCase();
+      Array.from(list.querySelectorAll('.entry-item')).forEach(function(it){
+        it.style.display = (it.textContent||'').toLowerCase().indexOf(q)>=0 ? '' : 'none';
+      });
+    });
+  }
+  function exportCSV(filename, rows){
+    var csv = rows.map(r=>r.map(v=>{
+      v = v==null ? '' : (''+v).replace(/"/g,'""');
+      return /[",\n;]/.test(v)?('"'+v+'"'):v;
+    }).join(';')).join('\n');
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+  }
+  function ensureExport(sectionId, btnId, buildRows, filename){
+    var sec = document.getElementById(sectionId);
+    if (!sec || document.getElementById(btnId)) return;
+    var btn = document.createElement('button');
+    btn.id = btnId;
+    btn.type = 'button';
+    btn.textContent = 'Exporter CSV';
+    btn.style.margin = '6px 0';
+    sec.insertBefore(btn, sec.firstChild);
+    btn.addEventListener('click', function(){ exportCSV(filename, buildRows()); });
+  }
 
-(function patchLists(){
-  // Affaitage: filtre par oiseau + affichage fauconnier + température + jour N
-  const _origUpdAff = window.updateAffaitageList;
-  window.updateAffaitageList = function(){
-    var list = document.getElementById('affaitage-list');
-    if (!list) return (typeof _origUpdAff==='function'?_origUpdAff():undefined);
-
-    var selectedRapaceIdEl = document.getElementById('affaitage-rapace');
-    var selectedId = selectedRapaceIdEl && selectedRapaceIdEl.value ? parseInt(selectedRapaceIdEl.value) : null;
-
-    var items = (window.affaitageEntries || []).slice();
-    if (selectedId) items = items.filter(a=>a.rapaceId===selectedId);
-
-    items.sort(function(a,b){ return new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time); });
-    if (!items.length) { list.innerHTML = '<p style="color:#666;font-style:italic;">Aucun affaitage enregistré.</p>'; return; }
-
-    var html='';
-    items.forEach(function(a){
-      var rapace = (window.rapaces||[]).find(r=>r.id===a.rapaceId);
-      var rapaceName = rapace ? rapace.name : 'Rapace supprimé';
+  // Build rows for exports
+  function buildAffRows(){
+    var rid = document.getElementById('affaitage-rapace') && document.getElementById('affaitage-rapace').value ? parseInt(document.getElementById('affaitage-rapace').value) : null;
+    var arr = (window.affaitageEntries||[]).slice();
+    if (rid) arr = arr.filter(a=>a.rapaceId===rid);
+    arr.sort((a,b)=> new Date(a.date+'T'+a.time) - new Date(b.date+'T'+b.time));
+    var rows = [['Date','Heure','Rapace','Jour','Température','Poids(g)','Activités','Événement','Fauconnier','Notes']];
+    arr.forEach(a=>{
       var dt = new Date(a.date+'T'+a.time);
       var start = sessionStartDateFor(a.rapaceId, dt);
-      var dayBadge = '';
-      if (start) {
-        var d = Math.floor((dt - start)/(1000*60*60*24)) + 1;
-        if (d>0) dayBadge = ' <span class="session-status" style="background:#e3f2fd;color:#1e3c72;border:1px solid #2a5298;">Jour '+d+'</span>';
-      }
-      var fName = a.fauconnierId ? (getFauconnierName(a.fauconnierId) || 'Fauconnier supprimé') : null;
-
-      html += '<div class="entry-item">';
-      html += '<div class="entry-actions">';
-      html += '<button onclick="editAffaitageEntry('+a.id+')" class="btn-warning" title="Modifier">✏️</button>';
-      html += '<button onclick="deleteAffaitageEntry('+a.id+')" class="btn-danger" title="Supprimer">🗑️</button>';
-      html += '</div>';
-
-      html += '<div class="affaitage-content">';
-
-      if (a.photo) {
-        html += '<div class="photo-container">';
-        html += '<img src="'+a.photo+'" class="affaitage-photo" alt="Photo" title="Cliquez pour agrandir" onclick="showPhotoModal(\\''+a.photo+'\\')">';
-        html += '<button class="photo-delete-btn" onclick="deleteAffaitagePhoto('+a.id+')" title="Supprimer la photo">×</button>';
-        html += '</div>';
-      }
-
-      html += '<div class="date">'+ dt.toLocaleDateString('fr-FR') +' à '+ a.time +' - '+ rapaceName + dayBadge + '</div>';
-
-      // Météo / Température
-      var temp = a.temperature;
-      if (!temp && a.weather) {
-        var m = /([+-]?[0-9]+(?:\\.[0-9]+)?)\\s*°C/.exec(a.weather);
-        if (m) temp = m[1] + '°C';
-      }
-      if (temp) html += '<div class="content"><strong>🌡️ Température:</strong> '+temp+'<br>'; else html += '<div class="content">';
-
-      if (typeof a.poids !== 'undefined' && a.poids !== null) {
-        html += '<strong>Poids:</strong> '+a.poids+'g<br>';
-      }
-
-      var activites = [];
-      if (a.priseNourriture) activites.push('🍽️ Prise de nourriture');
-      if (a.voliere) activites.push('🏠 Volière');
-      if (a.gant) activites.push('🧤 Gant');
-      if (a.filiere) activites.push('🎯 Filière');
-      if (a.bloc) activites.push('🧱 Bloc');
-      if (a.libre) activites.push('🕊️ Libre');
-      html += '<strong>Activités:</strong> '+(activites.length?activites.join(', '):'Aucune')+'<br>';
-
-      if (a.evenementMarquant && a.evenementMarquant.trim()) {
-        html += '<div style="background:#fff3cd;border-left:4px solid #ffc107;padding:8px;margin:8px 0;border-radius:4px;"><strong>🌟 ÉVÉNEMENT MARQUANT:</strong> '+a.evenementMarquant+'</div>';
-      }
-
-      if (fName) {
-        html += '<strong>👤 Fauconnier:</strong> '+fName+'<br>';
-      }
-
-      if (a.notes) html += '<strong>Notes:</strong> '+a.notes;
-
-      html += '</div></div></div>';
+      var jour = start ? (Math.floor((dt-start)/(1000*60*60*24))+1) : '';
+      var temp = a.temperature || parseTempFromWeather(a.weather) || '';
+      var acts = ['priseNourriture','voliere','gant','filiere','bloc','libre'].filter(k=>a[k]).join(',');
+      var f = a.fauconnierId ? (getFauconnierName(a.fauconnierId)||'') : '';
+      var rapName = (window.rapaces||[]).find(r=>r.id===a.rapaceId); rapName = rapName ? (rapName.name||rapName.nom||'#'+a.rapaceId) : ('#'+a.rapaceId);
+      rows.push([a.date,a.time,rapName,jour,temp,(a.poids||''),acts,(a.evenementMarquant||''),f,(a.notes||'')]);
     });
-
-    list.innerHTML = html;
-  };
-
-  // Chasse: filtrer par rapace sélectionné et afficher fauconnier si présent
-  const _origUpdChasse = window.updatechasseList;
-  window.updatechasseList = function(){
-    var list = document.getElementById('chasse-list');
-    if (!list) return (typeof _origUpdChasse==='function'?_origUpdChasse():undefined);
-
-    var selectedRapaceIdEl = document.getElementById('chasse-rapace');
-    var selectedId = selectedRapaceIdEl && selectedRapaceIdEl.value ? parseInt(selectedRapaceIdEl.value) : null;
-
-    var items = (window.chasseEntries || []).slice();
-    if (selectedId) items = items.filter(a=>a.rapaceId===selectedId);
-
-    items.sort(function(a,b){ return new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time); });
-    if (!items.length) { list.innerHTML = '<p style="color:#666;font-style:italic;">Aucune chasse enregistrée.</p>'; return; }
-
-    var html='';
-    items.forEach(function(c){
-      var rapace = (window.rapaces||[]).find(r=>r.id===c.rapaceId);
-      var rapaceName = rapace ? rapace.name : 'Rapace supprimé';
-      var fName = c.fauconnierId ? (getFauconnierName(c.fauconnierId) || 'Fauconnier supprimé') : null;
-
+    return rows;
+  }
+  function buildSuiviRows(){
+    var rid = document.getElementById('rapace-select') && document.getElementById('rapace-select').value ? parseInt(document.getElementById('rapace-select').value) : null;
+    var arr = (window.entries||[]).slice();
+    if (rid) arr = arr.filter(e=>e.rapaceId===rid);
+    arr.sort((a,b)=> new Date(a.date+'T'+a.time) - new Date(b.date+'T'+b.time));
+    var rows = [['Date','Heure','Rapace','Poids(g)','Alimentation','Santé','Fauconnier','Notes']];
+    arr.forEach(e=>{
+      var f = e.fauconnierId ? (getFauconnierName(e.fauconnierId)||'') : '';
+      var rapName = (window.rapaces||[]).find(r=>r.id===e.rapaceId); rapName = rapName ? (rapName.name||rapName.nom||'#'+e.rapaceId) : ('#'+e.rapaceId);
+      rows.push([e.date,e.time,rapName,e.poids||'',e.alimentation||'',e.sante||'',f,e.notes||'']);
+    });
+    return rows;
+  }
+  function buildChasseRows(){
+    var rid = document.getElementById('chasse-rapace') && document.getElementById('chasse-rapace').value ? parseInt(document.getElementById('chasse-rapace').value) : null;
+    var arr = (window.chasseEntries||[]).slice();
+    if (rid) arr = arr.filter(c=>c.rapaceId===rid);
+    arr.sort((a,b)=> new Date(a.date+'T'+a.time) - new Date(b.date+'T'+b.time));
+    var rows = [['Date','Heure','Rapace','Poids jour(g)','Prises','Total','Fauconnier','Notes']];
+    arr.forEach(c=>{
+      var prises = ['faisan','perdrix','lapin','lievre','canard','oie','autre'].map(k=> (c[k]||0)?(k+':'+c[k]):null).filter(Boolean).join(', ');
       var total = (c.faisan||0)+(c.perdrix||0)+(c.lapin||0)+(c.lievre||0)+(c.canard||0)+(c.oie||0)+(c.autre||0);
-
-      html += '<div class="entry-item">';
-      html += '<div class="entry-actions">';
-      html += '<button onclick="deleteChasseEntry('+c.id+')" class="btn-danger" title="Supprimer">🗑️</button>';
-      html += '</div>';
-
-      html += '<div class="date">'+ new Date(c.date+'T'+c.time).toLocaleDateString('fr-FR') +' à '+ c.time +' - '+ rapaceName +'</div>';
-      html += '<div class="content">';
-      if (typeof c.poidsJour !== 'undefined' && c.poidsJour !== null) {
-        html += '<strong>Poids du jour:</strong> '+c.poidsJour+'g<br>';
-      }
-      var details=[];
-      if ((c.faisan||0) > 0) details.push(c.faisan+' faisan(s)');
-      if ((c.perdrix||0) > 0) details.push(c.perdrix+' perdrix');
-      if ((c.lapin||0) > 0) details.push(c.lapin+' lapin(s)');
-      if ((c.lievre||0) > 0) details.push(c.lievre+' lièvre(s)');
-      if ((c.canard||0) > 0) details.push(c.canard+' canard(s)');
-      if ((c.oie||0) > 0) details.push(c.oie+' oie(s)');
-      if ((c.autre||0) > 0) details.push(c.autre+' autre(s)');
-      html += '<strong>Prises:</strong> ' + (details.length?details.join(', '):'Aucune');
-      if (fName) html += '<br><strong>👤 Fauconnier:</strong> '+fName;
-      if (c.notes) html += '<br><strong>Notes:</strong> '+c.notes;
-      html += '</div></div>';
+      var f = c.fauconnierId ? (getFauconnierName(c.fauconnierId)||'') : '';
+      var rapName = (window.rapaces||[]).find(r=>r.id===c.rapaceId); rapName = rapName ? (rapName.name||rapName.nom||'#'+c.rapaceId) : ('#'+c.rapaceId);
+      rows.push([c.date,c.time,rapName,c.poidsJour||'',prises,total,f,c.notes||'']);
     });
-    list.innerHTML = html;
-  };
+    return rows;
+  }
 
-  // Suivi: afficher fauconnier si présent
-  const _origUpdEntry = window.updateEntryList;
-  window.updateEntryList = function(){
-    if (typeof _origUpdEntry === 'function') _origUpdEntry();
-    // Enrichir l'affichage en ajoutant le fauconnier (si présent) aux blocs rendus
-    try {
-      var list = document.getElementById('entry-list');
-      if (!list) return;
-      // On ne reconstruit pas tout: on ajoute l'info dans chaque .entry-item si invisible
-      var items = list.querySelectorAll('.entry-item .content');
-      var filtered = (window.entries||[]).slice().sort(function(a,b){ return new Date(b.date+'T'+b.time)-new Date(a.date+'T'+a.time); });
-      var selectedRapaceId = document.getElementById('rapace-select') && document.getElementById('rapace-select').value ? parseInt(document.getElementById('rapace-select').value) : null;
-      if (selectedRapaceId) filtered = filtered.filter(e=>e.rapaceId===selectedRapaceId);
-      for (var i=0;i<Math.min(items.length, filtered.length);i++){
-        var entry = filtered[i];
-        if (entry && entry.fauconnierId && !items[i].innerHTML.includes('👤 Fauconnier:')){
-          var fName = getFauconnierName(entry.fauconnierId) || 'Fauconnier supprimé';
-          items[i].innerHTML += '<br><strong>👤 Fauconnier:</strong> '+fName;
+  // Decorators for lists (non-intrusive)
+  function decorateAffaitageList(){
+    var list = document.getElementById('affaitage-list');
+    if (!list) return;
+    var items = Array.from(list.querySelectorAll('.entry-item'));
+    if (!items.length) return;
+
+    // Build the dataset in the same (likely) order: newest first
+    var rid = document.getElementById('affaitage-rapace') && document.getElementById('affaitage-rapace').value ? parseInt(document.getElementById('affaitage-rapace').value) : null;
+    var arr = (window.affaitageEntries||[]).slice();
+    if (rid) arr = arr.filter(a=>a.rapaceId===rid);
+    arr.sort((a,b)=> new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time));
+
+    items.forEach(function(node, idx){
+      var a = arr[idx]; if (!a) return;
+
+      // Add temperature + fauconnier + jour badge inside the content block
+      var content = node.querySelector('.content') || node;
+      if (a && content && !content.__affaitageDecorated){
+        // Jour N
+        var dt = new Date(a.date+'T'+a.time);
+        var start = sessionStartDateFor(a.rapaceId, dt);
+        if (start){
+          var d = Math.floor((dt-start)/(1000*60*60*24)) + 1;
+          // Insert near date header if found, else at top of content
+          var dateEl = node.querySelector('.date');
+          var badge = document.createElement('span');
+          badge.className = 'session-status';
+          badge.style.cssText = 'background:#e3f2fd;color:#1e3c72;border:1px solid #2a5298;margin-left:6px;padding:2px 6px;border-radius:10px;font-size:12px;';
+          badge.textContent = 'Jour '+d;
+          if (dateEl && !dateEl.textContent.includes('Jour ')) dateEl.appendChild(badge);
         }
-      }
-    } catch(e){ /* ignore */ }
-  };
-})();
 
-// ====== Édition Affaitage: ajouter photo ======
-(function patchEditAff(){
-  const _origSaveEdit = window.saveAffaitageEdit;
-  window.saveAffaitageEdit = function(){
-    // Avant sauvegarde, traiter la photo
-    try {
-      if (window.editingAffaitageId) {
-        var a = (window.affaitageEntries||[]).find(x=>x.id===window.editingAffaitageId);
-        var input = document.getElementById('edit-affaitage-photo');
-        if (a && input && input.files && input.files[0]) {
-          var reader = new FileReader();
-          reader.onload = function(e){
-            a.photo = e.target.result;
-            if (typeof _origSaveEdit === 'function') _origSaveEdit();
-          };
-          reader.readAsDataURL(input.files[0]);
-          return; // ne pas appeler _origSaveEdit tout de suite
+        // Température
+        var temp = a.temperature || parseTempFromWeather(a.weather);
+        if (temp && content.innerHTML.indexOf('🌡️ Température:') === -1){
+          var p = document.createElement('div');
+          p.innerHTML = '<strong>🌡️ Température:</strong> '+temp;
+          content.insertBefore(p, content.firstChild);
         }
+        // Fauconnier
+        if (a.fauconnierId && content.innerHTML.indexOf('👤 Fauconnier:') === -1){
+          var fName = getFauconnierName(a.fauconnierId) || 'Fauconnier supprimé';
+          var fdiv = document.createElement('div');
+          fdiv.innerHTML = '<strong>👤 Fauconnier:</strong> '+fName;
+          content.appendChild(fdiv);
+        }
+        // Bouton Photo +
+        var actions = node.querySelector('.entry-actions') || node;
+        if (actions && !actions.querySelector('.btn-photo-plus')){
+          var b = document.createElement('button');
+          b.className = 'btn-warning btn-photo-plus';
+          b.type = 'button';
+          b.textContent = '📷 Photo +';
+          b.style.marginLeft = '6px';
+          b.addEventListener('click', function(){
+            var input = document.createElement('input');
+            input.type = 'file'; input.accept='image/*';
+            input.onchange = function(ev){
+              var f = ev.target.files && ev.target.files[0]; if (!f) return;
+              var r = new FileReader();
+              r.onload = function(e){
+                a.photo = e.target.result;
+                if (typeof window.saveAllData === 'function') window.saveAllData();
+                // show preview if there's a photo container
+                var existingImg = node.querySelector('img');
+                if (!existingImg){
+                  var pc = document.createElement('div');
+                  pc.className = 'photo-container';
+                  var img = document.createElement('img');
+                  img.className = 'affaitage-photo';
+                  img.src = a.photo;
+                  pc.appendChild(img);
+                  node.insertBefore(pc, node.firstChild);
+                } else {
+                  existingImg.src = a.photo;
+                }
+              };
+              r.readAsDataURL(f);
+            };
+            input.click();
+          });
+          actions.appendChild(b);
+        }
+
+        content.__affaitageDecorated = true;
       }
-    } catch(e){ /* continue */ }
-    if (typeof _origSaveEdit === 'function') _origSaveEdit();
-  };
-})();
-
-// ====== Initialise les améliorations ======
-document.addEventListener('DOMContentLoaded', function(){
-  ensureEnhancementUI();
-  updateFauconnierList();
-  updateFauconnierSelects();
-
-  var affSel = document.getElementById('affaitage-rapace');
-  if (affSel) {
-    affSel.addEventListener('change', function(){
-      // Nettoie le poids uniquement si vide, puis pré-remplit
-      prefillAffaitageWeight();
-      // Et filtre la liste
-      if (typeof updateAffaitageList==='function') updateAffaitageList();
     });
   }
-  // Au chargement, tenter de pré-remplir
-  prefillAffaitageWeight();
-});
+
+  function decorateSuiviList(){
+    var list = document.getElementById('entry-list');
+    if (!list) return;
+    var items = Array.from(list.querySelectorAll('.entry-item .content'));
+    if (!items.length) return;
+    // Sort data newest first and if rapace selected, filter to match
+    var rid = document.getElementById('rapace-select') && document.getElementById('rapace-select').value ? parseInt(document.getElementById('rapace-select').value) : null;
+    var arr = (window.entries||[]).slice();
+    if (rid) arr = arr.filter(e=>e.rapaceId===rid);
+    arr.sort((a,b)=> new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time));
+    items.forEach(function(content, idx){
+      var e = arr[idx]; if (!e) return;
+      if (e.fauconnierId && content.innerHTML.indexOf('👤 Fauconnier:') === -1){
+        var fName = getFauconnierName(e.fauconnierId) || 'Fauconnier supprimé';
+        var div = document.createElement('div');
+        div.innerHTML = '<strong>👤 Fauconnier:</strong> '+fName;
+        content.appendChild(div);
+      }
+    });
+  }
+
+  function decorateChasseList(){
+    var list = document.getElementById('chasse-list');
+    if (!list) return;
+    var items = Array.from(list.querySelectorAll('.entry-item .content'));
+    if (!items.length) return;
+    var rid = document.getElementById('chasse-rapace') && document.getElementById('chasse-rapace').value ? parseInt(document.getElementById('chasse-rapace').value) : null;
+    var arr = (window.chasseEntries||[]).slice();
+    if (rid) arr = arr.filter(c=>c.rapaceId===rid);
+    arr.sort((a,b)=> new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time));
+    items.forEach(function(content, idx){
+      var c = arr[idx]; if (!c) return;
+      if (c.fauconnierId && content.innerHTML.indexOf('👤 Fauconnier:') === -1){
+        var fName = getFauconnierName(c.fauconnierId) || 'Fauconnier supprimé';
+        var div = document.createElement('div');
+        div.innerHTML = '<strong>👤 Fauconnier:</strong> '+fName;
+        content.appendChild(div);
+      }
+    });
+  }
+
+  // Patch update functions (call original then decorate)
+  function hookUpdate(fnName, decorator){
+    if (typeof window[fnName] !== 'function') return;
+    if (window['__hooked_'+fnName]) return;
+    window['__hooked_'+fnName] = true;
+    var orig = window[fnName];
+    window[fnName] = function(){
+      var res; try { res = orig.apply(this, arguments); } catch(e){ console.warn(e); }
+      try { decorator(); } catch(e){ console.warn('decorate error '+fnName, e); }
+      return res;
+    };
+  }
+
+  function ensureWeightPrefill(){
+    var affSel = document.getElementById('affaitage-rapace');
+    var poidsInput = document.getElementById('affaitage-poids');
+    function prefill(){
+      if (!affSel || !poidsInput) return;
+      if (poidsInput.value) return;
+      var rid = parseInt(affSel.value||'0'); if (!rid) return;
+      var list = (window.affaitageEntries||[]).filter(a=>a.rapaceId===rid && a.poids!=null);
+      list.sort((a,b)=> new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time));
+      var val = null;
+      if (list.length) val = list[0].poids;
+      else {
+        var R = (window.rapaces||[]).find(r=>r.id===rid);
+        val = (R && (R.poidsVol || R.poidsChasse || R.poidsPlein)) || null;
+      }
+      if (val!=null) poidsInput.value = val;
+    }
+    if (affSel) affSel.addEventListener('change', prefill);
+    prefill();
+  }
+
+  onReady(function(){
+    // Search + Export
+    ensureSearch('affaitage','affaitage-list');
+    ensureSearch('suivi','entry-list');
+    ensureSearch('historique','entry-list'); // fallback si ton id de section est "historique"
+    ensureSearch('chasse','chasse-list');
+    ensureExport('affaitage','btn-export-aff','buildAffRows','affaitage.csv');
+    ensureExport('suivi','btn-export-suivi','buildSuiviRows','suivi.csv');
+    ensureExport('historique','btn-export-suivi2','buildSuiviRows','suivi.csv');
+    ensureExport('chasse','btn-export-chasse','buildChasseRows','chasse.csv');
+
+    // Hook update renderers
+    hookUpdate('updateAffaitageList', decorateAffaitageList);
+    hookUpdate('updateEntryList', decorateSuiviList);
+    hookUpdate('updatechasseList', decorateChasseList);
+
+    // Run once on load in case lists are already rendered
+    setTimeout(function(){
+      try { decorateAffaitageList(); } catch(e){}
+      try { decorateSuiviList(); } catch(e){}
+      try { decorateChasseList(); } catch(e){}
+    }, 600);
+
+    // Weight prefill
+    ensureWeightPrefill();
+  });
+})();
+</script>
+
+
+<!-- === FALCONNIER FIX PACK (garantie création + sélection) === -->
+<script>
+(function(){
+  // --- Persistance robuste (fallback localStorage dédié) ---
+  function loadFauconniers(){
+    try {
+      if (Array.isArray(window.fauconniers) && window.fauconniers.length) return window.fauconniers;
+      var raw = localStorage.getItem('rapaces_fauconniers');
+      var arr = raw ? JSON.parse(raw) : [];
+      window.fauconniers = Array.isArray(window.fauconniers) ? window.fauconniers : [];
+      if (arr && arr.length && window.fauconniers.length===0) window.fauconniers = arr;
+      return window.fauconniers;
+    } catch(e){ return (window.fauconniers = window.fauconniers||[]); }
+  }
+  function saveFauconniers(){
+    try { localStorage.setItem('rapaces_fauconniers', JSON.stringify(window.fauconniers||[])); } catch(e){}
+    try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){}
+  }
+
+  // --- UI: bouton flottant + modale ---
+  function ensureFloatingUI(){
+    if (document.getElementById('btn-fc-float')) return;
+    var b = document.createElement('button');
+    b.id = 'btn-fc-float'; b.type = 'button'; b.textContent = '👤 Fauconniers';
+    Object.assign(b.style, { position:'fixed', right:'12px', bottom:'12px', zIndex:99999, padding:'10px 14px', borderRadius:'999px', boxShadow:'0 4px 12px rgba(0,0,0,0.15)' });
+    document.body.appendChild(b);
+    b.addEventListener('click', openModal);
+
+    if (!document.getElementById('fc-modal')){
+      var m = document.createElement('div'); m.id='fc-modal';
+      Object.assign(m.style, { position:'fixed', inset:'0', background:'rgba(0,0,0,0.35)', display:'none', zIndex:100000 });
+      m.innerHTML = '<div style="max-width:520px;margin:8vh auto;background:#fff;border-radius:12px;padding:16px;">'
+                  +   '<div style="display:flex;justify-content:space-between;align-items:center;">'
+                  +     '<h3 style="margin:0">👤 Fauconniers</h3><button id="fc-close" type="button">✖</button>'
+                  +   '</div>'
+                  +   '<div class="form-row" style="margin-top:10px;gap:8px;">'
+                  +     '<input type="text" id="fc-name" placeholder="Nom (ex: Philippe)" style="flex:1">'
+                  +     '<button id="fc-add" type="button">Ajouter</button>'
+                  +   '</div>'
+                  +   '<div id="fc-list" style="margin-top:12px;max-height:40vh;overflow:auto;border:1px solid #eee;border-radius:8px;padding:8px;"></div>'
+                  + '</div>';
+      document.body.appendChild(m);
+      m.addEventListener('click', e=>{ if (e.target===m) closeModal(); });
+      m.querySelector('#fc-close').addEventListener('click', closeModal);
+      m.querySelector('#fc-add').addEventListener('click', function(){
+        var nom = (document.getElementById('fc-name').value||'').trim();
+        if (!nom){ alert('Saisis un nom'); return; }
+        loadFauconniers();
+        window.fauconniers.push({ id: Date.now(), nom });
+        document.getElementById('fc-name').value='';
+        saveFauconniers();
+        refreshSelectors();
+        renderList();
+      });
+    }
+  }
+  function openModal(){ renderList(); document.getElementById('fc-modal').style.display='block'; }
+  function closeModal(){ var m=document.getElementById('fc-modal'); if (m) m.style.display='none'; }
+  function renderList(){
+    var box = document.getElementById('fc-list'); if (!box) return;
+    var arr = loadFauconniers();
+    if (!arr.length){ box.innerHTML = '<p style="color:#666">Aucun fauconnier.</p>'; return; }
+    var html = '<ul style="list-style:none;margin:0;padding:0">';
+    arr.forEach(f=>{
+      html += '<li style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed #eee;">'
+           +  '<span>'+f.nom+'</span>'
+           +  '<button type="button" onclick="(function(id){ window.fauconniers = (window.fauconniers||[]).filter(x=>x.id!==id); ('
+           +  'function(){ try{ localStorage.setItem(\\'rapaces_fauconniers\\', JSON.stringify(window.fauconniers)); }catch(e){} } )();'
+           +  '(function(){ try{ if (typeof window.saveAllData===\\'function\\') window.saveAllData(); }catch(e){} })();'
+           +  'var selIds=[\\'suivi-fauconnier\\',\\'affaitage-fauconnier\\',\\'chasse-fauconnier\\',\\'session-fauconnier\\'];'
+           +  'selIds.forEach(function(sid){ var s=document.getElementById(sid); if(s){ var v=s.value; var opts=(window.fauconniers||[]).map(function(f){return \'<option value=\"\'+f.id+\'\">\'+f.nom+\'</option>\';}).join(\\\'\\\'); s.innerHTML=\'<option value=\"\">Choisir</option>\'+opts; if (v && s.querySelector(\\\'option[value=\"\\\'+v+\\\'\"]\\\')) s.value=v; }});'
+           +  'renderList(); })( '+f.id+' )">Supprimer</button>'
+           +  '</li>';
+    });
+    html += '</ul>';
+    box.innerHTML = html;
+  }
+
+  // --- Sélecteurs garantis + synchronisation ---
+  function ensureSelector(sectionIds, selectId, label){
+    var sec = null;
+    sectionIds.forEach(function(sid){ if (!sec) sec = document.getElementById(sid); });
+    if (!sec || document.getElementById(selectId)) return;
+    var grp = document.createElement('div');
+    grp.className = 'form-group';
+    grp.innerHTML = '<label for="'+selectId+'">'+label+' :</label>'
+                  + '<select id="'+selectId+'"><option value="">Choisir</option></select>';
+    sec.insertBefore(grp, sec.firstChild);
+  }
+  function refreshSelectors(){
+    loadFauconniers();
+    var opts = (window.fauconniers||[]).map(f=>'<option value="'+f.id+'">'+f.nom+'</option>').join('');
+    ['suivi-fauconnier','affaitage-fauconnier','chasse-fauconnier','session-fauconnier'].forEach(function(id){
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      var keep = sel.value;
+      sel.innerHTML = '<option value="">Choisir</option>'+opts;
+      if (keep && sel.querySelector('option[value="'+keep+'"]')) sel.value = keep;
+      sel.disabled = false;
+    });
+  }
+
+  // --- Association à l'enregistrement (hooks + fallback boutons) ---
+  function hookAdd(fnName, selectId, entriesArrayName){
+    if (typeof window[fnName] !== 'function') return;
+    if (window['__hooked_'+fnName+'_fc']) return;
+    window['__hooked_'+fnName+'_fc'] = true;
+    var orig = window[fnName];
+    window[fnName] = function(){
+      var before = (window[entriesArrayName]||[]).length;
+      var res; try { res = orig.apply(this, arguments); } catch(e){ console.warn(e); }
+      try {
+        var arr = window[entriesArrayName] || [];
+        if (arr.length > before){
+          var last = arr[arr.length-1];
+          var sel = document.getElementById(selectId);
+          var fid = sel && sel.value ? parseInt(sel.value) : null;
+          last.fauconnierId = fid || null;
+          try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){}
+          var upd = (fnName==='addAffaitage'?'updateAffaitageList':(fnName==='addEntry'?'updateEntryList':(fnName==='addChasse'?'updatechasseList':null)));
+          if (upd && typeof window[upd]==='function') window[upd]();
+        }
+      } catch(e){}
+      return res;
+    };
+  }
+  function fallbackButton(sectionId, selectId, entriesArrayName){
+    var sec = document.getElementById(sectionId);
+    if (!sec) return;
+    var btn = Array.from(sec.querySelectorAll('button')).find(b=>/ajouter|enregistrer|add/i.test(b.textContent||''));
+    if (!btn || btn.__fc_bound) return;
+    btn.__fc_bound = true;
+    btn.addEventListener('click', function(){
+      setTimeout(function(){
+        try {
+          var arr = window[entriesArrayName]||[]; if (!arr.length) return;
+          var last = arr[arr.length-1];
+          var sel = document.getElementById(selectId);
+          var fid = sel && sel.value ? parseInt(sel.value) : null;
+          if (last && last.fauconnierId == null && fid != null){
+            last.fauconnierId = fid;
+            try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){}
+          }
+        } catch(e){}
+      }, 300);
+    });
+  }
+
+  // --- Init ---
+  function init(){
+    loadFauconniers();
+    ensureFloatingUI();
+    ensureSelector(['suivi','historique'], 'suivi-fauconnier', 'Fauconnier');
+    ensureSelector(['affaitage'], 'affaitage-fauconnier', 'Fauconnier');
+    refreshSelectors();
+    hookAdd('addEntry','suivi-fauconnier','entries');
+    hookAdd('addAffaitage','affaitage-fauconnier','affaitageEntries');
+    hookAdd('addChasse','chasse-fauconnier','chasseEntries');
+    // fallback si pas de hooks possibles
+    fallbackButton('suivi','suivi-fauconnier','entries');
+    fallbackButton('historique','suivi-fauconnier','entries');
+    fallbackButton('affaitage','affaitage-fauconnier','affaitageEntries');
+  }
+
+  if (document.readyState==='complete' || document.readyState==='interactive') init();
+  else document.addEventListener('DOMContentLoaded', init);
+
+  // Re-essayer si le DOM bouge
+  var tries = 0;
+  var id = setInterval(function(){
+    tries++;
+    try { init(); } catch(e){}
+    if (tries > 8) clearInterval(id);
+  }, 700);
+})();
+</script>
+
+
+<!-- === FALCONNIER CAPTURE BOOST (Affaitage) === -->
+<script>
+(function(){
+  function getSelVal(id){
+    var el = document.getElementById(id);
+    return el && el.value ? parseInt(el.value) : null;
+  }
+  function saveLast(fid){
+    if (!fid) return;
+    try { localStorage.setItem('rapaces_last_fauconnier', String(fid)); } catch(e){}
+  }
+  function getLast(){
+    try { var v = localStorage.getItem('rapaces_last_fauconnier'); return v?parseInt(v):null; } catch(e){ return null; }
+  }
+  // Ensure selector exists in Affaitage & Suivi (idempotent)
+  function ensureSelector(sectionIds, selectId, label){
+    var sec = null; sectionIds.forEach(function(id){ if (!sec) sec = document.getElementById(id); });
+    if (!sec || document.getElementById(selectId)) return;
+    var g = document.createElement('div');
+    g.className='form-group';
+    g.innerHTML = '<label for="'+selectId+'">'+label+' :</label><select id="'+selectId+'"><option value="">Choisir</option></select>';
+    sec.insertBefore(g, sec.firstChild);
+  }
+  function refreshSelectors(){
+    var opts = (window.fauconniers||[]).map(function(f){ return '<option value="'+f.id+'">'+f.nom+'</option>'; }).join('');
+    ['affaitage-fauconnier','suivi-fauconnier'].forEach(function(id){
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      var keep = sel.value;
+      sel.innerHTML = '<option value="">Choisir</option>'+opts;
+      if (keep) sel.value = keep;
+      if (!sel.value){ // préselectionner dernier utilisé
+        var last = getLast();
+        if (last && sel.querySelector('option[value="'+last+'"]')) sel.value = String(last);
+      }
+    });
+  }
+
+  function captureOnAdd(){
+    // hook principal
+    if (typeof window.addAffaitage === 'function' && !window.__fc_capture_boost){
+      window.__fc_capture_boost = true;
+      var orig = window.addAffaitage;
+      window.addAffaitage = function(){
+        var before = (window.affaitageEntries||[]).length;
+        var res; try { res = orig.apply(this, arguments); } catch(e){}
+        try {
+          var arr = window.affaitageEntries||[];
+          if (arr.length > before){
+            var last = arr[arr.length-1];
+            var fid = getSelVal('affaitage-fauconnier') || getSelVal('suivi-fauconnier') || getLast();
+            if (fid != null){
+              last.fauconnierId = fid;
+              saveLast(fid);
+              try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){}
+              if (typeof window.updateAffaitageList==='function') window.updateAffaitageList();
+            }
+          }
+        } catch(e){}
+        return res;
+      };
+    }
+
+    // fallback si on ne passe pas par addAffaitage()
+    ['affaitage','historique','suivi'].forEach(function(sectionId){
+      var sec = document.getElementById(sectionId);
+      if (!sec) return;
+      var btns = sec.querySelectorAll('button');
+      btns.forEach(function(b){
+        if (b.__fc_capture_boost) return;
+        if (!/ajouter|enregistrer|add/i.test(b.textContent||'')) return;
+        b.__fc_capture_boost = true;
+        b.addEventListener('click', function(){
+          setTimeout(function(){
+            try {
+              var arr = window.affaitageEntries||[]; if (!arr.length) return;
+              var last = arr[arr.length-1];
+              if (last && last.fauconnierId == null){
+                var fid = getSelVal('affaitage-fauconnier') || getSelVal('suivi-fauconnier') || getLast();
+                if (fid != null){
+                  last.fauconnierId = fid;
+                  saveLast(fid);
+                  try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){}
+                  if (typeof window.updateAffaitageList==='function') window.updateAffaitageList();
+                }
+              }
+            } catch(e){}
+          }, 300);
+        });
+      });
+    });
+  }
+
+  function decorateAffListOnce(){
+    var list = document.getElementById('affaitage-list');
+    if (!list) return;
+    var items = Array.from(list.querySelectorAll('.entry-item'));
+    if (!items.length) return;
+    var arr = (window.affaitageEntries||[]).slice().sort(function(a,b){ return new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time); });
+    items.forEach(function(node, idx){
+      var a = arr[idx]; if (!a) return;
+      var fName = a.fauconnierId ? ((window.fauconniers||[]).find(function(f){ return f.id===a.fauconnierId; })||{}).nom : null;
+      if (fName){
+        var content = node.querySelector('.content') || node;
+        if (content && content.innerHTML.indexOf('👤 Fauconnier:') === -1){
+          var div = document.createElement('div');
+          div.innerHTML = '<strong>👤 Fauconnier:</strong> '+fName;
+          content.appendChild(div);
+        }
+      }
+    });
+  }
+
+  function init(){
+    ensureSelector(['affaitage'], 'affaitage-fauconnier', 'Fauconnier');
+    ensureSelector(['suivi','historique'], 'suivi-fauconnier', 'Fauconnier');
+    refreshSelectors();
+    captureOnAdd();
+    setTimeout(decorateAffListOnce, 600);
+  }
+
+  if (document.readyState==='complete' || document.readyState==='interactive') init();
+  else document.addEventListener('DOMContentLoaded', init);
+
+  // re-essayer un peu si DOM late
+  var ticks = 0; var timer = setInterval(function(){ ticks++; try{ init(); }catch(e){} if (ticks>6) clearInterval(timer); }, 800);
+})();
+</script>
+
+
+<!-- === Fauconnier "+" button beside selectors === -->
+<script>
+(function(){
+  function openFauconniersModal(){
+    var btnFloat = document.getElementById('btn-fc-float');
+    if (btnFloat) btnFloat.click();
+  }
+  function injectPlus(selectId){
+    var sel = document.getElementById(selectId);
+    if (!sel || document.getElementById(selectId+'-plus')) return;
+    var btn = document.createElement('button');
+    btn.id = selectId+'-plus';
+    btn.type = 'button';
+    btn.textContent = '+';
+    btn.style.marginLeft = '6px';
+    btn.style.padding = '2px 6px';
+    btn.style.fontSize = '16px';
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      openFauconniersModal();
+    });
+    sel.parentNode.insertBefore(btn, sel.nextSibling);
+  }
+  function initPlus(){
+    injectPlus('affaitage-fauconnier');
+    injectPlus('suivi-fauconnier');
+  }
+  // Retire le bouton flottant
+  var floatBtn = document.getElementById('btn-fc-float');
+  if (floatBtn) floatBtn.remove();
+  if (document.readyState==='complete' || document.readyState==='interactive') initPlus();
+  else document.addEventListener('DOMContentLoaded', initPlus);
+})();
+</script>
+
+
+<!-- === PLUS BUTTON FIX: self-contained modal + auto-select new fauconnier === -->
+<script>
+(function(){
+  function onReady(fn){
+    if (document.readyState === 'interactive' || document.readyState === 'complete') fn();
+    else document.addEventListener('DOMContentLoaded', fn);
+  }
+  function loadF(){
+    try {
+      if (Array.isArray(window.fauconniers) && window.fauconniers.length) return window.fauconniers;
+      var raw = localStorage.getItem('rapaces_fauconniers');
+      var arr = raw ? JSON.parse(raw) : [];
+      window.fauconniers = Array.isArray(window.fauconniers) ? window.fauconniers : [];
+      if (arr && arr.length && window.fauconniers.length===0) window.fauconniers = arr;
+      return window.fauconniers;
+    } catch(e){ return (window.fauconniers = window.fauconniers||[]); }
+  }
+  function saveF(){
+    try { localStorage.setItem('rapaces_fauconniers', JSON.stringify(window.fauconniers||[])); } catch(e){}
+    try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){}
+  }
+  function refreshSelectors(){
+    loadF();
+    var opts = (window.fauconniers||[]).map(function(f){ return '<option value="'+f.id+'">'+f.nom+'</option>'; }).join('');
+    ['suivi-fauconnier','affaitage-fauconnier','chasse-fauconnier','session-fauconnier'].forEach(function(id){
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      var keep = sel.value;
+      sel.innerHTML = '<option value="">Choisir</option>'+opts;
+      if (keep && sel.querySelector('option[value="'+keep+'"]')) sel.value = keep;
+    });
+  }
+
+  function ensureModal(){
+    if (document.getElementById('fc-modal-lite')) return;
+    var m = document.createElement('div');
+    m.id = 'fc-modal-lite';
+    Object.assign(m.style, { position:'fixed', inset:'0', background:'rgba(0,0,0,0.35)', display:'none', zIndex:100000 });
+    m.innerHTML = '<div style="max-width:520px;margin:8vh auto;background:#fff;border-radius:12px;padding:16px;">'
+                +   '<div style="display:flex;justify-content:space-between;align-items:center;">'
+                +     '<h3 style="margin:0">👤 Fauconniers</h3><button id="fc-close-lite" type="button">✖</button>'
+                +   '</div>'
+                +   '<div class="form-row" style="margin-top:10px;gap:8px;">'
+                +     '<input type="text" id="fc-name-lite" placeholder="Nom (ex: Philippe)" style="flex:1">'
+                +     '<button id="fc-add-lite" type="button">Ajouter</button>'
+                +   '</div>'
+                +   '<div id="fc-list-lite" style="margin-top:12px;max-height:40vh;overflow:auto;border:1px solid #eee;border-radius:8px;padding:8px;"></div>'
+                + '</div>';
+    document.body.appendChild(m);
+    m.addEventListener('click', function(e){ if (e.target===m) closeModal(); });
+    document.getElementById('fc-close-lite').addEventListener('click', closeModal);
+    document.getElementById('fc-add-lite').addEventListener('click', function(){
+      var nom = (document.getElementById('fc-name-lite').value||'').trim();
+      if (!nom){ alert('Saisis un nom'); return; }
+      loadF();
+      var id = Date.now();
+      window.fauconniers.push({ id: id, nom: nom });
+      document.getElementById('fc-name-lite').value='';
+      saveF();
+      refreshSelectors();
+      // auto-sélectionner le nouveau dans les selects visibles
+      ['affaitage-fauconnier','suivi-fauconnier'].forEach(function(sid){
+        var sel = document.getElementById(sid);
+        if (sel && sel.querySelector('option[value="'+id+'"]')) sel.value = String(id);
+      });
+      renderList();
+    });
+  }
+  function openModal(){
+    ensureModal();
+    renderList();
+    document.getElementById('fc-modal-lite').style.display='block';
+  }
+  function closeModal(){
+    var m = document.getElementById('fc-modal-lite');
+    if (m) m.style.display='none';
+  }
+  function renderList(){
+    var box = document.getElementById('fc-list-lite'); if (!box) return;
+    var arr = loadF();
+    if (!arr.length){ box.innerHTML = '<p style="color:#666">Aucun fauconnier.</p>'; return; }
+    var html = '<ul style="list-style:none;margin:0;padding:0">';
+    arr.forEach(function(f){
+      html += '<li style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed #eee;">'
+           +  '<span>'+f.nom+'</span>'
+           +  '<button type="button" onclick="(function(id){ window.fauconniers=(window.fauconniers||[]).filter(function(x){return x.id!==id;}); '
+           +  'try{ localStorage.setItem(\\'rapaces_fauconniers\\', JSON.stringify(window.fauconniers)); }catch(e){} '
+           +  'try{ if (typeof window.saveAllData===\\'function\\') window.saveAllData(); }catch(e){} '
+           +  '(function(){ var opts=(window.fauconniers||[]).map(function(f){return \'<option value=\"\'+f.id+\'\">\'+f.nom+\'</option>\';}).join(\\\'\\\');'
+           +  '[\\'suivi-fauconnier\\',\\'affaitage-fauconnier\\',\\'chasse-fauconnier\\',\\'session-fauconnier\\'].forEach(function(sid){ var s=document.getElementById(sid); if(!s) return; var keep=s.value; s.innerHTML = \'<option value=\"\">Choisir</option>\' + opts; if (keep && s.querySelector(\\\'option[value=\"\\\'+keep+\\\'\"]\\\')) s.value=keep; }); })(); '
+           +  'renderList(); })( '+f.id+' )">Supprimer</button>'
+           +  '</li>';
+    });
+    html += '</ul>';
+    box.innerHTML = html;
+  }
+
+  function injectPlus(selectId){
+    var sel = document.getElementById(selectId);
+    if (!sel || document.getElementById(selectId+'-plus')) return;
+    var btn = document.createElement('button');
+    btn.id = selectId+'-plus';
+    btn.type = 'button';
+    btn.textContent = '+';
+    btn.title = 'Ajouter un fauconnier';
+    btn.style.marginLeft = '6px';
+    btn.style.padding = '2px 6px';
+    btn.style.fontSize = '16px';
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      openModal();
+    });
+    sel.parentNode.insertBefore(btn, sel.nextSibling);
+  }
+
+  function init(){
+    ensureModal();
+    injectPlus('affaitage-fauconnier');
+    injectPlus('suivi-fauconnier');
+    refreshSelectors();
+  }
+
+  onReady(init);
+  // Retry a few times in case selects appear later
+  var n=0, t=setInterval(function(){ n++; try{ init(); }catch(e){} if(n>8) clearInterval(t); }, 700);
+})();
+</script>
+
+
+<!-- === PLUS LAZY MODAL CREATION === -->
+<script>
+(function(){
+  function ensureModalLite(){
+    if (document.getElementById('fc-modal-lite')) return true;
+    var m = document.createElement('div');
+    m.id = 'fc-modal-lite';
+    Object.assign(m.style, { position:'fixed', inset:'0', background:'rgba(0,0,0,0.35)', display:'none', zIndex:100000 });
+    m.innerHTML = '<div style="max-width:520px;margin:8vh auto;background:#fff;border-radius:12px;padding:16px;">'
+                +   '<div style="display:flex;justify-content:space-between;align-items:center;">'
+                +     '<h3 style="margin:0">👤 Fauconniers</h3><button id="fc-close-lite" type="button">✖</button>'
+                +   '</div>'
+                +   '<div class="form-row" style="margin-top:10px;gap:8px;">'
+                +     '<input type="text" id="fc-name-lite" placeholder="Nom (ex: Philippe)" style="flex:1">'
+                +     '<button id="fc-add-lite" type="button">Ajouter</button>'
+                +   '</div>'
+                +   '<div id="fc-list-lite" style="margin-top:12px;max-height:40vh;overflow:auto;border:1px solid #eee;border-radius:8px;padding:8px;"></div>'
+                + '</div>';
+    document.body.appendChild(m);
+    m.addEventListener('click', function(e){ if (e.target===m) closeModalLite(); });
+    document.getElementById('fc-close-lite').addEventListener('click', closeModalLite);
+    document.getElementById('fc-add-lite').addEventListener('click', addLite);
+    return true;
+  }
+  function loadF(){
+    try { return JSON.parse(localStorage.getItem('rapaces_fauconniers')||'[]'); } catch(e){ return []; }
+  }
+  function saveF(arr){
+    try { localStorage.setItem('rapaces_fauconniers', JSON.stringify(arr)); } catch(e){}
+    try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){}
+  }
+  function openModalLite(){
+    ensureModalLite();
+    renderListLite();
+    document.getElementById('fc-modal-lite').style.display='block';
+  }
+  function closeModalLite(){
+    var m = document.getElementById('fc-modal-lite'); if (m) m.style.display='none';
+  }
+  function addLite(){
+    var nom = (document.getElementById('fc-name-lite').value||'').trim();
+    if(!nom){ alert('Saisis un nom'); return; }
+    var arr = loadF();
+    var id = Date.now();
+    arr.push({ id:id, nom:nom });
+    saveF(arr);
+    // Refresh selectors and auto-select new
+    ['affaitage-fauconnier','suivi-fauconnier'].forEach(function(sid){
+      var sel = document.getElementById(sid);
+      if (!sel) return;
+      var opts = arr.map(function(f){ return '<option value="'+f.id+'">'+f.nom+'</option>'; }).join('');
+      sel.innerHTML = '<option value="">Choisir</option>'+opts;
+      sel.value = String(id);
+    });
+    document.getElementById('fc-name-lite').value='';
+    renderListLite();
+  }
+  function renderListLite(){
+    var box = document.getElementById('fc-list-lite'); if (!box) return;
+    var arr = loadF();
+    if (!arr.length){ box.innerHTML = '<p style="color:#666">Aucun fauconnier.</p>'; return; }
+    var html = '<ul style="list-style:none;margin:0;padding:0">';
+    arr.forEach(function(f){
+      html += '<li style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed #eee;">'
+           +  '<span>'+f.nom+'</span>'
+           +  '<button type="button" onclick="(function(id){ var arr='+JSON.stringify(arr)+'.filter(function(x){return x.id!==id;}); '
+           +  'localStorage.setItem(\\'rapaces_fauconniers\\', JSON.stringify(arr)); '
+           +  '(function(){ var opts=arr.map(function(f){return \'<option value=\"\'+f.id+\'\">\'+f.nom+\'</option>\';}).join(\\\'\\\');'
+           +  '[\\'affaitage-fauconnier\\',\\'suivi-fauconnier\\'].forEach(function(sid){ var s=document.getElementById(sid); if(!s) return; var keep=s.value; s.innerHTML = \'<option value=\"\">Choisir</option>\' + opts; if (keep && s.querySelector(\\\'option[value=\"\\\'+keep+\\\'\"]\\\')) s.value=keep; }); })(); '
+           +  'document.getElementById(\\'fc-modal-lite\\') && (document.getElementById(\\'fc-list-lite\\').innerHTML = \'\'); })( '+f.id+' )">Supprimer</button>'
+           +  '</li>';
+    });
+    html += '</ul>';
+    box.innerHTML = html;
+  }
+
+  function bindPlusNow(id){
+    var btn = document.getElementById(id);
+    if (!btn || btn.__lazyBound) return;
+    btn.__lazyBound = true;
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      openModalLite();
+    });
+  }
+
+  // Bind by IDs used earlier
+  bindPlusNow('affaitage-fauconnier-plus');
+  bindPlusNow('suivi-fauconnier-plus');
+
+  // Also observe DOM in case the plus buttons appear later
+  var mo = new MutationObserver(function(){
+    bindPlusNow('affaitage-fauconnier-plus');
+    bindPlusNow('suivi-fauconnier-plus');
+  });
+  mo.observe(document.documentElement, { childList:true, subtree:true });
+})();
+</script>
+
+
+<!-- === INLINE FAUCONNIER CREATOR (no modal) === -->
+<script>
+(function(){
+  function loadF(){ try { return JSON.parse(localStorage.getItem('rapaces_fauconniers')||'[]'); } catch(e){ return []; } }
+  function saveF(arr){ try { localStorage.setItem('rapaces_fauconniers', JSON.stringify(arr)); } catch(e){} try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){} }
+  function refreshSelectors(selectIds, autoSelectId){
+    var arr = loadF();
+    var opts = arr.map(function(f){ return '<option value="'+f.id+'">'+f.nom+'</option>'; }).join('');
+    selectIds.forEach(function(id){
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      var keep = sel.value;
+      sel.innerHTML = '<option value="">Choisir</option>'+opts;
+      if (autoSelectId && sel.querySelector('option[value="'+autoSelectId+'"]')) sel.value = String(autoSelectId);
+      else if (keep && sel.querySelector('option[value="'+keep+'"]')) sel.value = keep;
+    });
+  }
+  function makeInlineCreator(selectId){
+    var sel = document.getElementById(selectId);
+    if (!sel || document.getElementById(selectId+'-inline-wrap')) return;
+    var wrap = document.createElement('span');
+    wrap.id = selectId+'-inline-wrap';
+    wrap.style.marginLeft = '8px';
+    wrap.innerHTML = '<button type="button" id="'+selectId+'-show" style="padding:2px 6px;">+ Ajouter</button>'
+                   + '<span id="'+selectId+'-box" style="display:none;margin-left:6px;">'
+                   +   '<input type="text" id="'+selectId+'-name" placeholder="Nom" style="width:140px;">'
+                   +   '<button type="button" id="'+selectId+'-add" style="margin-left:4px;">OK</button>'
+                   +   '<button type="button" id="'+selectId+'-cancel" style="margin-left:4px;">Annuler</button>'
+                   + '</span>';
+    sel.parentNode.insertBefore(wrap, sel.nextSibling);
+    var btnShow = document.getElementById(selectId+'-show');
+    var box = document.getElementById(selectId+'-box');
+    var input = document.getElementById(selectId+'-name');
+    var btnAdd = document.getElementById(selectId+'-add');
+    var btnCancel = document.getElementById(selectId+'-cancel');
+
+    btnShow.addEventListener('click', function(e){ e.preventDefault(); box.style.display=''; input.focus(); });
+    btnCancel.addEventListener('click', function(e){ e.preventDefault(); input.value=''; box.style.display='none'; });
+    btnAdd.addEventListener('click', function(e){
+      e.preventDefault();
+      var nom = (input.value||'').trim();
+      if (!nom){ alert('Saisis un nom'); input.focus(); return; }
+      var arr = loadF();
+      var id = Date.now();
+      arr.push({ id:id, nom:nom });
+      saveF(arr);
+      refreshSelectors(['affaitage-fauconnier','suivi-fauconnier','chasse-fauconnier','session-fauconnier'], id);
+      input.value='';
+      box.style.display='none';
+    });
+  }
+
+  function init(){
+    makeInlineCreator('affaitage-fauconnier');
+    makeInlineCreator('suivi-fauconnier');
+    refreshSelectors(['affaitage-fauconnier','suivi-fauconnier','chasse-fauconnier','session-fauconnier']);
+  }
+
+  if (document.readyState==='complete' || document.readyState==='interactive') init();
+  else document.addEventListener('DOMContentLoaded', init);
+  // Retry a few times if selects appear later
+  var n=0, t=setInterval(function(){ n++; try{ init(); }catch(e){} if(n>8) clearInterval(t); }, 700);
+})();
+</script>
+
+
+<!-- === FAUCONNIER SYNC + NAME SNAPSHOT FIX === -->
+<script>
+(function(){
+  // Keep window.fauconniers <-> localStorage in sync
+  function loadFSync(){
+    try {
+      var raw = localStorage.getItem('rapaces_fauconniers');
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) arr = [];
+      window.fauconniers = arr;
+      return arr;
+    } catch(e){
+      window.fauconniers = window.fauconniers || [];
+      return window.fauconniers;
+    }
+  }
+  function saveFSync(arr){
+    try { localStorage.setItem('rapaces_fauconniers', JSON.stringify(arr)); } catch(e){}
+    window.fauconniers = arr.slice();
+    try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){}
+  }
+  function getSelInfo(selectId){
+    var sel = document.getElementById(selectId);
+    if (!sel) return { id:null, name:null };
+    var id = sel.value ? parseInt(sel.value) : null;
+    var name = null;
+    if (id != null){
+      // take label from option text
+      var opt = sel.options[sel.selectedIndex];
+      if (opt) name = opt.textContent || opt.innerText || null;
+    }
+    return { id:id, name:name };
+  }
+  function refreshAllSelectors(autoId){
+    var arr = loadFSync();
+    var opts = arr.map(function(f){ return '<option value="'+f.id+'">'+f.nom+'</option>'; }).join('');
+    ['affaitage-fauconnier','suivi-fauconnier','chasse-fauconnier','session-fauconnier'].forEach(function(id){
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      var keep = sel.value;
+      sel.innerHTML = '<option value="">Choisir</option>'+opts;
+      if (autoId && sel.querySelector('option[value="'+autoId+'"]')) sel.value = String(autoId);
+      else if (keep && sel.querySelector('option[value="'+keep+'"]')) sel.value = keep;
+    });
+  }
+
+  // Patch inline creator to also sync window.fauconniers
+  function patchInlineCreator(){
+    ['affaitage-fauconnier','suivi-fauconnier'].forEach(function(selectId){
+      var addBtn = document.getElementById(selectId+'-add');
+      var input = document.getElementById(selectId+'-name');
+      if (addBtn && !addBtn.__patched){
+        addBtn.__patched = true;
+        var origHandler = addBtn.onclick;
+        addBtn.onclick = null;
+        addBtn.addEventListener('click', function(e){
+          e.preventDefault();
+          var nom = (input && input.value || '').trim();
+          if (!nom){ alert('Saisis un nom'); if (input) input.focus(); return; }
+          var arr = loadFSync();
+          var id = Date.now();
+          arr.push({ id:id, nom:nom });
+          saveFSync(arr);
+          refreshAllSelectors(id);
+          if (input) input.value='';
+          var box = document.getElementById(selectId+'-box'); if (box) box.style.display='none';
+        });
+      }
+    });
+  }
+
+  // Capture snapshot on add (Affaitage & Suivi & Chasse)
+  function patchAdd(fnName, selectId, arrName, updateFnName){
+    if (typeof window[fnName] !== 'function' || window['__snap_'+fnName]) return;
+    window['__snap_'+fnName] = true;
+    var orig = window[fnName];
+    window[fnName] = function(){
+      var before = (window[arrName]||[]).length;
+      var res; try { res = orig.apply(this, arguments); } catch(e){}
+      try {
+        var arr = window[arrName]||[];
+        if (arr.length > before){
+          var last = arr[arr.length-1];
+          var info = getSelInfo(selectId);
+          if (info.id != null){
+            last.fauconnierId = info.id;
+            last.fauconnierName = info.name || (function(){
+              var f = (window.fauconniers||[]).find(function(x){return x.id===info.id;});
+              return f ? f.nom : null;
+            })();
+            try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){}
+            if (typeof window[updateFnName]==='function') window[updateFnName]();
+          }
+        }
+      } catch(e){}
+      return res;
+    };
+  }
+
+  // Rendering decorators: prefer stored name
+  function decorateAff(){
+    var list = document.getElementById('affaitage-list'); if (!list) return;
+    var items = Array.from(list.querySelectorAll('.entry-item'));
+    if (!items.length) return;
+    var arr = (window.affaitageEntries||[]).slice().sort(function(a,b){ return new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time); });
+    items.forEach(function(node, idx){
+      var a = arr[idx]; if (!a) return;
+      var name = a.fauconnierName;
+      if (!name && a.fauconnierId){
+        var f = (window.fauconniers||[]).find(function(x){ return x.id===a.fauconnierId; });
+        name = f ? f.nom : null;
+      }
+      if (name){
+        var content = node.querySelector('.content') || node;
+        var line = content.querySelector('.fc-line');
+        if (!line){
+          line = document.createElement('div'); line.className='fc-line';
+          content.appendChild(line);
+        }
+        line.innerHTML = '<strong>👤 Fauconnier:</strong> '+name;
+      }
+    });
+  }
+  function decorateSuivi(){
+    var list = document.getElementById('entry-list'); if (!list) return;
+    var items = Array.from(list.querySelectorAll('.entry-item .content'));
+    if (!items.length) return;
+    var arr = (window.entries||[]).slice().sort(function(a,b){ return new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time); });
+    items.forEach(function(content, idx){
+      var e = arr[idx]; if (!e) return;
+      var name = e.fauconnierName;
+      if (!name && e.fauconnierId){
+        var f = (window.fauconniers||[]).find(function(x){ return x.id===e.fauconnierId; });
+        name = f ? f.nom : null;
+      }
+      if (name && content.innerHTML.indexOf('👤 Fauconnier:') === -1){
+        var div = document.createElement('div');
+        div.innerHTML = '<strong>👤 Fauconnier:</strong> '+name;
+        content.appendChild(div);
+      }
+    });
+  }
+  function decorateChasse(){
+    var list = document.getElementById('chasse-list'); if (!list) return;
+    var items = Array.from(list.querySelectorAll('.entry-item .content'));
+    if (!items.length) return;
+    var arr = (window.chasseEntries||[]).slice().sort(function(a,b){ return new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time); });
+    items.forEach(function(content, idx){
+      var c = arr[idx]; if (!c) return;
+      var name = c.fauconnierName;
+      if (!name && c.fauconnierId){
+        var f = (window.fauconniers||[]).find(function(x){ return x.id===c.fauconnierId; });
+        name = f ? f.nom : null;
+      }
+      if (name && content.innerHTML.indexOf('👤 Fauconnier:') === -1){
+        var div = document.createElement('div');
+        div.innerHTML = '<strong>👤 Fauconnier:</strong> '+name;
+        content.appendChild(div);
+      }
+    });
+  }
+
+  function hookUpdate(fnName, decorator){
+    if (typeof window[fnName] !== 'function' || window['__dec_'+fnName]) return;
+    window['__dec_'+fnName] = true;
+    var orig = window[fnName];
+    window[fnName] = function(){
+      var res; try { res = orig.apply(this, arguments); } catch(e){}
+      try { decorator(); } catch(e){}
+      return res;
+    };
+  }
+
+  function init(){
+    // initial sync to ensure lookups work
+    loadFSync();
+    refreshAllSelectors();
+    patchInlineCreator();
+    patchAdd('addAffaitage','affaitage-fauconnier','affaitageEntries','updateAffaitageList');
+    patchAdd('addEntry','suivi-fauconnier','entries','updateEntryList');
+    patchAdd('addChasse','chasse-fauconnier','chasseEntries','updatechasseList');
+
+    // decorate on renders
+    hookUpdate('updateAffaitageList', decorateAff);
+    hookUpdate('updateEntryList', decorateSuivi);
+    hookUpdate('updatechasseList', decorateChasse);
+    // first pass
+    setTimeout(function(){ try{ decorateAff(); decorateSuivi(); decorateChasse(); }catch(e){} }, 400);
+  }
+
+  if (document.readyState==='complete' || document.readyState==='interactive') init();
+  else document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+
+
+<!-- === INLINE ADD UX IMPROVEMENTS: prefill, Enter to submit, dedupe === -->
+<script>
+(function(){
+  function loadF(){ try { return JSON.parse(localStorage.getItem('rapaces_fauconniers')||'[]'); } catch(e){ return []; } }
+  function saveF(arr){ try { localStorage.setItem('rapaces_fauconniers', JSON.stringify(arr)); } catch(e){} try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){} }
+  function refreshSelectors(selectIds, autoId){
+    var arr = loadF();
+    var opts = arr.map(function(f){ return '<option value="'+f.id+'">'+f.nom+'</option>'; }).join('');
+    selectIds.forEach(function(id){
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      var keep = sel.value;
+      sel.innerHTML = '<option value="">Choisir</option>'+opts;
+      if (autoId && sel.querySelector('option[value="'+autoId+'"]')) sel.value = String(autoId);
+      else if (keep && sel.querySelector('option[value="'+keep+'"]')) sel.value = keep;
+    });
+  }
+
+  function attachEnhancedInline(selectId){
+    var sel = document.getElementById(selectId);
+    var show = document.getElementById(selectId+'-show');
+    var box  = document.getElementById(selectId+'-box');
+    var input= document.getElementById(selectId+'-name');
+    var add  = document.getElementById(selectId+'-add');
+    var cancel=document.getElementById(selectId+'-cancel');
+    if (!sel || !show || !box || !input || !add || !cancel) return;
+    if (show.__enhanced) return;
+    show.__enhanced = true;
+
+    // Prefill with current selection text on open
+    show.addEventListener('click', function(){
+      try {
+        if (sel && sel.selectedIndex > 0){
+          var t = sel.options[sel.selectedIndex].textContent || sel.options[sel.selectedIndex].innerText || '';
+          input.value = t.trim();
+        }
+      } catch(e){}
+      box.style.display = '';
+      setTimeout(function(){ input.focus(); input.select(); }, 10);
+    });
+
+    // Enter = OK, Esc = Cancel
+    input.addEventListener('keydown', function(ev){
+      if (ev.key === 'Enter'){ ev.preventDefault(); add.click(); }
+      else if (ev.key === 'Escape'){ ev.preventDefault(); cancel.click(); }
+    });
+
+    // Enhanced add: dedupe by name (case-insensitive)
+    add.addEventListener('click', function(e){
+      e.preventDefault();
+      var nom = (input.value||'').trim();
+      if (!nom){
+        // fallback: use current selection text if any
+        try {
+          if (sel && sel.selectedIndex > 0){
+            nom = (sel.options[sel.selectedIndex].textContent||'').trim();
+          }
+        } catch(e){}
+      }
+      if (!nom){ alert('Saisis un nom'); input.focus(); return; }
+
+      var arr = loadF();
+      var existing = arr.find(function(f){ return (f.nom||'').toLowerCase() === nom.toLowerCase(); });
+      var id;
+      if (existing){
+        id = existing.id;
+      } else {
+        id = Date.now();
+        arr.push({ id:id, nom:nom });
+        saveF(arr);
+      }
+      refreshSelectors(['affaitage-fauconnier','suivi-fauconnier','chasse-fauconnier','session-fauconnier'], id);
+      box.style.display = 'none';
+      input.value = '';
+    });
+  }
+
+  function init(){
+    ['affaitage-fauconnier','suivi-fauconnier'].forEach(attachEnhancedInline);
+  }
+  if (document.readyState==='complete' || document.readyState==='interactive') init();
+  else document.addEventListener('DOMContentLoaded', init);
+
+  // Retry binding a few times if DOM is late
+  var n=0, t=setInterval(function(){ n++; try{ init(); }catch(e){} if(n>10) clearInterval(t); }, 700);
+})();
+</script>
+
+
+<!-- === STRONG OVERRIDE: '+ Ajouter' click handler (capture) === -->
+<script>
+(function(){
+  function loadF(){ try { return JSON.parse(localStorage.getItem('rapaces_fauconniers')||'[]'); } catch(e){ return []; } }
+  function saveF(arr){ try { localStorage.setItem('rapaces_fauconniers', JSON.stringify(arr)); } catch(e){} try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){} }
+  function refreshSelectors(selectIds, autoId){
+    var arr = loadF();
+    var opts = arr.map(function(f){ return '<option value="'+f.id+'">'+f.nom+'</option>'; }).join('');
+    selectIds.forEach(function(id){
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      var keep = sel.value;
+      sel.innerHTML = '<option value="">Choisir</option>'+opts;
+      if (autoId && sel.querySelector('option[value="'+autoId+'"]')) sel.value = String(autoId);
+      else if (keep && sel.querySelector('option[value="'+keep+'"]')) sel.value = keep;
+    });
+  }
+  function bindCapture(selectId){
+    var add = document.getElementById(selectId+'-add');
+    var input = document.getElementById(selectId+'-name');
+    var sel = document.getElementById(selectId);
+    if (!add || add.__captureBound) return;
+    add.__captureBound = true;
+    add.addEventListener('click', function(e){
+      // kill any existing listeners that might show the old alert
+      e.preventDefault();
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+      e.stopPropagation();
+
+      // compute name
+      var nom = (input && input.value || '').trim();
+      if (!nom && sel && sel.selectedIndex > 0){
+        var t = sel.options[sel.selectedIndex].textContent || sel.options[sel.selectedIndex].innerText || '';
+        nom = t.trim();
+      }
+      if (!nom){
+        alert('Saisis un nom');
+        try { input && input.focus(); } catch(_){}
+        return;
+      }
+      // dedupe (case-insensitive)
+      var arr = loadF();
+      var existing = arr.find(function(f){ return (f.nom||'').toLowerCase() === nom.toLowerCase(); });
+      var id;
+      if (existing){ id = existing.id; }
+      else { id = Date.now(); arr.push({ id:id, nom:nom }); saveF(arr); }
+      refreshSelectors(['affaitage-fauconnier','suivi-fauconnier','chasse-fauconnier','session-fauconnier'], id);
+      var box = document.getElementById(selectId+'-box'); if (box) box.style.display='none';
+      if (input) input.value='';
+    }, true); // CAPTURE phase
+  }
+  function init(){
+    ['affaitage-fauconnier','suivi-fauconnier'].forEach(bindCapture);
+  }
+  if (document.readyState==='complete' || document.readyState==='interactive') init();
+  else document.addEventListener('DOMContentLoaded', init);
+  var n=0, t=setInterval(function(){ n++; try{ init(); }catch(e){} if(n>10) clearInterval(t); }, 600);
+})();
+</script>
+
+
+<!-- === FORCE DISPLAY OF STORED FAUCONNIER NAME (replace 'Fauconnier supprimé') === -->
+<script>
+(function(){
+  function fixAffaitageNames(){
+    var list = document.getElementById('affaitage-list'); if (!list) return;
+    var items = Array.from(list.querySelectorAll('.entry-item'));
+    if (!items.length) return;
+    var arr = (window.affaitageEntries||[]).slice().sort(function(a,b){ return new Date(b.date+'T'+b.time)-new Date(a.date+'T'+a.time); });
+    items.forEach(function(node, idx){
+      var a = arr[idx]; if (!a) return;
+      var name = a.fauconnierName || null;
+      if (!name && a.fauconnierId){
+        var f = (window.fauconniers||[]).find(function(x){ return x.id===a.fauconnierId; });
+        name = f ? f.nom : null;
+      }
+      if (!name) return;
+      // Find any existing "Fauconnier:" line and normalize it to the correct name
+      var content = node.querySelector('.content') || node;
+      var lines = Array.from(content.childNodes);
+      var found = false;
+      lines.forEach(function(n){
+        if (n.nodeType===1){
+          var txt = n.textContent || '';
+          if (txt.trim().toLowerCase().startsWith('fauconnier') || txt.indexOf('👤 Fauconnier:')>=0){
+            // replace
+            n.innerHTML = '<strong>👤 Fauconnier:</strong> '+name;
+            if (found) { try{ n.remove(); }catch(e){} } // remove duplicates
+            found = true;
+          }
+        }
+      });
+      if (!found){
+        var div = document.createElement('div');
+        div.innerHTML = '<strong>👤 Fauconnier:</strong> '+name;
+        content.appendChild(div);
+      }
+    });
+  }
+  function hook(fn){
+    if (typeof window[fn] !== 'function' || window['__fix_'+fn]) return;
+    window['__fix_'+fn] = true;
+    var orig = window[fn];
+    window[fn] = function(){
+      var res; try { res = orig.apply(this, arguments); } catch(e){}
+      try { fixAffaitageNames(); } catch(e){}
+      return res;
+    };
+  }
+  function init(){
+    hook('updateAffaitageList');
+    setTimeout(fixAffaitageNames, 400);
+  }
+  if (document.readyState==='complete' || document.readyState==='interactive') init();
+  else document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+
+
+<!-- === FINAL FEATURES PACK: poids auto, filtre par oiseau, Jour N robuste, photo en édition === -->
+<script>
+(function(){
+  function onReady(fn){
+    if (document.readyState === 'interactive' || document.readyState === 'complete') fn();
+    else document.addEventListener('DOMContentLoaded', fn);
+  }
+
+  // ---------- Poids auto (Affaitage) + fallback si vide à l'enregistrement ----------
+  function autoFillWeight(){
+    var sel = document.getElementById('affaitage-rapace');
+    var input = document.getElementById('affaitage-poids');
+    if (!sel || !input) return;
+    function compute(){
+      var rid = parseInt(sel.value||'0'); if (!rid) return;
+      var list = (window.affaitageEntries||[]).filter(a=>a.rapaceId===rid && a.poids!=null);
+      list.sort((a,b)=> new Date(b.date+'T'+b.time)-new Date(a.date+'T'+a.time));
+      var val = null;
+      if (list.length) val = list[0].poids;
+      else {
+        var R = (window.rapaces||[]).find(r=>r.id===rid);
+        val = (R && (R.poidsVol || R.poidsChasse || R.poidsPlein)) || null;
+      }
+      if (val!=null) input.value = val;
+    }
+    sel.addEventListener('change', compute);
+    // initialise si vide
+    if (!input.value) compute();
+  }
+  function fallbackWeightOnSave(){
+    if (typeof window.addAffaitage !== 'function' || window.__fallbackWeightHook) return;
+    window.__fallbackWeightHook = true;
+    var orig = window.addAffaitage;
+    window.addAffaitage = function(){
+      // avant l'appel : si vide, pré-remplir une valeur par défaut (sans bloquer l'utilisateur)
+      try {
+        var sel = document.getElementById('affaitage-rapace');
+        var input = document.getElementById('affaitage-poids');
+        if (sel && input && !input.value){
+          var rid = parseInt(sel.value||'0');
+          if (rid){
+            var list = (window.affaitageEntries||[]).filter(a=>a.rapaceId===rid && a.poids!=null);
+            list.sort((a,b)=> new Date(b.date+'T'+b.time)-new Date(a.date+'T'+a.time));
+            var val = null;
+            if (list.length) val = list[0].poids;
+            else {
+              var R = (window.rapaces||[]).find(r=>r.id===rid);
+              val = (R && (R.poidsVol || R.poidsChasse || R.poidsPlein)) || null;
+            }
+            if (val!=null) input.value = val;
+          }
+        }
+      } catch(e){}
+      var res; try { res = orig.apply(this, arguments); } catch(e){}
+      return res;
+    };
+  }
+
+  // ---------- Jour N + Filtre par oiseau (Affaitage) ----------
+  function sessionStartDateFor(rapaceId, untilDateTime){
+    var arr = (window.affaitageEntries||[]).filter(a=>a.rapaceId===rapaceId);
+    if (!arr.length) return null;
+    arr.sort((a,b)=> new Date(a.date+'T'+a.time) - new Date(b.date+'T'+b.time));
+    var start = null;
+    for (var i=0;i<arr.length;i++){
+      var dt = new Date(arr[i].date+'T'+arr[i].time);
+      if (untilDateTime && dt > untilDateTime) break;
+      if (!start) start = dt;
+      if (arr[i].repriseAffaitage) start = dt;
+      if (arr[i].finAffaitage) start = null;
+    }
+    return start;
+  }
+  function filterAndDecorateAffList(){
+    var list = document.getElementById('affaitage-list'); if (!list) return;
+    var ridSel = document.getElementById('affaitage-rapace');
+    var rid = ridSel && ridSel.value ? parseInt(ridSel.value) : null;
+
+    // Construire l'ordre des données comme la liste (récents d'abord)
+    var arr = (window.affaitageEntries||[]).slice().sort(function(a,b){
+      return new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time);
+    });
+
+    var items = Array.from(list.querySelectorAll('.entry-item'));
+    items.forEach(function(node, idx){
+      var a = arr[idx]; if (!a) return;
+      // Filtre par oiseau
+      node.style.display = (!rid || a.rapaceId===rid) ? '' : 'none';
+      // Badge Jour N (robuste)
+      var dateEl = node.querySelector('.date');
+      if (dateEl && !dateEl.__jourDecorated){
+        var dt = new Date(a.date+'T'+a.time);
+        var start = sessionStartDateFor(a.rapaceId, dt);
+        if (start){
+          var d = Math.floor((dt-start)/(1000*60*60*24))+1;
+          var badge = document.createElement('span');
+          badge.className = 'session-status';
+          badge.style.cssText = 'background:#e3f2fd;color:#1e3c72;border:1px solid #2a5298;margin-left:6px;padding:2px 6px;border-radius:10px;font-size:12px;';
+          badge.textContent = 'Jour '+d;
+          dateEl.appendChild(badge);
+        }
+        dateEl.__jourDecorated = true;
+      }
+    });
+  }
+  function hookAffList(){
+    if (typeof window.updateAffaitageList !== 'function' || window.__affFilterHook) return;
+    window.__affFilterHook = true;
+    var orig = window.updateAffaitageList;
+    window.updateAffaitageList = function(){
+      var res; try { res = orig.apply(this, arguments); } catch(e){}
+      try { filterAndDecorateAffList(); } catch(e){}
+      return res;
+    };
+  }
+
+  // ---------- Photo lors de l'édition d'une entrée d'Affaitage ----------
+  function injectPhotoIntoEditModal(){
+    // Cherche une modale ouverte courante et y ajoute un champ photo si on détecte "affaitage"
+    var modal = document.querySelector('.modal, .dialog, .swal2-popup');
+    if (!modal) return;
+    if (modal.__photoInjected) return;
+
+    // On insère un input file + logique d'enregistrement
+    var fileWrap = document.createElement('div');
+    fileWrap.style.marginTop = '8px';
+    fileWrap.innerHTML = '<label style="display:block;margin-bottom:4px;">📷 Photo :</label>'
+                       + '<input type="file" id="aff-edit-photo" accept="image/*">';
+    modal.appendChild(fileWrap);
+    modal.__photoInjected = true;
+
+    var input = fileWrap.querySelector('#aff-edit-photo');
+    input.addEventListener('change', function(ev){
+      var f = ev.target.files && ev.target.files[0]; if (!f) return;
+      var r = new FileReader();
+      r.onload = function(e){
+        // Trouver l'entrée en cours d'édition : on prend la plus récente sélectionnée (dernier bouton "modifier" cliqué)
+        var idx = window.__lastEditedAffIdx;
+        if (idx==null){
+          // fallback : rien à faire
+          return;
+        }
+        // retrouver l'entrée correspondante dans l'ordre récent -> ancien
+        var arr = (window.affaitageEntries||[]).slice().sort(function(a,b){
+          return new Date(b.date+'T'+b.time) - new Date(a.date+'T'+a.time);
+        });
+        var entry = arr[idx];
+        if (!entry) return;
+        entry.photo = e.target.result;
+        try { if (typeof window.saveAllData==='function') window.saveAllData(); } catch(e){}
+        if (typeof window.updateAffaitageList==='function') window.updateAffaitageList();
+      };
+      r.readAsDataURL(f);
+    });
+  }
+  function listenEditClicks(){
+    // Capture les clics sur le bouton "modifier" (jaune) de chaque ligne : mémorise l'index et injecte le champ photo
+    document.addEventListener('click', function(e){
+      var target = e.target;
+      if (!target) return;
+      var isEdit = /modifier|edit/i.test(target.textContent||'') || target.classList.contains('btn-warning');
+      if (!isEdit) return;
+      // Quel item ?
+      var item = target.closest('.entry-item');
+      if (!item) return;
+      var list = document.getElementById('affaitage-list'); if (!list) return;
+
+      var items = Array.from(list.querySelectorAll('.entry-item'));
+      var idx = items.indexOf(item);
+      if (idx>=0) window.__lastEditedAffIdx = idx;
+
+      // Tente l'injection après un léger délai (le temps que la modale s'ouvre)
+      setTimeout(injectPhotoIntoEditModal, 200);
+    }, true);
+  }
+
+  onReady(function(){
+    autoFillWeight();
+    fallbackWeightOnSave();
+    hookAffList();
+    // 1er rendu
+    setTimeout(filterAndDecorateAffList, 500);
+    var sel = document.getElementById('affaitage-rapace');
+    if (sel) sel.addEventListener('change', filterAndDecorateAffList);
+
+    listenEditClicks(); // pour l'édition photo
+  });
+})();
 </script>
 
 </body>
