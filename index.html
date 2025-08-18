@@ -5625,87 +5625,75 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 <script>
-function normalizeId(str) {
-  return (str || "").trim().toLowerCase().replace(/\s+/g, "_");
-}
-function getStoredUserId() {
-  return normalizeId(localStorage.getItem('firebaseUserId') || "");
-}
-function setStoredUserId(id) {
-  localStorage.setItem('firebaseUserId', normalizeId(id));
-}
-function refreshUserIdUI() {
-  var el = document.getElementById('uid-val');
-  if (el) el.textContent = getStoredUserId() || "(non défini)";
-}
-// noms uniques
-function doChangeFirebaseUserId() {
-  var cur = getStoredUserId();
-  var id = normalizeId(prompt("Nouvel identifiant de synchro (le même sur tous les appareils) :", cur) || "");
-  if (!id) return;
-  setStoredUserId(id);
-  window.firebaseUserId = id;
-  refreshUserIdUI();
-  if (typeof addSyncHistoryEntry === 'function') addSyncHistoryEntry('🆔 Identifiant mis à jour : ' + id);
-}
-function doCopyFirebaseUserId() {
-  var id = getStoredUserId();
-  if (navigator.clipboard && id) navigator.clipboard.writeText(id);
-  if (typeof showMiniNotification === 'function') showMiniNotification('🆔 ID copié');
-}
-(function(){
-  function injectUID() {
-    var syncTab = document.getElementById('sync');
-    if (!syncTab) return;
-    if (!document.getElementById('current-user-id')) {
-      var status = document.getElementById('sync-status');
-      var wrap = document.createElement('div');
-      wrap.innerHTML = "\n<div id=\"current-user-id\" style=\"margin-top:10px; font-size:14px; color:#444;\">\n  <span style=\"font-weight:600;\">🆔 ID de synchro :</span>\n  <span id=\"uid-val\" style=\"padding:2px 6px; background:#f1f3f5; border-radius:6px; margin-left:6px;\">(non défini)</span>\n  <button onclick=\"doChangeFirebaseUserId()\" class=\"btn-secondary\" style=\"margin-left:8px; padding:6px 10px;\">Changer</button>\n  <button onclick=\"doCopyFirebaseUserId()\" class=\"btn-secondary\" style=\"margin-left:6px; padding:6px 10px;\">Copier</button>\n</div>\n".trim();
-      if (status && status.parentNode) {
-        status.parentNode.insertBefore(wrap, status.nextSibling);
-      } else {
-        syncTab.insertBefore(wrap, syncTab.firstChild);
-      }
-    }
-    refreshUserIdUI();
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectUID);
-  } else {
-    injectUID();
-  }
-})();
-(function(){
-  var _addSyncHistoryEntry = (typeof addSyncHistoryEntry === 'function') ? addSyncHistoryEntry : function(){};
-  var _updateSyncUI = (typeof updateSyncUI === 'function') ? updateSyncUI : function(){};
+// === SYNC FIX PATCH v3 ===
+// 1) ID helpers + UI (same as fixed2, using unique names)
+function normalizeId(str){return (str||"").trim().toLowerCase().replace(/\s+/g,"_");}
+function getStoredUserId(){return normalizeId(localStorage.getItem('firebaseUserId')||"");}
+function setStoredUserId(id){localStorage.setItem('firebaseUserId', normalizeId(id));}
+function refreshUserIdUI(){var el=document.getElementById('uid-val'); if(el) el.textContent=getStoredUserId()||"(non défini)";}
+function doChangeFirebaseUserId(){var cur=getStoredUserId(); var id=normalizeId(prompt("Nouvel identifiant de synchro (le même sur tous les appareils) :", cur)||""); if(!id) return; setStoredUserId(id); window.firebaseUserId=id; refreshUserIdUI(); if(typeof addSyncHistoryEntry==='function') addSyncHistoryEntry('🆔 Identifiant mis à jour : '+id);}
+function doCopyFirebaseUserId(){var id=getStoredUserId(); if(navigator.clipboard&&id) navigator.clipboard.writeText(id); if(typeof showMiniNotification==='function') showMiniNotification('🆔 ID copié');}
+(function(){function injectUID(){var syncTab=document.getElementById('sync'); if(!syncTab) return; if(!document.getElementById('current-user-id')){var status=document.getElementById('sync-status'); var wrap=document.createElement('div'); wrap.innerHTML="\n<div id=\"current-user-id\" style=\"margin-top:10px; font-size:14px; color:#444;\">\n  <span style=\"font-weight:600;\">🆔 ID de synchro :</span>\n  <span id=\"uid-val\" style=\"padding:2px 6px; background:#f1f3f5; border-radius:6px; margin-left:6px;\">(non défini)</span>\n  <button onclick=\"doChangeFirebaseUserId()\" class=\"btn-secondary\" style=\"margin-left:8px; padding:6px 10px;\">Changer</button>\n  <button onclick=\"doCopyFirebaseUserId()\" class=\"btn-secondary\" style=\"margin-left:6px; padding:6px 10px;\">Copier</button>\n</div>\n".trim(); if(status&&status.parentNode){status.parentNode.insertBefore(wrap, status.nextSibling);} else {syncTab.insertBefore(wrap, syncTab.firstChild);} } refreshUserIdUI();}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded', injectUID);} else {injectUID();}})();
 
-  window.initFirebase = function() {
-    try {
-      if (typeof firebase === 'undefined') throw new Error('Firebase non chargé');
-      if (typeof firebaseConfig === 'undefined') throw new Error('firebaseConfig manquant');
-      if (!window.db) {
-        firebase.initializeApp(firebaseConfig);
-        window.db = firebase.firestore();
-      }
-      var id = getStoredUserId();
-      if (!id) {
-        id = normalizeId(prompt("Entrez un identifiant unique pour la synchronisation (le même sur tous les appareils) :", "") || "");
-        if (!id) { alert("Identifiant requis pour activer la synchronisation."); return; }
+// 2) Robust Firebase loader that works even if old placeholders exist
+window.loadFirebase = function(){
+  if (typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function') { try { window.initFirebase(); } catch(e){ console.error(e); } return; }
+  var scripts=[
+    'https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js',
+    'https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js'
+  ];
+  var loaded=0;
+  scripts.forEach(function(src){
+    var s=document.createElement('script');
+    s.src=src;
+    s.onload=function(){ loaded++; if(loaded===scripts.length){ try{ window.initFirebase(); }catch(e){ console.error(e); } } };
+    s.onerror=function(){ console.error('Erreur chargement Firebase:', src); if(typeof addSyncHistoryEntry==='function') addSyncHistoryEntry('❌ Erreur chargement Firebase'); };
+    document.head.appendChild(s);
+  });
+};
+
+// 3) Override initFirebase to ensure it DOES NOT show "en développement"
+(function(){
+  var _add = (typeof addSyncHistoryEntry==='function') ? addSyncHistoryEntry : function(){};
+  var _upd = (typeof updateSyncUI==='function') ? updateSyncUI : function(){};
+  window.initFirebase = function(){
+    try{
+      if(typeof firebase==='undefined') throw new Error('Firebase non chargé');
+      if(typeof firebaseConfig==='undefined') throw new Error('firebaseConfig manquant');
+      if(!window.db){ firebase.initializeApp(firebaseConfig); window.db=firebase.firestore(); }
+      var id=getStoredUserId();
+      if(!id){
+        id=normalizeId(prompt("Entrez un identifiant unique pour la synchronisation (le même sur tous les appareils) :", "")||"");
+        if(!id){ alert("Identifiant requis pour activer la synchronisation."); return; }
         setStoredUserId(id);
       }
       window.firebaseUserId = getStoredUserId();
       window.isFirebaseReady = true;
-      _addSyncHistoryEntry('✅ Firebase initialisé');
-      _updateSyncUI();
+      _add('✅ Firebase initialisé');
+      _upd();
       refreshUserIdUI();
-    } catch(e) {
-      console.error(e);
-      _addSyncHistoryEntry('❌ Erreur init: ' + (e && e.message || e));
-    }
+    }catch(e){ console.error(e); _add('❌ Erreur init: ' + (e&&e.message||e)); }
   };
+})();
 
-  function cloudApplyAll(cloud) {
-    try {
+// 4) FORCE the "Connecter" button to call our initFirebaseSync (no placeholders)
+window.initFirebaseSync = function(){ if (typeof addSyncHistoryEntry==='function') addSyncHistoryEntry('🔄 Connexion à Firebase...'); window.loadFirebase(); };
+(function(){
+  function hookConnectBtn(){
+    var btn = document.getElementById('connect-drive-btn');
+    if (btn) { btn.onclick = function(e){ e.preventDefault(); window.initFirebaseSync(); return false; }; }
+  }
+  if (document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', hookConnectBtn); } else { hookConnectBtn(); }
+})();
+
+// 5) Keep cloud-first manual sync and include 'reproductions' (same as fixed2)
+(function(){
+  var _add = (typeof addSyncHistoryEntry==='function') ? addSyncHistoryEntry : function(){};
+  var _upd = (typeof updateSyncUI==='function') ? updateSyncUI : function(){};
+
+  function cloudApplyAll(cloud){
+    try{
       if (typeof rapaces !== 'undefined') rapaces = cloud.rapaces || [];
       if (typeof entries !== 'undefined') entries = cloud.entries || [];
       if (typeof chasseEntries !== 'undefined') chasseEntries = cloud.chasseEntries || [];
@@ -5728,119 +5716,48 @@ function doCopyFirebaseUserId() {
       if (typeof updateReproLists === 'function') updateReproLists();
 
       if (typeof saveAllDataWithoutSync === 'function') saveAllDataWithoutSync();
-    } catch(err) {
-      console.error('cloudApplyAll error', err);
-    }
+    }catch(err){ console.error('cloudApplyAll error', err); }
   }
 
-  window.manualFirebaseSync = function() {
-    if (!window.isFirebaseReady || !window.db) { _addSyncHistoryEntry('🔄 Init Firebase...'); if (typeof loadFirebase==='function') loadFirebase(); return; }
-    _addSyncHistoryEntry('📥 Cloud d’abord, puis upload...');
+  window.manualFirebaseSync = function(){
+    if (!window.isFirebaseReady || !window.db) { _add('🔄 Init Firebase...'); if (typeof loadFirebase==='function') loadFirebase(); return; }
+    _add('📥 Cloud d’abord, puis upload...');
     db.collection('users').doc(window.firebaseUserId).get()
       .then(function(doc){
-        if (doc.exists) {
-          cloudApplyAll(doc.data() || {});
-          _addSyncHistoryEntry('📥 Cloud appliqué.');
-        } else {
-          _addSyncHistoryEntry('⛅ Pas de données cloud encore.');
-        }
+        if (doc.exists) { cloudApplyAll(doc.data()||{}); _add('📥 Cloud appliqué.'); }
+        else { _add('⛅ Pas de données cloud encore.'); }
       })
-      .catch(function(err){ _addSyncHistoryEntry('❌ Lecture cloud: ' + err.message); })
-      .finally(function(){
-        if (typeof syncToFirebase === 'function') syncToFirebase();
-      });
+      .catch(function(err){ _add('❌ Lecture cloud: ' + err.message); })
+      .finally(function(){ if (typeof syncToFirebase==='function') syncToFirebase(); });
   };
 
-  window.syncToFirebase = function() {
+  window.syncToFirebase = function(){
     if (!window.isFirebaseReady || !window.db || typeof firebase === 'undefined') return;
-    try {
+    try{
       var payload = {
-        rapaces: (typeof rapaces !== 'undefined') ? rapaces : [],
-        entries: (typeof entries !== 'undefined') ? entries : [],
-        chasseEntries: (typeof chasseEntries !== 'undefined') ? chasseEntries : [],
-        affaitageEntries: (typeof affaitageEntries !== 'undefined') ? affaitageEntries : [],
-        leurres: (typeof leurres !== 'undefined') ? leurres : [],
-        sessionsLeurre: (typeof sessionsLeurre !== 'undefined') ? sessionsLeurre : [],
-        documents: (typeof documents !== 'undefined') ? documents : [],
-        currentLocation: (typeof currentLocation !== 'undefined') ? currentLocation : null,
+        rapaces: (typeof rapaces!=='undefined')?rapaces:[],
+        entries: (typeof entries!=='undefined')?entries:[],
+        chasseEntries: (typeof chasseEntries!=='undefined')?chasseEntries:[],
+        affaitageEntries: (typeof affaitageEntries!=='undefined')?affaitageEntries:[],
+        leurres: (typeof leurres!=='undefined')?leurres:[],
+        sessionsLeurre: (typeof sessionsLeurre!=='undefined')?sessionsLeurre:[],
+        documents: (typeof documents!=='undefined')?documents:[],
+        currentLocation: (typeof currentLocation!=='undefined')?currentLocation:null,
         lastSync: firebase.firestore.FieldValue.serverTimestamp()
       };
-      if (typeof reproductions !== 'undefined') payload.reproductions = reproductions;
-
+      if (typeof reproductions!=='undefined') payload.reproductions = reproductions;
       db.collection('users').doc(window.firebaseUserId).set(payload, { merge: true })
-        .then(function(){
-          _addSyncHistoryEntry('📤 Données envoyées vers Firebase');
-          window.lastSyncTime = new Date();
-          _updateSyncUI();
-          if (document.getElementById('sync-notifications') && typeof showMiniNotification === 'function' && document.getElementById('sync-notifications').checked) {
-            showMiniNotification('☁️ Données synchronisées');
-          }
-        })
-        .catch(function(err){
-          console.error(err);
-          _addSyncHistoryEntry('❌ Erreur sauvegarde: ' + err.message);
-        });
-    } catch(e) {
-      console.error(e);
-      _addSyncHistoryEntry('❌ Erreur syncToFirebase: ' + (e && e.message || e));
-    }
+        .then(function(){ _add('📤 Données envoyées vers Firebase'); window.lastSyncTime=new Date(); _upd(); if (document.getElementById('sync-notifications') && typeof showMiniNotification==='function' && document.getElementById('sync-notifications').checked){ showMiniNotification('☁️ Données synchronisées'); } })
+        .catch(function(err){ console.error(err); _add('❌ Erreur sauvegarde: ' + err.message); });
+    }catch(e){ console.error(e); _add('❌ Erreur syncToFirebase: ' + (e&&e.message||e)); }
   };
 
-  window.forceDownloadFromFirebase = function() {
-    if (!window.isFirebaseReady || !window.db) { _addSyncHistoryEntry('❌ Firebase non connecté'); return; }
-    _addSyncHistoryEntry('📥 Forçage du téléchargement depuis Firebase...');
+  window.forceDownloadFromFirebase = function(){
+    if (!window.isFirebaseReady || !window.db) { _add('❌ Firebase non connecté'); return; }
+    _add('📥 Forçage du téléchargement depuis Firebase...');
     db.collection('users').doc(window.firebaseUserId).get()
-      .then(function(doc){
-        if (!doc.exists) { _addSyncHistoryEntry('❌ Aucune donnée sur Firebase'); return; }
-        cloudApplyAll(doc.data() || {});
-        _addSyncHistoryEntry('✅ Données forcées depuis Firebase');
-        if (typeof showMiniNotification === 'function') showMiniNotification('📥 Données forcées depuis le cloud');
-      })
-      .catch(function(err){
-        console.error(err);
-        _addSyncHistoryEntry('❌ Erreur téléchargement: ' + err.message);
-      });
-  };
-
-  window.loadFromFirebase = function() {
-    if (!window.isFirebaseReady || !window.db) return;
-    db.collection('users').doc(window.firebaseUserId).get()
-      .then(function(doc){
-        if (!doc.exists) {
-          _addSyncHistoryEntry('📊 Aucune donnée Firebase, première utilisation');
-          if (typeof syncToFirebase === 'function') syncToFirebase();
-          return;
-        }
-        var cloud = doc.data() || {};
-
-        var localRaw = localStorage.getItem('rapaces_data');
-        var localTs = 0;
-        if (localRaw) {
-          try {
-            var parsed = JSON.parse(localRaw);
-            localTs = parsed.lastSave ? new Date(parsed.lastSave).getTime() : 0;
-          } catch(_) { localTs = 0; }
-        }
-        var cloudTs = cloud.lastSync ? cloud.lastSync.toDate().getTime() : 0;
-
-        _addSyncHistoryEntry('🕐 Local: ' + new Date(localTs).toLocaleString('fr-FR'));
-        _addSyncHistoryEntry('🕐 Firebase: ' + new Date(cloudTs).toLocaleString('fr-FR'));
-
-        if (cloudTs > (localTs + 30000)) {
-          cloudApplyAll(cloud);
-          _addSyncHistoryEntry('📥 Données chargées depuis Firebase');
-          if (document.getElementById('sync-notifications') && typeof showMiniNotification === 'function' && document.getElementById('sync-notifications').checked) {
-            showMiniNotification('📥 Données mises à jour depuis le cloud');
-          }
-        } else {
-          _addSyncHistoryEntry('📊 Données locales plus récentes ou égales - conservation');
-          if (typeof syncToFirebase === 'function') syncToFirebase();
-        }
-      })
-      .catch(function(err){
-        console.error(err);
-        _addSyncHistoryEntry('❌ Erreur chargement: ' + err.message);
-      });
+      .then(function(doc){ if(!doc.exists){ _add('❌ Aucune donnée sur Firebase'); return; } cloudApplyAll(doc.data()||{}); _add('✅ Données forcées depuis Firebase'); if (typeof showMiniNotification==='function') showMiniNotification('📥 Données forcées depuis le cloud'); })
+      .catch(function(err){ console.error(err); _add('❌ Erreur téléchargement: ' + err.message); });
   };
 })();
 </script>
