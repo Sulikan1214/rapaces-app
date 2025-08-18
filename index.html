@@ -5625,84 +5625,62 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 <script>
-// === SYNC FIX PATCH v4 — hook "Activer Firebase" ===
-
-// Reuse robust loader & init (safe if already present)
-function normalizeId(str){return (str||"").trim().toLowerCase().replace(/\s+/g,"_");}
-function getStoredUserId(){return normalizeId(localStorage.getItem('firebaseUserId')||"");}
-function setStoredUserId(id){localStorage.setItem('firebaseUserId', normalizeId(id));}
-
-window.loadFirebase = window.loadFirebase || function(){
-  if (typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function') { try { window.initFirebase(); } catch(e){ console.error(e); } return; }
-  var scripts=['https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js','https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js'];
-  var loaded=0;
-  scripts.forEach(function(src){
-    var s=document.createElement('script'); s.src=src;
-    s.onload=function(){ loaded++; if(loaded===scripts.length){ try{ window.initFirebase(); }catch(e){ console.error(e); } } };
-    s.onerror=function(){ console.error('Erreur chargement Firebase:', src); if(typeof addSyncHistoryEntry==='function') addSyncHistoryEntry('❌ Erreur chargement Firebase'); };
-    document.head.appendChild(s);
-  });
-};
-
-window.initFirebase = window.initFirebase || function(){
-  try{
-    if(typeof firebase==='undefined') throw new Error('Firebase non chargé');
-    if(typeof firebaseConfig==='undefined') throw new Error('firebaseConfig manquant');
-    if(!window.db){ firebase.initializeApp(firebaseConfig); window.db=firebase.firestore(); }
-    var id=getStoredUserId();
-    if(!id){
-      id=normalizeId(prompt("Entrez un identifiant unique pour la synchronisation (le même sur tous les appareils) :", "")||"");
-      if(!id){ alert("Identifiant requis pour activer la synchronisation."); return; }
-      setStoredUserId(id);
-    }
-    window.firebaseUserId=getStoredUserId();
-    window.isFirebaseReady=true;
-    if (typeof addSyncHistoryEntry==='function') addSyncHistoryEntry('✅ Firebase initialisé');
-    if (typeof updateSyncUI==='function') updateSyncUI();
-  }catch(e){ console.error(e); if (typeof addSyncHistoryEntry==='function') addSyncHistoryEntry('❌ Erreur init: '+(e&&e.message||e)); }
-};
-
-window.initFirebaseSync = function(){
-  if (typeof addSyncHistoryEntry==='function') addSyncHistoryEntry('🔄 Connexion à Firebase...');
-  window.loadFirebase();
-};
-
-// Hook any button likely to be "Activer Firebase"
-(function hookActivate(){
-  function isActivateButton(el){
-    if (!el) return false;
-    var id=(el.id||"").toLowerCase();
-    var txt=(el.textContent||"").trim().toLowerCase();
-    return id.includes('activate') || id.includes('connect') ||
-           txt==='activer firebase' || txt==='connecter' || txt.includes('activer') && txt.includes('firebase');
-  }
-  function attach(el){
-    if (!el || el.__firebase_hooked) return;
-    el.__firebase_hooked = true;
-    el.addEventListener('click', function(ev){
-      ev.preventDefault(); ev.stopPropagation();
-      try{ window.initFirebaseSync(); }catch(e){ console.error(e); }
-      return false;
-    }, true);
-  }
-  // try common IDs first
-  var candIds=['btn-activate-firebase','connect-drive-btn','activate-firebase','firebase-connect','firebase-activate'];
-  candIds.forEach(function(id){ var b=document.getElementById(id); if (b) attach(b); });
-  // then try by text scan
-  var buttons=document.querySelectorAll('button, a, .btn, .button');
-  buttons.forEach(function(b){ if(isActivateButton(b)) attach(b); });
-  // observe future DOM changes (if UI builds dynamically)
-  var obs=new MutationObserver(function(muts){
-    muts.forEach(function(m){
-      (m.addedNodes||[]).forEach(function(n){
-        if (n.nodeType===1){
-          if (isActivateButton(n)) attach(n);
-          n.querySelectorAll && n.querySelectorAll('button, a, .btn, .button').forEach(function(b){ if(isActivateButton(b)) attach(b); });
+// === SYNC FIX PATCH v5 — UI statut corrigée ===
+(function(){
+  function hideDevPlaceholders(){
+    try{
+      var nodes = document.querySelectorAll('#sync *');
+      nodes.forEach(function(n){
+        var t = (n.textContent||'').trim().toLowerCase();
+        if (t === 'fonctionnalité en développement' || t.includes('fonctionnalité') && t.includes('développement')) {
+          n.style.display = 'none';
         }
       });
-    });
-  });
-  try{ obs.observe(document.body, {childList:true, subtree:true}); }catch(_){}
+    }catch(_){}
+  }
+
+  window.updateSyncUI = function(){
+    var statusEl = document.getElementById('sync-status');
+    var detailsEl = document.getElementById('sync-details');
+    var lastSyncEl = document.getElementById('last-sync-time');
+    var connectBtn = document.getElementById('connect-drive-btn') || document.getElementById('btn-activate-firebase');
+    var activateBtn = document.getElementById('btn-activate-firebase');
+    var syncBtn = document.getElementById('manual-sync-btn');
+    var forceUploadBtn = document.getElementById('force-upload-btn');
+    var forceDownloadBtn = document.getElementById('force-download-btn');
+    var refreshBtn = document.getElementById('refresh-btn');
+    var disconnectBtn = document.getElementById('disconnect-drive-btn');
+
+    var connected = !!(window.isFirebaseReady && window.db);
+
+    if (statusEl){
+      statusEl.textContent = connected ? '✅ Firebase connecté' : '❌ Firebase non connecté';
+      statusEl.style.color = connected ? 'green' : 'red';
+    }
+    if (detailsEl){
+      detailsEl.textContent = connected ? '🔄 Synchronisation prête' : 'Cliquez sur Activer Firebase pour démarrer';
+      detailsEl.style.color = connected ? 'green' : '#666';
+    }
+    if (lastSyncEl){
+      lastSyncEl.textContent = window.lastSyncTime ? ('Dernière sync : ' + new Date(window.lastSyncTime).toLocaleString('fr-FR')) : 'Dernière sync : Jamais';
+    }
+    if (connectBtn) connectBtn.style.display = connected ? 'none' : 'inline-block';
+    if (activateBtn) activateBtn.style.display = connected ? 'none' : 'inline-block';
+    if (syncBtn) syncBtn.style.display = connected ? 'inline-block' : 'none';
+    if (forceUploadBtn) forceUploadBtn.style.display = connected ? 'inline-block' : 'none';
+    if (forceDownloadBtn) forceDownloadBtn.style.display = connected ? 'inline-block' : 'none';
+    if (refreshBtn) refreshBtn.style.display = connected ? 'inline-block' : 'none';
+    if (disconnectBtn) disconnectBtn.style.display = connected ? 'inline-block' : 'none';
+
+    hideDevPlaceholders();
+  };
+
+  // appeler une fois au chargement
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.updateSyncUI);
+  } else {
+    window.updateSyncUI();
+  }
 })();
 </script>
 </body>
