@@ -5638,7 +5638,8 @@ function refreshUserIdUI() {
   var el = document.getElementById('uid-val');
   if (el) el.textContent = getStoredUserId() || "(non défini)";
 }
-function changeFirebaseUserId() {
+// noms uniques
+function doChangeFirebaseUserId() {
   var cur = getStoredUserId();
   var id = normalizeId(prompt("Nouvel identifiant de synchro (le même sur tous les appareils) :", cur) || "");
   if (!id) return;
@@ -5647,7 +5648,7 @@ function changeFirebaseUserId() {
   refreshUserIdUI();
   if (typeof addSyncHistoryEntry === 'function') addSyncHistoryEntry('🆔 Identifiant mis à jour : ' + id);
 }
-function copyFirebaseUserId() {
+function doCopyFirebaseUserId() {
   var id = getStoredUserId();
   if (navigator.clipboard && id) navigator.clipboard.writeText(id);
   if (typeof showMiniNotification === 'function') showMiniNotification('🆔 ID copié');
@@ -5659,7 +5660,7 @@ function copyFirebaseUserId() {
     if (!document.getElementById('current-user-id')) {
       var status = document.getElementById('sync-status');
       var wrap = document.createElement('div');
-      wrap.innerHTML = "\n<div id=\"current-user-id\" style=\"margin-top:10px; font-size:14px; color:#444;\">\n  <span style=\"font-weight:600;\">🆔 ID de synchro :</span>\n  <span id=\"uid-val\" style=\"padding:2px 6px; background:#f1f3f5; border-radius:6px; margin-left:6px;\">(non défini)</span>\n  <button onclick=\"changeFirebaseUserId()\" class=\"btn-secondary\" style=\"margin-left:8px; padding:6px 10px;\">Changer</button>\n  <button onclick=\"copyFirebaseUserId()\" class=\"btn-secondary\" style=\"margin-left:6px; padding:6px 10px;\">Copier</button>\n</div>\n".trim();
+      wrap.innerHTML = "\n<div id=\"current-user-id\" style=\"margin-top:10px; font-size:14px; color:#444;\">\n  <span style=\"font-weight:600;\">🆔 ID de synchro :</span>\n  <span id=\"uid-val\" style=\"padding:2px 6px; background:#f1f3f5; border-radius:6px; margin-left:6px;\">(non défini)</span>\n  <button onclick=\"doChangeFirebaseUserId()\" class=\"btn-secondary\" style=\"margin-left:8px; padding:6px 10px;\">Changer</button>\n  <button onclick=\"doCopyFirebaseUserId()\" class=\"btn-secondary\" style=\"margin-left:6px; padding:6px 10px;\">Copier</button>\n</div>\n".trim();
       if (status && status.parentNode) {
         status.parentNode.insertBefore(wrap, status.nextSibling);
       } else {
@@ -5750,7 +5751,6 @@ function copyFirebaseUserId() {
       });
   };
 
-  var _origSyncToFirebase = (typeof syncToFirebase === 'function') ? syncToFirebase : null;
   window.syncToFirebase = function() {
     if (!window.isFirebaseReady || !window.db || typeof firebase === 'undefined') return;
     try {
