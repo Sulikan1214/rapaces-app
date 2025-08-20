@@ -627,6 +627,10 @@
             border-radius: 10px;
         }
     </style>
+
+<!-- Firebase SDKs (compat) -->
+<script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div class="container">
@@ -3972,7 +3976,7 @@ document.addEventListener('DOMContentLoaded', function() {
     arr.forEach(f=>{
       html += '<li style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed #eee;">'
            +  '<span>'+f.nom+'</span>'
-           +  '<button type="button" onclick="(function(id){ window.fauconniers = (window.fauconniers||[]).filter(x=>x.id!==id); ('
+           +  '<button type="button" onclick="return false(id){ window.fauconniers = (window.fauconniers||[]).filter(x=>x.id!==id); ('
            +  'document.getElementById(\\'fc-list\\')&&('
            +  'document.getElementById(\\'fc-list\\').innerHTML=\'\'); );'
            +  '})( '+f.id+' )">Supprimer</button>'
@@ -4456,7 +4460,7 @@ document.addEventListener('DOMContentLoaded', function() {
     arr.forEach(f=>{
       html += '<li style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed #eee;">'
            +  '<span>'+f.nom+'</span>'
-           +  '<button type="button" onclick="(function(id){ window.fauconniers = (window.fauconniers||[]).filter(x=>x.id!==id); ('
+           +  '<button type="button" onclick="return false(id){ window.fauconniers = (window.fauconniers||[]).filter(x=>x.id!==id); ('
            +  'function(){ try{ localStorage.setItem(\\'rapaces_fauconniers\\', JSON.stringify(window.fauconniers)); }catch(e){} } )();'
            +  '(function(){ try{ if (typeof window.saveAllData===\\'function\\') window.saveAllData(); }catch(e){} })();'
            +  'var selIds=[\\'suivi-fauconnier\\',\\'affaitage-fauconnier\\',\\'chasse-fauconnier\\',\\'session-fauconnier\\'];'
@@ -4819,7 +4823,7 @@ document.addEventListener('DOMContentLoaded', function() {
     arr.forEach(function(f){
       html += '<li style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed #eee;">'
            +  '<span>'+f.nom+'</span>'
-           +  '<button type="button" onclick="(function(id){ window.fauconniers=(window.fauconniers||[]).filter(function(x){return x.id!==id;}); '
+           +  '<button type="button" onclick="return false(id){ window.fauconniers=(window.fauconniers||[]).filter(function(x){return x.id!==id;}); '
            +  'try{ localStorage.setItem(\\'rapaces_fauconniers\\', JSON.stringify(window.fauconniers)); }catch(e){} '
            +  'try{ if (typeof window.saveAllData===\\'function\\') window.saveAllData(); }catch(e){} '
            +  '(function(){ var opts=(window.fauconniers||[]).map(function(f){return \'<option value=\"\'+f.id+\'\">\'+f.nom+\'</option>\';}).join(\\\'\\\');'
@@ -4928,7 +4932,7 @@ document.addEventListener('DOMContentLoaded', function() {
     arr.forEach(function(f){
       html += '<li style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed #eee;">'
            +  '<span>'+f.nom+'</span>'
-           +  '<button type="button" onclick="(function(id){ var arr='+JSON.stringify(arr)+'.filter(function(x){return x.id!==id;}); '
+           +  '<button type="button" onclick="return false(id){ var arr='+JSON.stringify(arr)+'.filter(function(x){return x.id!==id;}); '
            +  'localStorage.setItem(\\'rapaces_fauconniers\\', JSON.stringify(arr)); '
            +  '(function(){ var opts=arr.map(function(f){return \'<option value=\"\'+f.id+\'\">\'+f.nom+\'</option>\';}).join(\\\'\\\');'
            +  '[\\'affaitage-fauconnier\\',\\'suivi-fauconnier\\'].forEach(function(sid){ var s=document.getElementById(sid); if(!s) return; var keep=s.value; s.innerHTML = \'<option value=\"\">Choisir</option>\' + opts; if (keep && s.querySelector(\\\'option[value=\"\\\'+keep+\\\'\"]\\\')) s.value=keep; }); })(); '
@@ -5624,26 +5628,27 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 
+<!-- === PATCH: Firebase sync bundle integrated === -->
 <script>
-// === SYNC FIX — FINAL BUNDLE (v4+v5+v6) ===
+(function(){
+  // Helpers
+  function normalizeId(str){return (str||"").trim().toLowerCase().replace(/\s+/g,"_");}
+  function getStoredUserId(){return normalizeId(localStorage.getItem('firebaseUserId')||"");}
+  function setStoredUserId(id){localStorage.setItem('firebaseUserId', normalizeId(id));}
+  function log(msg){ try{ if (typeof addSyncHistoryEntry==='function') addSyncHistoryEntry(msg); }catch(_){ console.log(msg);} }
+  function notify(msg){ try{ if (typeof showMiniNotification==='function') showMiniNotification(msg); else alert(msg); }catch(_){ alert(msg); } }
 
-// ---------- Helpers ID ----------
-function normalizeId(str){return (str||"").trim().toLowerCase().replace(/\s+/g,"_");}
-function getStoredUserId(){return normalizeId(localStorage.getItem('firebaseUserId')||"");}
-function setStoredUserId(id){localStorage.setItem('firebaseUserId', normalizeId(id));}
-
-// ---------- UI block (ID de synchro + boutons) ----------
-(function injectUID(){
-  var html = '<div id="current-user-id" style="margin-top:10px; font-size:14px; color:#444;">'
-    + '<span style="font-weight:600;">🆔 ID de synchro :</span>'
-    + '<span id="uid-val" style="padding:2px 6px; background:#f1f3f5; border-radius:6px; margin-left:6px;">(non défini)</span>'
-    + '<button id="btn-change-uid" class="btn-secondary" style="margin-left:8px; padding:6px 10px;">Changer</button>'
-    + '<button id="btn-copy-uid" class="btn-secondary" style="margin-left:6px; padding:6px 10px;">Copier</button>'
-    + '</div>';
-  function ensure(){
+  // UI: inject ID block if sync tab exists
+  function ensureUID(){
     var syncTab=document.getElementById('sync'); if(!syncTab) return;
     if(!document.getElementById('current-user-id')){
-      var wrap=document.createElement('div'); wrap.innerHTML=html;
+      var wrap=document.createElement('div');
+      wrap.innerHTML = '<div id="current-user-id" style="margin-top:10px; font-size:14px; color:#444;">'
+        + '<span style="font-weight:600;">🆔 ID de synchro :</span>'
+        + '<span id="uid-val" style="padding:2px 6px; background:#f1f3f5; border-radius:6px; margin-left:6px;">(non défini)</span>'
+        + '<button id="btn-change-uid" class="btn-secondary" style="margin-left:8px; padding:6px 10px;">Changer</button>'
+        + '<button id="btn-copy-uid" class="btn-secondary" style="margin-left:6px; padding:6px 10px;">Copier</button>'
+        + '</div>';
       var status=document.getElementById('sync-status');
       if(status && status.parentNode){ status.parentNode.insertBefore(wrap, status.nextSibling); }
       else { syncTab.insertBefore(wrap, syncTab.firstChild); }
@@ -5656,275 +5661,144 @@ function setStoredUserId(id){localStorage.setItem('firebaseUserId', normalizeId(
   }
   function refreshUserIdUI(){ var el=document.getElementById('uid-val'); if(el) el.textContent=getStoredUserId()||"(non défini)"; }
   window.refreshUserIdUI = refreshUserIdUI;
-  function ready(){ ensure(); }
-  if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', ready); } else { ready(); }
-})();
 
-function doChangeFirebaseUserId(){
-  var cur = getStoredUserId();
-  var id = normalizeId(prompt("Nouvel identifiant de synchro (le même sur tous les appareils) :", cur) || "");
-  if (!id) return;
-  setStoredUserId(id);
-  window.firebaseUserId = id;
-  refreshUserIdUI();
-  if (typeof addSyncHistoryEntry === 'function') addSyncHistoryEntry('🆔 Identifiant mis à jour : ' + id);
-}
-function doCopyFirebaseUserId(){
-  var id = getStoredUserId();
-  if (navigator.clipboard && id) navigator.clipboard.writeText(id);
-  if (typeof showMiniNotification === 'function') showMiniNotification('🆔 ID copié');
-}
-
-// ---------- Robust Firebase loader & init ----------
-window.loadFirebase = window.loadFirebase || function(){
-  if (typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function') { try { window.initFirebase(); } catch(e){ console.error(e); } return; }
-  var scripts=['https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js','https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js'];
-  var loaded=0;
-  scripts.forEach(function(src){
-    var s=document.createElement('script'); s.src=src;
-    s.onload=function(){ loaded++; if(loaded===scripts.length){ try{ window.initFirebase(); }catch(e){ console.error(e); } } };
-    s.onerror=function(){ console.error('Erreur chargement Firebase:', src); if(typeof addSyncHistoryEntry==='function') addSyncHistoryEntry('❌ Erreur chargement Firebase'); };
-    document.head.appendChild(s);
-  });
-};
-
-window.initFirebase = window.initFirebase || function(){
-  try{
-    if(typeof firebase==='undefined') throw new Error('Firebase non chargé');
-    if(typeof firebaseConfig==='undefined') throw new Error('firebaseConfig manquant');
-    if(!window.db){ firebase.initializeApp(firebaseConfig); window.db=firebase.firestore(); }
-    var id=getStoredUserId();
-    if(!id){
-      id=normalizeId(prompt("Entrez un identifiant unique pour la synchronisation (le même sur tous les appareils) :", "")||"");
-      if(!id){ alert("Identifiant requis pour activer la synchronisation."); return; }
-      setStoredUserId(id);
-    }
-    window.firebaseUserId=getStoredUserId();
-    window.isFirebaseReady=true;
-    if (typeof addSyncHistoryEntry==='function') addSyncHistoryEntry('✅ Firebase initialisé');
-    if (typeof updateSyncUI==='function') updateSyncUI();
+  function doChangeFirebaseUserId(){
+    var cur=getStoredUserId();
+    var id=normalizeId(prompt("Nouvel identifiant de synchro (le même sur tous les appareils) :", cur) || "");
+    if(!id) return;
+    setStoredUserId(id);
+    window.firebaseUserId=id;
     refreshUserIdUI();
-  }catch(e){ console.error(e); if (typeof addSyncHistoryEntry==='function') addSyncHistoryEntry('❌ Erreur init: '+(e&&e.message||e)); }
-};
-
-window.initFirebaseSync = function(){
-  if (typeof addSyncHistoryEntry==='function') addSyncHistoryEntry('🔄 Connexion à Firebase...');
-  window.loadFirebase();
-};
-
-// ---------- Hook "Activer Firebase" (id, classe ou libellé) ----------
-(function hookActivate(){
-  function isActivateButton(el){
-    if (!el) return false;
-    var id=(el.id||"").toLowerCase();
-    var txt=(el.textContent||"").trim().toLowerCase();
-    return id.includes('activate') || id.includes('connect') ||
-           txt==='activer firebase' || txt==='connecter' || (txt.includes('activer') && txt.includes('firebase'));
+    log('🆔 Identifiant mis à jour : ' + id);
   }
-  function attach(el){
-    if (!el || el.__firebase_hooked) return;
-    el.__firebase_hooked = true;
-    el.addEventListener('click', function(ev){
-      ev.preventDefault(); ev.stopPropagation();
-      try{ window.initFirebaseSync(); }catch(e){ console.error(e); }
-      return false;
-    }, true);
+  function doCopyFirebaseUserId(){
+    var id=getStoredUserId();
+    if (navigator.clipboard && id) navigator.clipboard.writeText(id);
+    if (typeof showMiniNotification==='function') showMiniNotification('🆔 ID copié');
   }
-  var candIds=['btn-activate-firebase','connect-drive-btn','activate-firebase','firebase-connect','firebase-activate'];
-  candIds.forEach(function(id){ var b=document.getElementById(id); if (b) attach(b); });
-  var buttons=document.querySelectorAll('button, a, .btn, .button');
-  buttons.forEach(function(b){ if(isActivateButton(b)) attach(b); });
-  var obs=new MutationObserver(function(muts){
-    muts.forEach(function(m){
-      (m.addedNodes||[]).forEach(function(n){
-        if (n.nodeType===1){
-          if (isActivateButton(n)) attach(n);
-          n.querySelectorAll && n.querySelectorAll('button, a, .btn, .button').forEach(function(b){ if(isActivateButton(b)) attach(b); });
-        }
-      });
-    });
-  });
-  try{ obs.observe(document.body, {childList:true, subtree:true}); }catch(_){}
-})();
 
-// ---------- Écrase placeholders & supprime la popup "en développement" ----------
-window.activateFirebase = function(ev){ try{ if(ev&&ev.preventDefault) ev.preventDefault(); window.initFirebaseSync(); }catch(e){ console.error(e); } return false; };
-window.enableFirebase   = function(ev){ try{ if(ev&&ev.preventDefault) ev.preventDefault(); window.initFirebaseSync(); }catch(e){ console.error(e); } return false; };
-window.connectFirebase  = function(ev){ try{ if(ev&&ev.preventDefault) ev.preventDefault(); window.initFirebaseSync(); }catch(e){ console.error(e); } return false; };
-
-(function suppressDevAlert(){
-  var _alert = window.alert;
-  window.alert = function(msg){
+  // Loader & init
+  window.initFirebase = window.initFirebase || function(){
     try{
-      if (typeof msg==='string'){
-        var t = msg.toLowerCase().replace(/\s+/g,' ').trim();
-        if (t.includes('firebase') && t.includes('développement')) {
-          console.log('[sync-fix] Alerte placeholder ignorée:', msg);
-          return;
-        }
+      if(typeof firebase==='undefined') throw new Error('Firebase non chargé');
+      if(typeof firebaseConfig==='undefined') throw new Error('firebaseConfig manquant');
+      if(!window.db){ firebase.initializeApp(firebaseConfig); window.db=firebase.firestore(); }
+      var id=getStoredUserId();
+      if(!id){
+        id=normalizeId(prompt("Entrez un identifiant unique pour la synchronisation (le même sur tous les appareils) :", "")||"");
+        if(!id){ alert("Identifiant requis pour activer la synchronisation."); return; }
+        setStoredUserId(id);
       }
-    }catch(_){}
-    return _alert.apply(window, arguments);
+      window.firebaseUserId=getStoredUserId();
+      window.isFirebaseReady=true;
+      log('✅ Firebase initialisé');
+      if (typeof updateSyncUI==='function') updateSyncUI();
+      refreshUserIdUI();
+    }catch(e){ console.error(e); log('❌ Erreur init: '+(e&&e.message||e)); }
   };
-})();
 
-// ---------- UI statut (remplace l’ancienne logique) ----------
-(function(){
-  function hideDevPlaceholders(){
-    try{
-      var nodes = document.querySelectorAll('#sync *');
-      nodes.forEach(function(n){
-        var t = (n.textContent||'').trim().toLowerCase();
-        if (t === 'fonctionnalité en développement' || (t.includes('fonctionnalité') && t.includes('développement'))) {
-          n.style.display = 'none';
-        }
-      });
-    }catch(_){}
+  window.loadFirebase = window.loadFirebase || function(){
+    if (typeof firebase !== 'undefined' && typeof firebase.initializeApp === 'function') { try { window.initFirebase(); } catch(e){ console.error(e); } return; }
+    var scripts=['https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js','https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js'];
+    var loaded=0;
+    scripts.forEach(function(src){
+      var s=document.createElement('script'); s.src=src;
+      s.onload=function(){ loaded++; if(loaded===scripts.length){ try{ window.initFirebase(); }catch(e){ console.error(e); } } };
+      s.onerror=function(){ console.error('Erreur chargement Firebase:', src); log('❌ Erreur chargement Firebase'); };
+      document.head.appendChild(s);
+    });
+  };
+
+  window.initFirebaseSync = function(){
+    log('🔄 Connexion à Firebase...');
+    window.loadFirebase();
+  };
+
+  // Override placeholders & hook button labels
+  window.activateFirebase = function(ev){ try{ if(ev&&ev.preventDefault) ev.preventDefault(); window.initFirebaseSync(); }catch(e){ console.error(e); } return false; };
+  window.enableFirebase   = function(ev){ try{ if(ev&&ev.preventDefault) ev.preventDefault(); window.initFirebaseSync(); }catch(e){ console.error(e); } return false; };
+  window.connectFirebase  = function(ev){ try{ if(ev&&ev.preventDefault) ev.preventDefault(); window.initFirebaseSync(); }catch(e){ console.error(e); } return false; };
+  function hookActivate(){
+    function isActivate(el){ if(!el) return false; var t=(el.textContent||'').trim().toLowerCase(); var id=(el.id||'').toLowerCase(); return id.includes('activate')||id.includes('connect')||t==='activer firebase'||t==='connecter'||(t.includes('activer')&&t.includes('firebase')); }
+    function attach(el){ if(!el||el.__fb_hooked) return; el.__fb_hooked=true; el.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); window.initFirebaseSync(); return false; }, true); }
+    ['btn-activate-firebase','connect-drive-btn','activate-firebase','firebase-connect','firebase-activate'].forEach(function(id){ var b=document.getElementById(id); if(b) attach(b); });
+    document.querySelectorAll('button,a,.btn,.button').forEach(function(b){ if(isActivate(b)) attach(b); });
   }
-  window.updateSyncUI = function(){
+
+  // Status UI simple
+  window.updateSyncUI = window.updateSyncUI || function(){
     var statusEl = document.getElementById('sync-status');
     var detailsEl = document.getElementById('sync-details');
-    var lastSyncEl = document.getElementById('last-sync-time');
-    var connectBtn = document.getElementById('connect-drive-btn') || document.getElementById('btn-activate-firebase');
-    var activateBtn = document.getElementById('btn-activate-firebase');
-    var syncBtn = document.getElementById('manual-sync-btn');
-    var forceUploadBtn = document.getElementById('force-upload-btn');
-    var forceDownloadBtn = document.getElementById('force-download-btn');
-    var refreshBtn = document.getElementById('refresh-btn');
-    var disconnectBtn = document.getElementById('disconnect-drive-btn');
-
     var connected = !!(window.isFirebaseReady && window.db);
-
-    if (statusEl){
-      statusEl.textContent = connected ? '✅ Firebase connecté' : '❌ Firebase non connecté';
-      statusEl.style.color = connected ? 'green' : 'red';
-    }
-    if (detailsEl){
-      detailsEl.textContent = connected ? '🔄 Synchronisation prête' : 'Cliquez sur Activer Firebase pour démarrer';
-      detailsEl.style.color = connected ? 'green' : '#666';
-    }
-    if (lastSyncEl){
-      lastSyncEl.textContent = window.lastSyncTime ? ('Dernière sync : ' + new Date(window.lastSyncTime).toLocaleString('fr-FR')) : 'Dernière sync : Jamais';
-    }
-    if (connectBtn) connectBtn.style.display = connected ? 'none' : 'inline-block';
-    if (activateBtn) activateBtn.style.display = connected ? 'none' : 'inline-block';
-    if (syncBtn) syncBtn.style.display = connected ? 'inline-block' : 'none';
-    if (forceUploadBtn) forceUploadBtn.style.display = connected ? 'inline-block' : 'none';
-    if (forceDownloadBtn) forceDownloadBtn.style.display = connected ? 'inline-block' : 'none';
-    if (refreshBtn) refreshBtn.style.display = connected ? 'inline-block' : 'none';
-    if (disconnectBtn) disconnectBtn.style.display = connected ? 'inline-block' : 'none';
-
-    hideDevPlaceholders();
+    if (statusEl){ statusEl.textContent = connected ? '✅ Firebase connecté' : '❌ Firebase non connecté'; statusEl.style.color = connected ? 'limegreen' : 'red'; }
+    if (detailsEl){ detailsEl.textContent = connected ? '🔄 Synchronisation prête' : 'Cliquez sur Activer Firebase pour démarrer'; }
   };
-  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', window.updateSyncUI); } else { window.updateSyncUI(); }
-})();
 
-// ---------- Manual sync cloud-first + payload avec reproductions ----------
-(function(){
-  var _add = (typeof addSyncHistoryEntry==='function') ? addSyncHistoryEntry : function(){};
-  var _upd = (typeof updateSyncUI==='function') ? updateSyncUI : function(){};
+  // Upload / Download to users/{id} (option 1)
+  function dumpLocalStorage(){ var dump={}; for (var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); try{ dump[k]=localStorage.getItem(k);}catch(_){} } return dump; }
+  function restoreLocalStorage(dump){ if(!dump) return; Object.keys(dump).forEach(function(k){ try{ localStorage.setItem(k, dump[k]); }catch(_){}}); }
 
-  function cloudApplyAll(cloud){
+  window.uploadToFirebase = async function(){
+    if (!window.isFirebaseReady || !window.db){ notify('Upload Firebase non disponible'); return; }
+    var id = getStoredUserId(); if(!id){ notify('ID de synchro manquant'); return; }
+    var payload = { lastSync: firebase.firestore.FieldValue.serverTimestamp(), deviceInfo:{platform:navigator.platform||'',userAgent:navigator.userAgent||'',timestamp:new Date().toISOString()}, localStorageDump: dumpLocalStorage() };
     try{
-      if (typeof rapaces !== 'undefined') rapaces = cloud.rapaces || [];
-      if (typeof entries !== 'undefined') entries = cloud.entries || [];
-      if (typeof chasseEntries !== 'undefined') chasseEntries = cloud.chasseEntries || [];
-      if (typeof affaitageEntries !== 'undefined') affaitageEntries = cloud.affaitageEntries || [];
-      if (typeof leurres !== 'undefined') leurres = cloud.leurres || [];
-      if (typeof sessionsLeurre !== 'undefined') sessionsLeurre = cloud.sessionsLeurre || [];
-      if (typeof documents !== 'undefined') documents = cloud.documents || [];
-      if (typeof reproductions !== 'undefined') reproductions = cloud.reproductions || [];
-      if (typeof currentLocation !== 'undefined') currentLocation = cloud.currentLocation || currentLocation;
+      await window.db.collection('users').doc(id).set(payload, { merge: true });
+      window.lastSyncTime = new Date(); if (typeof updateSyncUI==='function') updateSyncUI();
+      log('📤 Données envoyées vers Firebase'); notify('Upload Firebase réussi ✅');
+    }catch(e){ console.error(e); log('❌ Erreur upload: '+e.message); notify('Erreur upload Firebase ❌'); }
+  };
+  window.downloadFromFirebase = async function(){
+    if (!window.isFirebaseReady || !window.db){ notify('Download Firebase non disponible'); return; }
+    var id = getStoredUserId(); if(!id){ notify('ID de synchro manquant'); return; }
+    try{
+      var snap = await window.db.collection('users').doc(id).get();
+      if (!snap.exists){ notify('Aucune donnée trouvée sur Firebase pour cet ID'); return; }
+      var cloud = snap.data()||{};
+      if (cloud.localStorageDump) restoreLocalStorage(cloud.localStorageDump);
+      // compat champs racine si présents
+      try{
+        if (typeof rapaces !== 'undefined' && cloud.rapaces) rapaces = cloud.rapaces;
+        if (typeof entries !== 'undefined' && cloud.entries) entries = cloud.entries;
+        if (typeof chasseEntries !== 'undefined' && cloud.chasseEntries) chasseEntries = cloud.chasseEntries;
+        if (typeof affaitageEntries !== 'undefined' && cloud.affaitageEntries) affaitageEntries = cloud.affaitageEntries;
+        if (typeof leurres !== 'undefined' && cloud.leurres) leurres = cloud.leurres;
+        if (typeof sessionsLeurre !== 'undefined' && cloud.sessionsLeurre) sessionsLeurre = cloud.sessionsLeurre;
+        if (typeof documents !== 'undefined' && cloud.documents) documents = cloud.documents;
+        if (typeof reproductions !== 'undefined' && cloud.reproductions) reproductions = cloud.reproductions;
+        if (typeof currentLocation !== 'undefined' && cloud.currentLocation) currentLocation = cloud.currentLocation;
+        if (typeof updateRapaceList === 'function') updateRapaceList();
+        if (typeof updateRapaceSelects === 'function') updateRapaceSelects();
+        if (typeof updateEntryList === 'function') updateEntryList();
+        if (typeof updatechasseList === 'function') updatechasseList();
+        if (typeof updateAffaitageList === 'function') updateAffaitageList();
+        if (typeof updateLeurreList === 'function') updateLeurreList();
+        if (typeof updateSessionsLeurreList === 'function') updateSessionsLeurreList();
+        if (typeof updateDocumentsList === 'function') updateDocumentsList();
+        if (typeof updateLeurreSelects === 'function') updateLeurreSelects();
+        if (typeof updateReproLists === 'function') updateReproLists();
+        if (typeof saveAllDataWithoutSync === 'function') saveAllDataWithoutSync();
+      }catch(_){}
+      window.lastSyncTime = new Date(); if (typeof updateSyncUI==='function') updateSyncUI();
+      log('📥 Données chargées depuis Firebase'); notify('Download Firebase réussi ✅');
+    }catch(e){ console.error(e); log('❌ Erreur download: '+e.message); notify('Erreur download Firebase ❌'); }
+  };
 
-      if (typeof updateRapaceList === 'function') updateRapaceList();
-      if (typeof updateRapaceSelects === 'function') updateRapaceSelects();
-      if (typeof updateEntryList === 'function') updateEntryList();
-      if (typeof updatechasseList === 'function') updatechasseList();
-      if (typeof updateAffaitageList === 'function') updateAffaitageList();
-      if (typeof updateLeurreList === 'function') updateLeurreList();
-      if (typeof updateSessionsLeurreList === 'function') updateSessionsLeurreList();
-      if (typeof updateDocumentsList === 'function') updateDocumentsList();
-      if (typeof updateLeurreSelects === 'function') updateLeurreSelects();
-      if (typeof updateReproLists === 'function') updateReproLists();
-
-      if (typeof saveAllDataWithoutSync === 'function') saveAllDataWithoutSync();
-    }catch(err){ console.error('cloudApplyAll error', err); }
+  // Bind common buttons if present
+  function bindButtons(){
+    var up = document.getElementById('force-upload-btn');
+    var down = document.getElementById('force-download-btn');
+    var syncNow = document.getElementById('manual-sync-btn');
+    if (up && !up.__bound){ up.__bound=true; up.addEventListener('click', function(e){ e.preventDefault(); uploadToFirebase(); }); }
+    if (down && !down.__bound){ down.__bound=true; down.addEventListener('click', function(e){ e.preventDefault(); downloadFromFirebase(); }); }
+    if (syncNow && !syncNow.__bound){ syncNow.__bound=true; syncNow.addEventListener('click', function(e){ e.preventDefault(); uploadToFirebase(); setTimeout(downloadFromFirebase, 500); }); }
   }
 
-  window.manualFirebaseSync = function(){
-    if (!window.isFirebaseReady || !window.db) { _add('🔄 Init Firebase...'); if (typeof loadFirebase==='function') loadFirebase(); return; }
-    _add('📥 Cloud d’abord, puis upload...');
-    db.collection('users').doc(window.firebaseUserId).get()
-      .then(function(doc){
-        if (doc.exists) { cloudApplyAll(doc.data()||{}); _add('📥 Cloud appliqué.'); }
-        else { _add('⛅ Pas de données cloud encore.'); }
-      })
-      .catch(function(err){ _add('❌ Lecture cloud: ' + err.message); })
-      .finally(function(){ if (typeof syncToFirebase==='function') syncToFirebase(); });
-  };
+  function ready(){
+    ensureUID(); hookActivate(); bindButtons(); if (typeof updateSyncUI==='function') updateSyncUI();
+  }
+  if (document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', ready); } else { ready(); }
 
-  window.syncToFirebase = function(){
-    if (!window.isFirebaseReady || !window.db || typeof firebase === 'undefined') return;
-    try{
-      var payload = {
-        rapaces: (typeof rapaces!=='undefined')?rapaces:[],
-        entries: (typeof entries!=='undefined')?entries:[],
-        chasseEntries: (typeof chasseEntries!=='undefined')?chasseEntries:[],
-        affaitageEntries: (typeof affaitageEntries!=='undefined')?affaitageEntries:[],
-        leurres: (typeof leurres!=='undefined')?leurres:[],
-        sessionsLeurre: (typeof sessionsLeurre!=='undefined')?sessionsLeurre:[],
-        documents: (typeof documents!=='undefined')?documents:[],
-        currentLocation: (typeof currentLocation!=='undefined')?currentLocation:null,
-        lastSync: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      if (typeof reproductions!=='undefined') payload.reproductions = reproductions;
-      db.collection('users').doc(window.firebaseUserId).set(payload, { merge: true })
-        .then(function(){ _add('📤 Données envoyées vers Firebase'); window.lastSyncTime=new Date(); _upd(); if (document.getElementById('sync-notifications') && typeof showMiniNotification==='function' && document.getElementById('sync-notifications').checked){ showMiniNotification('☁️ Données synchronisées'); } })
-        .catch(function(err){ console.error(err); _add('❌ Erreur sauvegarde: ' + err.message); });
-    }catch(e){ console.error(e); _add('❌ Erreur syncToFirebase: ' + (e&&e.message||e)); }
-  };
-
-  window.forceDownloadFromFirebase = function(){
-    if (!window.isFirebaseReady || !window.db) { _add('❌ Firebase non connecté'); return; }
-    _add('📥 Forçage du téléchargement depuis Firebase...');
-    db.collection('users').doc(window.firebaseUserId).get()
-      .then(function(doc){ if(!doc.exists){ _add('❌ Aucune donnée sur Firebase'); return; } cloudApplyAll(doc.data()||{}); _add('✅ Données forcées depuis Firebase'); if (typeof showMiniNotification==='function') showMiniNotification('📥 Données forcées depuis le cloud'); })
-      .catch(function(err){ console.error(err); _add('❌ Erreur téléchargement: ' + err.message); });
-  };
-
-  window.loadFromFirebase = function(){
-    if (!window.isFirebaseReady || !window.db) return;
-    db.collection('users').doc(window.firebaseUserId).get()
-      .then(function(doc){
-        if (!doc.exists) {
-          _add('📊 Aucune donnée Firebase, première utilisation');
-          if (typeof syncToFirebase === 'function') syncToFirebase();
-          return;
-        }
-        var cloud = doc.data() || {};
-        var localRaw = localStorage.getItem('rapaces_data');
-        var localTs = 0;
-        if (localRaw) {
-          try { var parsed = JSON.parse(localRaw); localTs = parsed.lastSave ? new Date(parsed.lastSave).getTime() : 0; }
-          catch(_) { localTs = 0; }
-        }
-        var cloudTs = cloud.lastSync ? cloud.lastSync.toDate().getTime() : 0;
-        _add('🕐 Local: ' + new Date(localTs).toLocaleString('fr-FR'));
-        _add('🕐 Firebase: ' + new Date(cloudTs).toLocaleString('fr-FR'));
-
-        if (cloudTs > (localTs + 30000)) {
-          cloudApplyAll(cloud);
-          _add('📥 Données chargées depuis Firebase');
-          if (document.getElementById('sync-notifications') && typeof showMiniNotification === 'function' && document.getElementById('sync-notifications').checked) {
-            showMiniNotification('📥 Données mises à jour depuis le cloud');
-          }
-        } else {
-          _add('📊 Données locales plus récentes ou égales - conservation');
-          if (typeof syncToFirebase === 'function') syncToFirebase();
-        }
-      })
-      .catch(function(err){ console.error(err); _add('❌ Erreur chargement: ' + err.message); });
-  };
 })();
 </script>
 </body>
