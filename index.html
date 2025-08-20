@@ -1,117 +1,170 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestionnaire de Rapaces</title>
-
-  <!-- Firebase SDKs (compat) -->
-  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-
+  <meta charset="UTF-8">
+  <title>Appli Rapaces - Synced</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #0a2850; color: white; }
-    .header { padding: 1em; text-align: center; }
-    .tabs { display: flex; justify-content: center; background: #123c70; }
-    .tabs button { padding: 1em; border: none; background: transparent; color: white; cursor: pointer; }
-    .tabs button.active { background: #1d4d8a; }
-    .section { display: none; padding: 2em; }
-    .section.active { display: block; }
-    .sync-buttons button { margin: 0.5em; padding: 0.7em 1.2em; }
+    body { font-family: Arial, sans-serif; margin:0; padding:0; }
+    header { background:#333; color:#fff; padding:10px; text-align:center; }
+    nav { background:#444; color:#fff; display:flex; }
+    nav button { flex:1; padding:10px; border:none; background:#444; color:#fff; cursor:pointer; }
+    nav button.active { background:#666; }
+    section { display:none; padding:20px; }
+    section.active { display:block; }
+    .btn { padding:6px 12px; margin:5px; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>🦅 Gestionnaire de Rapaces</h1>
-    <p id="meteo">Chargement météo...</p>
-  </div>
+  <header>
+    <h1>Appli Rapaces (Synced)</h1>
+  </header>
+  <nav>
+    <button onclick="showTab('tab1')">Rapaces</button>
+    <button onclick="showTab('tab2')">Chasse</button>
+    <button onclick="showTab('tab3')">Reproduction</button>
+    <button onclick="showTab('tabSync')">Sync</button>
+  </nav>
 
-  <div class="tabs">
-    <button data-tab="gestion">Gestion</button>
-    <button data-tab="suivi">Suivi</button>
-    <button data-tab="sync" class="active">Sync</button>
-    <button data-tab="stats">Stats</button>
-  </div>
-
-  <div id="gestion" class="section">Section Gestion</div>
-  <div id="suivi" class="section">Section Suivi</div>
-  <div id="stats" class="section">Section Stats</div>
-
-  <div id="sync" class="section active">
-    <h2>🔥 Synchronisation Firebase</h2>
-    <p id="firebase-status">Connexion Firebase...</p>
-
-    <div class="sync-buttons">
-      <button id="btnUpload">⬆ Forcer upload local → Firebase</button>
-      <button id="btnDownload">⬇ Forcer download Firebase → local</button>
-      <button id="btnSync">⚡ Synchroniser maintenant</button>
-    </div>
-
-    <pre id="syncLog"></pre>
-  </div>
+  <section id="tab1" class="active">
+    <h2>Gestion des Rapaces</h2>
+    <p>(Ton contenu rapaces ici...)</p>
+  </section>
+  <section id="tab2">
+    <h2>Chasse</h2>
+    <p>(Ton contenu chasse ici...)</p>
+  </section>
+  <section id="tab3">
+    <h2>Reproduction</h2>
+    <p>(Ton contenu reproduction ici...)</p>
+  </section>
+  <section id="tabSync">
+    <h2>Synchronisation</h2>
+    <p>ID Utilisateur Firebase : <span id="userIdLabel"></span></p>
+    <button class="btn" onclick="exportJSON()">Exporter JSON</button>
+    <button class="btn" onclick="importJSON()">Importer JSON</button>
+    <div id="syncLog" style="margin-top:15px; font-size:0.9em; color:#555; max-height:200px; overflow:auto; border:1px solid #ccc; padding:5px;"></div>
+  </section>
 
   <script>
-    // --- CONFIG FIREBASE ---
-    const firebaseConfig = {
-      apiKey: "TON_API_KEY",
-      authDomain: "rapaces-d00a2.firebaseapp.com",
-      projectId: "rapaces-d00a2",
-      storageBucket: "rapaces-d00a2.appspot.com",
-      messagingSenderId: "191182607425",
-      appId: "1:191182607425:web:xxxx"
+    function showTab(id) {
+      document.querySelectorAll('section').forEach(sec => sec.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    // --- CONFIG FIREBASE (à personnaliser avec tes vraies clés) ---
+    var firebaseConfig = {
+      apiKey: "XXX",
+      authDomain: "XXX.firebaseapp.com",
+      projectId: "XXX",
+      storageBucket: "XXX.appspot.com",
+      messagingSenderId: "XXX",
+      appId: "XXX"
     };
 
-    let db;
-    let userId = "1214"; // fixe pour ton projet
-
-    window.addEventListener("DOMContentLoaded", async () => {
-      try {
-        const app = firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-        document.getElementById("firebase-status").textContent = "✅ Firebase connecté";
-
-        log("Firebase prêt avec ID: " + userId);
-
-      } catch (e) {
-        document.getElementById("firebase-status").textContent = "❌ Erreur init Firebase";
-        console.error(e);
-      }
-    });
-
-    // --- Boutons ---
-    document.getElementById("btnUpload").addEventListener("click", async () => {
-      try {
-        const data = { 
-          timestamp: new Date().toISOString(), 
-          localData: localStorage.getItem("rapaces-data") || "{}" 
-        };
-        await db.collection("users").doc(userId).set(data, { merge: true });
-        log("⬆ Données envoyées sur Firebase");
-      } catch (e) { log("Erreur upload: " + e); }
-    });
-
-    document.getElementById("btnDownload").addEventListener("click", async () => {
-      try {
-        const snap = await db.collection("users").doc(userId).get();
-        if (snap.exists) {
-          localStorage.setItem("rapaces-data", snap.data().localData || "{}");
-          log("⬇ Données locales mises à jour depuis Firebase");
-        } else {
-          log("Aucune donnée sur Firebase pour cet ID");
-        }
-      } catch (e) { log("Erreur download: " + e); }
-    });
-
-    document.getElementById("btnSync").addEventListener("click", async () => {
-      document.getElementById("btnUpload").click();
-      document.getElementById("btnDownload").click();
-      log("⚡ Sync forcée");
-    });
-
-    function log(msg) {
-      const box = document.getElementById("syncLog");
-      box.textContent += msg + "\n";
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
     }
+    var db = firebase.firestore();
+
+    // --- Fonctions de sync ---
+    function logSync(msg) {
+      let div = document.getElementById('syncLog');
+      let p = document.createElement('div');
+      p.textContent = new Date().toLocaleTimeString() + " - " + msg;
+      div.prepend(p);
+    }
+
+    async function downloadFromFirebase() {
+      const id = localStorage.getItem('firebaseUserId') || '1214';
+      document.getElementById('userIdLabel').textContent = id;
+      try {
+        const doc = await db.collection('users').doc(id).get();
+        if (doc.exists) {
+          const cloud = doc.data().localStorageDump || {};
+          for (const [k,v] of Object.entries(cloud)) {
+            localStorage.setItem(k,v);
+          }
+          logSync("Download réussi ("+Object.keys(cloud).length+" clés)");
+        } else {
+          logSync("Aucun doc trouvé, rien à télécharger.");
+        }
+      } catch(e) {
+        console.error(e);
+        logSync("Erreur download: "+e);
+      }
+    }
+
+    async function safeUpload() {
+      const id = localStorage.getItem('firebaseUserId') || '1214';
+      document.getElementById('userIdLabel').textContent = id;
+      const now = new Date().toISOString();
+      const dump = {};
+      for (let i=0;i<localStorage.length;i++) {
+        const k = localStorage.key(i);
+        dump[k] = localStorage.getItem(k);
+      }
+      try {
+        // Backup
+        await db.collection('users').doc(id).collection('backups').doc(String(Date.now()))
+          .set({ at: now, localStorageDump: dump });
+        // Merge
+        const ref = db.collection('users').doc(id);
+        const snap = await ref.get();
+        const cloud = snap.exists ? (snap.data().localStorageDump || {}) : {};
+        const merged = { ...cloud, ...dump };
+        await ref.set({ lastSync: now, localStorageDump: merged }, { merge:true });
+        logSync("Upload réussi ("+Object.keys(merged).length+" clés)");
+      } catch(e) {
+        console.error(e);
+        logSync("Erreur upload: "+e);
+      }
+    }
+
+    // --- Export / Import JSON ---
+    function exportJSON() {
+      const dump = {};
+      for (let i=0;i<localStorage.length;i++) {
+        const k=localStorage.key(i);
+        dump[k]=localStorage.getItem(k);
+      }
+      const blob = new Blob([JSON.stringify(dump,null,2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'rapaces-backup-'+new Date().toISOString().slice(0,10)+'.json';
+      a.click();
+    }
+
+    function importJSON() {
+      const inp = document.createElement('input');
+      inp.type='file'; inp.accept='.json,application/json';
+      inp.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = evt => {
+          try {
+            const dump = JSON.parse(evt.target.result);
+            for (const [k,v] of Object.entries(dump)) {
+              localStorage.setItem(k,v);
+            }
+            alert('Import réussi');
+            location.reload();
+          } catch(err) { alert('Erreur import: '+err); }
+        };
+        reader.readAsText(file);
+      };
+      inp.click();
+    }
+
+    // --- Auto sync ---
+    window.addEventListener('load', async () => {
+      await downloadFromFirebase();
+      setInterval(safeUpload, 30000);
+    });
   </script>
 </body>
 </html>
