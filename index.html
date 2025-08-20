@@ -1,139 +1,322 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Gestionnaire de Rapaces - Sync Firebase</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestionnaire de Rapaces — Version complète (Auto Sync)</title>
+
+  <!-- Firebase compat SDKs -->
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
   <style>
-    body {
-      background: #0a2a43;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    h1 {
-      color: #ff9800;
-    }
-    button {
-      margin: 5px;
-      padding: 10px 15px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      background: #2196f3;
-      color: white;
-    }
-    button:hover {
-      background: #1976d2;
-    }
-    #log {
-      margin-top: 20px;
-      background: #111;
-      color: #0f0;
-      padding: 15px;
-      border-radius: 8px;
-      text-align: left;
-      font-family: monospace;
-      white-space: pre-line;
-    }
+    :root{--bg:#0b2545;--panel:#143c6b;--txt:#f3f7ff;--muted:#a9bddc;--ok:#5dd39e;--warn:#f0a202;--ink:#0f2f59}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial}
+    header{padding:24px;text-align:center;background:linear-gradient(180deg,#10305a,#0b2545)}
+    h1{margin:0;font-size:28px}
+    nav{display:flex;gap:8px;justify-content:center;padding:8px;background:#0e2b50;position:sticky;top:0;z-index:10;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08)}
+    nav button{background:transparent;border:0;color:#cfe2ff;padding:10px 14px;border-radius:10px;cursor:pointer}
+    nav button.active{background:#184374}
+    main{max-width:1100px;margin:0 auto;padding:18px}
+    .card{background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 10px 20px rgba(0,0,0,.16)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    label{font-size:14px;color:var(--muted)} input[type=text], input[type=date], input[type=number]{padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0d2b50;color:var(--txt);min-width:220px}
+    select{padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#0d2b50;color:var(--txt)}
+    button{padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:#1e4e8c;color:#fff;cursor:pointer}
+    button.success{background:#1c7c54} button.warn{background:#b25f00} button.secondary{background:#2b3d66}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;margin-left:6px}
+    .ok{background:rgba(93,211,158,.18);border:1px solid #5dd39e;color:#bfffe3}
+    .ko{background:rgba(240,162,2,.18);border:1px solid #f0a202;color:#ffd9a6}
+    pre{background:var(--ink);border:1px solid rgba(255,255,255,.08);color:#d2e6ff;border-radius:12px;padding:12px;min-height:160px;white-space:pre-wrap}
+    table{width:100%;border-collapse:collapse} th,td{border-bottom:1px dashed rgba(255,255,255,.15);padding:8px;text-align:left}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:900px){.grid2{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <h1>🔥 Test de connexion Firebase (users)</h1>
-  <p>ID de synchro: <input type="text" id="syncId" value="1214"></p>
+  <header>
+    <h1>🦅 Gestionnaire de Rapaces</h1>
+    <div style="margin-top:6px;color:#cfe2ff">Version complète avec synchronisation Firebase automatique</div>
+  </header>
 
-  <button onclick="initFirebase()">Activer / Connecter Firebase</button>
-  <button onclick="testFirestore()">Tester accès Firestore</button>
-  <button onclick="uploadData()">⬆ Upload local → Firebase</button>
-  <button onclick="downloadData()">⬇ Download Firebase → local</button>
-  <button onclick="syncData()">⚡ Synchroniser maintenant</button>
+  <nav id="tabs">
+    <button data-tab="gestion" class="active">Gestion</button>
+    <button data-tab="suivi">Suivi</button>
+    <button data-tab="chasse">Chasse</button>
+    <button data-tab="affaitage">Affaitage</button>
+    <button data-tab="leurre">Leurre</button>
+    <button data-tab="documents">Documents</button>
+    <button data-tab="sync">Sync</button>
+    <button data-tab="stats">Stats</button>
+  </nav>
 
-  <div id="log"></div>
+  <main>
+    <!-- GESTION -->
+    <section id="gestion" class="card">
+      <h2>Gestion des rapaces</h2>
+      <div class="grid2">
+        <div class="card">
+          <h3>Ajouter un rapace</h3>
+          <div class="row">
+            <label>Nom</label><input id="r-nom" type="text" placeholder="Ex: Aigle royal">
+            <label>Espèce</label><input id="r-espece" type="text" placeholder="Ex: Aquila chrysaetos">
+          </div>
+          <div class="row">
+            <label>N° de bague</label><input id="r-bague" type="text">
+            <label>Date de naissance</label><input id="r-dob" type="date">
+            <label>Sexe</label>
+            <select id="r-sexe"><option value="">—</option><option>M</option><option>F</option></select>
+          </div>
+          <button id="btn-add-rapace" class="success">Ajouter</button>
+        </div>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+        <div class="card">
+          <h3>Liste</h3>
+          <table id="rapaces-table">
+            <thead><tr><th>Nom</th><th>Espèce</th><th>Bague</th><th>Naissance</th><th>Sexe</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
+    <!-- SUIVI -->
+    <section id="suivi" class="card" style="display:none">
+      <h2>Suivi</h2>
+      <p>Exemple: notes quotidiennes, poids, alimentation… (placeholders pour la démo)</p>
+    </section>
+
+    <!-- CHASSE -->
+    <section id="chasse" class="card" style="display:none">
+      <h2>Chasse</h2>
+      <p>Historique de chasse…</p>
+    </section>
+
+    <!-- AFFAITAGE -->
+    <section id="affaitage" class="card" style="display:none">
+      <h2>Affaitage</h2>
+      <p>Sessions et progression…</p>
+    </section>
+
+    <!-- LEURRE -->
+    <section id="leurre" class="card" style="display:none">
+      <h2>Leurre</h2>
+      <p>Entraînement au leurre…</p>
+    </section>
+
+    <!-- DOCUMENTS -->
+    <section id="documents" class="card" style="display:none">
+      <h2>Documents</h2>
+      <p>Gestion de documents (placeholders)</p>
+    </section>
+
+    <!-- SYNC -->
+    <section id="sync" class="card" style="display:none">
+      <h2>🔥 Synchronisation Firebase</h2>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div class="row">
+            <div>
+              <label>🆔 ID de synchro</label><br>
+              <input type="text" id="syncIdInput" placeholder="ex: 1214">
+            </div>
+            <div style="min-width:220px">
+              <label>Statut</label><br>
+              <span id="status" class="badge ko">Firebase non connecté</span>
+            </div>
+          </div>
+          <div class="row">
+            <button id="btnPing" class="secondary">Tester Firestore</button>
+            <button id="btnUpload" class="success">⬆ Upload</button>
+            <button id="btnDownload" class="warn">⬇ Download</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <b>Journal</b>
+        <pre id="log"></pre>
+        <small>Auto-sync toutes les 30 s (upload puis download). La base utilisée est <code>users/{ID}</code>.</small>
+      </div>
+    </section>
+
+    <!-- STATS -->
+    <section id="stats" class="card" style="display:none">
+      <h2>Stats</h2>
+      <p>À venir…</p>
+    </section>
+  </main>
+
+  <!-- ===================================================== -->
+  <!-- Config Firebase (⚠️ remplace par les valeurs de TON projet) -->
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyD***************",
-      authDomain: "rapaces-app.firebaseapp.com",
-      projectId: "rapaces-app",
-      storageBucket: "rapaces-app.appspot.com",
-      messagingSenderId: "************",
-      appId: "1:************:web:****************",
+    window.firebaseConfig = window.firebaseConfig || {
+      apiKey: "TON_API_KEY",
+      authDomain: "rapaces-d00a2.firebaseapp.com",
+      projectId: "rapaces-d00a2",
+      storageBucket: "rapaces-d00a2.appspot.com",
+      messagingSenderId: "191182607425",
+      appId: "1:191182607425:web:xxxxx"
     };
+  </script>
+
+  <!-- Données locales de démonstration + helpers UI -->
+  <script>
+    const LS_KEY_RAPACES = "rapaces_list";
+    function loadRapaces(){ try{ return JSON.parse(localStorage.getItem(LS_KEY_RAPACES)||"[]"); }catch(e){ return []; } }
+    function saveRapaces(arr){ localStorage.setItem(LS_KEY_RAPACES, JSON.stringify(arr)); }
+    function renderRapaces(){
+      const tb = document.querySelector("#rapaces-table tbody"); if(!tb) return;
+      const arr = loadRapaces(); tb.innerHTML = "";
+      arr.forEach((r,i)=>{
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${r.nom||""}</td><td>${r.espece||""}</td><td>${r.bague||""}</td><td>${r.dob||""}</td><td>${r.sexe||""}</td><td><button data-i="${i}" class="warn">Supprimer</button></td>`;
+        tb.appendChild(tr);
+      });
+      tb.querySelectorAll("button.warn").forEach(btn=>{
+        btn.addEventListener("click", e=>{
+          const i = +e.currentTarget.getAttribute("data-i");
+          const arr = loadRapaces(); arr.splice(i,1); saveRapaces(arr); renderRapaces();
+        });
+      });
+    }
+    function addRapace(){
+      const r = {
+        nom: document.getElementById("r-nom").value.trim(),
+        espece: document.getElementById("r-espece").value.trim(),
+        bague: document.getElementById("r-bague").value.trim(),
+        dob: document.getElementById("r-dob").value,
+        sexe: document.getElementById("r-sexe").value
+      };
+      const arr = loadRapaces(); arr.push(r); saveRapaces(arr); renderRapaces();
+      document.getElementById("r-nom").value = "";
+      document.getElementById("r-espece").value = "";
+      document.getElementById("r-bague").value = "";
+      document.getElementById("r-dob").value = "";
+      document.getElementById("r-sexe").value = "";
+    }
+    window.addEventListener("DOMContentLoaded", ()=>{
+      document.getElementById("btn-add-rapace").addEventListener("click", addRapace);
+      renderRapaces();
+      // tabs
+      const buttons = document.querySelectorAll("#tabs button");
+      buttons.forEach(b=>b.addEventListener("click", ()=>{
+        buttons.forEach(x=>x.classList.remove("active"));
+        b.classList.add("active");
+        document.querySelectorAll("main > section").forEach(sec=>sec.style.display="none");
+        document.getElementById(b.dataset.tab).style.display="block";
+      }));
+    });
+  </script>
+
+  <!-- ===================================================== -->
+  <!-- AUTO FIREBASE + SYNC (collection users/{ID}) -->
+  <script>
+  (function () {
+    const $ = (s)=>document.querySelector(s);
+    const log = (m)=>{ const el=$("#log"); if(!el) return; const t=new Date().toLocaleTimeString('fr-FR'); el.textContent += `[${t}] ${m}\n`; el.scrollTop = el.scrollHeight; };
+    const setStatus = (ok)=>{ const el=$("#status"); if(el){ el.textContent = ok? "Firebase connecté":"Firebase non connecté"; el.className = "badge " + (ok?"ok":"ko"); } };
 
     let db = null;
+    const DEFAULT_ID = "1214";
+    function norm(x){ return (x||"").trim(); }
+    function getId(){ const val = ($("#syncIdInput")?$("#syncIdInput").value:"") || localStorage.getItem("firebaseUserId") || DEFAULT_ID; return norm(val); }
+    function setId(v){ v=norm(v)||DEFAULT_ID; localStorage.setItem("firebaseUserId", v); if($("#syncIdInput")) $("#syncIdInput").value=v; }
 
-    function log(msg) {
-      const logDiv = document.getElementById("log");
-      logDiv.innerText += msg + "\n";
-      logDiv.scrollTop = logDiv.scrollHeight;
-      console.log(msg);
+    function ensureSDK(cb){
+      if (typeof firebase !== "undefined"){ cb(); return; }
+      const s1=document.createElement("script"); s1.src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js";
+      s1.onload=function(){ const s2=document.createElement("script"); s2.src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"; s2.onload=cb; document.head.appendChild(s2); };
+      document.head.appendChild(s1);
     }
 
-    function initFirebase() {
-      if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-        log("✔ Firebase initialisé.");
-      } else {
-        db = firebase.firestore();
-        log("ℹ Firebase déjà initialisé.");
-      }
-    }
-
-    async function testFirestore() {
-      if (!db) {
-        log("❌ DB non prête");
-        return;
-      }
-      const syncId = document.getElementById("syncId").value;
-      try {
-        const docRef = db.collection("users").doc(syncId);
-        await docRef.set({ test: "hello depuis la webapp", ts: Date.now() }, { merge: true });
-        const snap = await docRef.get();
-        log("✔ Doc trouvé: " + JSON.stringify(snap.data()));
-      } catch (e) {
-        log("❌ Erreur Firestore: " + e.message);
-      }
-    }
-
-    async function uploadData() {
-      if (!db) return log("❌ DB non prête");
-      const syncId = document.getElementById("syncId").value;
-      const data = { localData: localStorage.getItem("rapaces-data") || "vide", ts: Date.now() };
-      try {
-        await db.collection("users").doc(syncId).set(data, { merge: true });
-        log("⬆ Données envoyées.");
-      } catch (e) {
-        log("❌ Upload échoué: " + e.message);
-      }
-    }
-
-    async function downloadData() {
-      if (!db) return log("❌ DB non prête");
-      const syncId = document.getElementById("syncId").value;
-      try {
-        const snap = await db.collection("users").doc(syncId).get();
-        if (snap.exists) {
-          localStorage.setItem("rapaces-data", JSON.stringify(snap.data()));
-          log("⬇ Données téléchargées et stockées en localStorage.");
-        } else {
-          log("⚠ Aucun document trouvé pour ID=" + syncId);
+    function initFirebase(){
+      try{
+        if (!db){
+          if (typeof firebaseConfig === "undefined"){ log("❌ firebaseConfig manquant"); return; }
+          firebase.initializeApp(firebaseConfig);
+          db = firebase.firestore();
         }
-      } catch (e) {
-        log("❌ Download échoué: " + e.message);
-      }
+        window.db = db;
+        window.isFirebaseReady = true;
+        setStatus(true); log("✅ Firebase initialisé (auto)");
+      }catch(e){ console.error(e); log("❌ init Firebase: "+e.message); setStatus(false); }
     }
 
-    async function syncData() {
-      log("⚡ Synchronisation en cours...");
-      await uploadData();
-      await downloadData();
-      log("✔ Sync terminée.");
+    function dumpLocalStorage(){
+      const d={}; for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); d[k]=localStorage.getItem(k); } return d;
     }
+    function restoreLocalStorage(d){
+      if(!d) return;
+      Object.keys(d).forEach(k=>{ try{ localStorage.setItem(k, d[k]); }catch(_){}});
+      // hooks rafraîchissement UI si définies par l'app
+      try{
+        if (typeof renderRapaces==='function') renderRapaces();
+        if (typeof updateRapaceList==='function') updateRapaceList();
+        if (typeof updateEntryList==='function') updateEntryList();
+        if (typeof updatechasseList==='function') updatechasseList();
+        if (typeof updateAffaitageList==='function') updateAffaitageList();
+        if (typeof updateLeurreList==='function') updateLeurreList();
+        if (typeof updateSessionsLeurreList==='function') updateSessionsLeurreList();
+        if (typeof updateDocumentsList==='function') updateDocumentsList();
+      }catch(e){}
+    }
+
+    async function upload(){
+      if (!db) return;
+      const id=getId(); if(!id) return;
+      try{
+        await db.collection("users").doc(id).set({
+          lastSync: new Date().toISOString(),
+          deviceInfo: { ua:navigator.userAgent, at:new Date().toISOString() },
+          localStorageDump: dumpLocalStorage()
+        }, { merge:true });
+        log("📤 Upload → users/"+id);
+      }catch(e){ console.error(e); log("❌ upload: "+e.message); }
+    }
+
+    async function download(){
+      if (!db) return;
+      const id=getId(); if(!id) return;
+      try{
+        const snap = await db.collection("users").doc(id).get();
+        if (!snap.exists){ log("ℹ️ Aucun doc users/"+id); return; }
+        const cloud = snap.data()||{};
+        if (cloud.localStorageDump) restoreLocalStorage(cloud.localStorageDump);
+        log("📥 Download ← users/"+id);
+      }catch(e){ console.error(e); log("❌ download: "+e.message); }
+    }
+
+    function autoStart(){
+      setId(localStorage.getItem("firebaseUserId") || DEFAULT_ID);
+      ensureSDK(function(){
+        initFirebase();
+        // premier download au démarrage
+        download();
+        // auto-sync toutes les 30 s
+        if (!window.__autoSyncInterval){
+          window.__autoSyncInterval = setInterval(function(){ upload(); setTimeout(download, 800); }, 30000);
+          log("⏱️ Auto-sync actif (30s)");
+        }
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", function(){
+      if (document.getElementById("syncIdInput")){
+        document.getElementById("syncIdInput").value = localStorage.getItem("firebaseUserId") || DEFAULT_ID;
+      }
+      const pingBtn = document.getElementById("btnPing");
+      if (pingBtn) pingBtn.addEventListener("click", async()=>{
+        if (!db) return log("❌ DB non prête");
+        const snap = await db.collection("users").doc(getId()).get();
+        log("🔎 Firestore reachable: "+(snap.exists?"doc trouvé":"doc inexistant"));
+      });
+      const upBtn = document.getElementById("btnUpload");
+      if (upBtn) upBtn.addEventListener("click", upload);
+      const downBtn = document.getElementById("btnDownload");
+      if (downBtn) downBtn.addEventListener("click", download);
+      autoStart(); // auto-connexion + auto-sync
+    });
+  })();
   </script>
 </body>
 </html>
