@@ -5804,3 +5804,142 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 </body>
 </html>
+<script>
+// === Firebase Upload/Download (option 1: tout le localStorage dans users/{id}) ===
+(function(){
+  function log(msg){ try{ if (typeof addSyncHistoryEntry==='function') addSyncHistoryEntry(msg); }catch(_){} }
+  function notify(msg){ try{ if (typeof showMiniNotification==='function') showMiniNotification(msg); else alert(msg); }catch(_){ alert(msg); } }
+
+  function getSyncId(){
+    var id = (localStorage.getItem('firebaseUserId')||'').trim();
+    return id;
+  }
+
+  function dumpLocalStorage(){
+    var dump = {};
+    for (var i=0;i<localStorage.length;i++){
+      var k = localStorage.key(i);
+      try { dump[k] = localStorage.getItem(k); } catch(_) {}
+    }
+    return dump;
+  }
+
+  function restoreLocalStorage(dump){
+    if (!dump) return;
+    try{
+      Object.keys(dump).forEach(function(k){
+        try { localStorage.setItem(k, dump[k]); } catch(_){}
+      });
+    }catch(e){ console.error('restoreLocalStorage', e); }
+  }
+
+  // Compat: appliquer aussi les champs racine si présents
+  function applyCloudRootFields(cloud){
+    try{
+      if (typeof rapaces !== 'undefined' && cloud.rapaces) rapaces = cloud.rapaces;
+      if (typeof entries !== 'undefined' && cloud.entries) entries = cloud.entries;
+      if (typeof chasseEntries !== 'undefined' && cloud.chasseEntries) chasseEntries = cloud.chasseEntries;
+      if (typeof affaitageEntries !== 'undefined' && cloud.affaitageEntries) affaitageEntries = cloud.affaitageEntries;
+      if (typeof leurres !== 'undefined' && cloud.leurres) leurres = cloud.leurres;
+      if (typeof sessionsLeurre !== 'undefined' && cloud.sessionsLeurre) sessionsLeurre = cloud.sessionsLeurre;
+      if (typeof documents !== 'undefined' && cloud.documents) documents = cloud.documents;
+      if (typeof reproductions !== 'undefined' && cloud.reproductions) reproductions = cloud.reproductions;
+      if (typeof currentLocation !== 'undefined' && cloud.currentLocation) currentLocation = cloud.currentLocation;
+      // rafraîchir UI si fonctions présentes
+      if (typeof updateRapaceList === 'function') updateRapaceList();
+      if (typeof updateRapaceSelects === 'function') updateRapaceSelects();
+      if (typeof updateEntryList === 'function') updateEntryList();
+      if (typeof updatechasseList === 'function') updatechasseList();
+      if (typeof updateAffaitageList === 'function') updateAffaitageList();
+      if (typeof updateLeurreList === 'function') updateLeurreList();
+      if (typeof updateSessionsLeurreList === 'function') updateSessionsLeurreList();
+      if (typeof updateDocumentsList === 'function') updateDocumentsList();
+      if (typeof updateLeurreSelects === 'function') updateLeurreSelects();
+      if (typeof updateReproLists === 'function') updateReproLists();
+      if (typeof saveAllDataWithoutSync === 'function') saveAllDataWithoutSync();
+    }catch(e){ console.error('applyCloudRootFields', e); }
+  }
+
+  async function realUpload(){
+    if (!window.isFirebaseReady || !window.db || typeof firebase === 'undefined'){
+      log('❌ Upload: Firebase non prêt'); notify('Upload Firebase non disponible'); return;
+    }
+    var syncId = getSyncId();
+    if (!syncId){ notify('ID de synchro manquant'); return; }
+    var payload = {
+      lastSync: firebase.firestore.FieldValue.serverTimestamp(),
+      deviceInfo: {
+        platform: navigator.platform || '',
+        userAgent: navigator.userAgent || '',
+        timestamp: new Date().toISOString()
+      },
+      // dump complet du localStorage
+      localStorageDump: dumpLocalStorage()
+    };
+    // champs racine en plus (compat)
+    try{
+      if (typeof rapaces !== 'undefined') payload.rapaces = rapaces;
+      if (typeof entries !== 'undefined') payload.entries = entries;
+      if (typeof chasseEntries !== 'undefined') payload.chasseEntries = chasseEntries;
+      if (typeof affaitageEntries !== 'undefined') payload.affaitageEntries = affaitageEntries;
+      if (typeof leurres !== 'undefined') payload.leurres = leurres;
+      if (typeof sessionsLeurre !== 'undefined') payload.sessionsLeurre = sessionsLeurre;
+      if (typeof documents !== 'undefined') payload.documents = documents;
+      if (typeof reproductions !== 'undefined') payload.reproductions = reproductions;
+      if (typeof currentLocation !== 'undefined') payload.currentLocation = currentLocation;
+    }catch(_){}
+
+    log('📤 Upload vers Firebase...');
+    try{
+      await window.db.collection('users').doc(syncId).set(payload, { merge: true });
+      window.lastSyncTime = new Date();
+      if (typeof updateSyncUI==='function') updateSyncUI();
+      log('✅ Upload terminé');
+      notify('Upload Firebase réussi ✅');
+    }catch(e){
+      console.error(e);
+      log('❌ Erreur upload: ' + (e && e.message || e));
+      notify('Erreur lors de l\'upload Firebase ❌');
+    }
+  }
+
+  async function realDownload(){
+    if (!window.isFirebaseReady || !window.db || typeof firebase === 'undefined'){
+      log('❌ Download: Firebase non prêt'); notify('Download Firebase non disponible'); return;
+    }
+    var syncId = getSyncId();
+    if (!syncId){ notify('ID de synchro manquant'); return; }
+    log('📥 Download depuis Firebase...');
+    try{
+      var snap = await window.db.collection('users').doc(syncId).get();
+      if (!snap.exists){ notify('Aucune donnée trouvée sur Firebase pour cet ID'); return; }
+      var cloud = snap.data() || {};
+      // 1) restaurer le localStorage si présent
+      if (cloud.localStorageDump){ restoreLocalStorage(cloud.localStorageDump); }
+      // 2) appliquer compat sur variables globales + UI
+      applyCloudRootFields(cloud);
+      window.lastSyncTime = new Date();
+      if (typeof updateSyncUI==='function') updateSyncUI();
+      log('✅ Download terminé');
+      notify('Download Firebase réussi ✅');
+    }catch(e){
+      console.error(e);
+      log('❌ Erreur download: ' + (e && e.message || e));
+      notify('Erreur lors du download Firebase ❌');
+    }
+  }
+
+  // Exposer les fonctions (pour remplacer les placeholders)
+  window.uploadToFirebase = realUpload;
+  window.downloadFromFirebase = realDownload;
+
+  // Brancher les boutons si on les trouve
+  function bindButtons(){
+    var up = document.getElementById('force-upload-btn');
+    var down = document.getElementById('force-download-btn');
+    if (up && !up.__bound){ up.__bound=true; up.addEventListener('click', function(e){ e.preventDefault(); realUpload(); }); }
+    if (down && !down.__bound){ down.__bound=true; down.addEventListener('click', function(e){ e.preventDefault(); realDownload(); }); }
+  }
+  if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', bindButtons); } else { bindButtons(); }
+})();
+</script>
