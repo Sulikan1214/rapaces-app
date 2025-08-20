@@ -39,7 +39,7 @@
   </style>
 </head>
 <body>
-  <h1>🔥 Test de connexion Firebase</h1>
+  <h1>🔥 Test de connexion Firebase (users)</h1>
   <p>ID de synchro: <input type="text" id="syncId" value="1214"></p>
 
   <button onclick="initFirebase()">Activer / Connecter Firebase</button>
@@ -91,7 +91,7 @@
       }
       const syncId = document.getElementById("syncId").value;
       try {
-        const docRef = db.collection("rapaces-sync").doc(syncId);
+        const docRef = db.collection("users").doc(syncId);
         await docRef.set({ test: "hello depuis la webapp", ts: Date.now() }, { merge: true });
         const snap = await docRef.get();
         log("✔ Doc trouvé: " + JSON.stringify(snap.data()));
@@ -105,7 +105,7 @@
       const syncId = document.getElementById("syncId").value;
       const data = { localData: localStorage.getItem("rapaces-data") || "vide", ts: Date.now() };
       try {
-        await db.collection("rapaces-sync").doc(syncId).set(data, { merge: true });
+        await db.collection("users").doc(syncId).set(data, { merge: true });
         log("⬆ Données envoyées.");
       } catch (e) {
         log("❌ Upload échoué: " + e.message);
@@ -116,7 +116,7 @@
       if (!db) return log("❌ DB non prête");
       const syncId = document.getElementById("syncId").value;
       try {
-        const snap = await db.collection("rapaces-sync").doc(syncId).get();
+        const snap = await db.collection("users").doc(syncId).get();
         if (snap.exists) {
           localStorage.setItem("rapaces-data", JSON.stringify(snap.data()));
           log("⬇ Données téléchargées et stockées en localStorage.");
