@@ -3966,20 +3966,40 @@ document.addEventListener('DOMContentLoaded', function() {
   function closeModal(){ var m=document.getElementById('fc-modal'); if(m) m.style.display='none'; }
   function renderList(){
     var box = document.getElementById('fc-list'); if (!box) return;
-    var arr = window.fauconniers||[];
+    var arr = window.fauconniers || [];
     if (!arr.length){ box.innerHTML = '<p style="color:#666">Aucun fauconnier.</p>'; return; }
-    var html = '<ul style="list-style:none;margin:0;padding:0">';
-    arr.forEach(f=>{
-      html += '<li style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed #eee;">'
-           +  '<span>'+f.nom+'</span>'
-           +  '<button type="button" onclick="return false;/*patched*/(id){ window.fauconniers = (window.fauconniers||[]).filter(x=>x.id!==id); ('
-           +  'document.getElementById(\\'fc-list\\')&&('
-           +  'document.getElementById(\\'fc-list\\').innerHTML=\'\'); );'
-           +  '})( '+f.id+' )">Supprimer</button>'
-           +  '</li>';
+    var ul = document.createElement('ul');
+    ul.style.listStyle = 'none'; ul.style.margin = '0'; ul.style.padding = '0';
+    box.innerHTML = '';
+    arr.forEach(function(f){
+      var li = document.createElement('li');
+      li.style.display = 'flex';
+      li.style.justifyContent = 'space-between';
+      li.style.alignItems = 'center';
+      li.style.padding = '6px 4px';
+      li.style.borderBottom = '1px dashed #eee';
+      var span = document.createElement('span'); span.textContent = f.nom;
+      var btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Supprimer';
+      btn.addEventListener('click', function(){
+        window.fauconniers = (window.fauconniers||[]).filter(function(x){ return x.id !== f.id; });
+        try{ localStorage.setItem('rapaces_fauconniers', JSON.stringify(window.fauconniers)); }catch(e){}
+        try{ if (typeof window.saveAllData==='function') window.saveAllData(); }catch(e){}
+        try{
+          var opts = (window.fauconniers||[]).map(function(z){ return '<option value=\"'+z.id+'\">'+z.nom+'</option>'; }).join('');
+          ['suivi-fauconnier','affaitage-fauconnier','chasse-fauconnier','session-fauconnier'].forEach(function(sid){
+            var s = document.getElementById(sid);
+            if (s){
+              var keep = s.value;
+              s.innerHTML = '<option value=\"\">—</option>' + opts;
+              if (keep && s.querySelector('option[value=\"'+keep+'\"]')) s.value = keep;
+            }
+          });
+        }catch(e){}
+        renderList();
+      });
+      li.appendChild(span); li.appendChild(btn); ul.appendChild(li);
     });
-    html += '</ul>';
-    box.innerHTML = html;
+    box.appendChild(ul);
   }
 
   // --- Sélecteurs (Suivi + Affaitage) : créés si absents ---
@@ -4450,22 +4470,40 @@ document.addEventListener('DOMContentLoaded', function() {
   function closeModal(){ var m=document.getElementById('fc-modal'); if (m) m.style.display='none'; }
   function renderList(){
     var box = document.getElementById('fc-list'); if (!box) return;
-    var arr = loadFauconniers();
+    var arr = window.fauconniers || [];
     if (!arr.length){ box.innerHTML = '<p style="color:#666">Aucun fauconnier.</p>'; return; }
-    var html = '<ul style="list-style:none;margin:0;padding:0">';
-    arr.forEach(f=>{
-      html += '<li style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px dashed #eee;">'
-           +  '<span>'+f.nom+'</span>'
-           +  '<button type="button" onclick="return false;/*patched*/(id){ window.fauconniers = (window.fauconniers||[]).filter(x=>x.id!==id); ('
-           +  'function(){ try{ localStorage.setItem(\\'rapaces_fauconniers\\', JSON.stringify(window.fauconniers)); }catch(e){} } )();'
-           +  '(function(){ try{ if (typeof window.saveAllData===\\'function\\') window.saveAllData(); }catch(e){} })();'
-           +  'var selIds=[\\'suivi-fauconnier\\',\\'affaitage-fauconnier\\',\\'chasse-fauconnier\\',\\'session-fauconnier\\'];'
-           +  'selIds.forEach(function(sid){ var s=document.getElementById(sid); if(s){ var v=s.value; var opts=(window.fauconniers||[]).map(function(f){return \'<option value=\"\'+f.id+\'\">\'+f.nom+\'</option>\';}).join(\\\'\\\'); s.innerHTML=\'<option value=\"\">Choisir</option>\'+opts; if (v && s.querySelector(\\\'option[value=\"\\\'+v+\\\'\"]\\\')) s.value=v; }});'
-           +  'renderList(); })( '+f.id+' )">Supprimer</button>'
-           +  '</li>';
+    var ul = document.createElement('ul');
+    ul.style.listStyle = 'none'; ul.style.margin = '0'; ul.style.padding = '0';
+    box.innerHTML = '';
+    arr.forEach(function(f){
+      var li = document.createElement('li');
+      li.style.display = 'flex';
+      li.style.justifyContent = 'space-between';
+      li.style.alignItems = 'center';
+      li.style.padding = '6px 4px';
+      li.style.borderBottom = '1px dashed #eee';
+      var span = document.createElement('span'); span.textContent = f.nom;
+      var btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Supprimer';
+      btn.addEventListener('click', function(){
+        window.fauconniers = (window.fauconniers||[]).filter(function(x){ return x.id !== f.id; });
+        try{ localStorage.setItem('rapaces_fauconniers', JSON.stringify(window.fauconniers)); }catch(e){}
+        try{ if (typeof window.saveAllData==='function') window.saveAllData(); }catch(e){}
+        try{
+          var opts = (window.fauconniers||[]).map(function(z){ return '<option value=\"'+z.id+'\">'+z.nom+'</option>'; }).join('');
+          ['suivi-fauconnier','affaitage-fauconnier','chasse-fauconnier','session-fauconnier'].forEach(function(sid){
+            var s = document.getElementById(sid);
+            if (s){
+              var keep = s.value;
+              s.innerHTML = '<option value=\"\">—</option>' + opts;
+              if (keep && s.querySelector('option[value=\"'+keep+'\"]')) s.value = keep;
+            }
+          });
+        }catch(e){}
+        renderList();
+      });
+      li.appendChild(span); li.appendChild(btn); ul.appendChild(li);
     });
-    html += '</ul>';
-    box.innerHTML = html;
+    box.appendChild(ul);
   }
 
   // --- Sélecteurs garantis + synchronisation ---
