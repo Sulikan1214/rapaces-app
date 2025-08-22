@@ -5699,47 +5699,5 @@ window.addEventListener("storage", (e) => {
 });
 </script>
 
-
-<!-- Silencer : cache toute modale/bannière "en cours de développement" sans toucher le code source -->
-<script>
-(function(){
-  const kill = (root) => {
-    const txt = root.innerText || root.textContent || "";
-    const norm = txt.toLowerCase();
-    if (norm.includes("en cours de développement") || norm.includes("fonctionnalité firebase") || norm.includes("developpement")) {
-      let el = root;
-      for (let i=0;i<5 && el && el.parentElement;i++){
-        const cs = getComputedStyle(el);
-        if (cs.position === "fixed" || el.getAttribute("role") === "dialog" || (el.className && el.className.toLowerCase().includes("modal"))) break;
-        el = el.parentElement;
-      }
-      try { el.style.setProperty("display","none","important"); } catch {}
-      try { document.documentElement.style.setProperty("overflow","auto","important"); } catch {}
-      return true;
-    }
-    return false;
-  };
-
-  const scan = () => {
-    const root = document.body; if (!root) return;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
-    let n; const candidates = [];
-    while ((n = walker.nextNode())) {
-      const t = (n.textContent||"").trim();
-      if (!t) continue;
-      const l = t.toLowerCase();
-      if (l.includes("en cours de développement") || l.includes("fonctionnalité firebase") || l.includes("developpement")) {
-        candidates.push(n.parentElement||n);
-      }
-    }
-    for (const c of candidates) { if (kill(c)) break; }
-  };
-
-  const mo = new MutationObserver(() => scan());
-  mo.observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(scan, 300);
-})();
-</script>
-
 </body>
 </html>
