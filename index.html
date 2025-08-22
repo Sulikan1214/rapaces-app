@@ -5623,5 +5623,81 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 
+
+<!-- Background Firebase Sync (RAPACE2, ESM) -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB8wRYLE0weQn9tlCFV7JfjcJg5pdszz7Hk",
+  authDomain: "rapace2-e7641.firebaseapp.com",
+  projectId: "rapace2-e7641",
+  storageBucket: "rapace2-e7641.firebasestorage.app",
+  messagingSenderId: "477211338737",
+  appId: "1:477211338737:web:09e4ad761ea0dceca2c650",
+  measurementId: "G-BL923V0D14"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const dump = () => {
+  const o = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    o[k] = localStorage.getItem(k);
+  }
+  return o;
+};
+const restore = (d) => {
+  if (!d || typeof d !== "object") return;
+  Object.entries(d).forEach(([k, v]) => {
+    try { localStorage.setItem(k, v); } catch {}
+  });
+};
+const uid = () => localStorage.getItem("firebaseUserId") || "";
+const ts = () => {
+  const d = new Date(), p = (n) => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
+};
+
+const ref = (id) => doc(db, "users", id);
+const bkpCol = (id) => collection(db, "users", id, "backups");
+
+async function uploadNow(){
+  const id = uid(); if (!id) return;
+  const d = dump();
+  await setDoc(ref(id), { localStorageDump: d, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(doc(bkpCol(id), ts()), { dump: d, createdAt: serverTimestamp() });
+}
+
+async function downloadNow(){
+  const id = uid(); if (!id) return;
+  const snap = await getDoc(ref(id));
+  if (snap.exists()) {
+    const data = snap.data();
+    if (data && data.localStorageDump) restore(data.localStorageDump);
+  }
+}
+
+function startAuto(){
+  setInterval(() => { uploadNow().catch((e)=>console.error("[SYNC upload]", e)); }, 30_000);
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+  try {
+    if (uid()) { await downloadNow(); }
+    startAuto();
+  } catch (e) {
+    console.error("[SYNC bootstrap]", e);
+  }
+});
+
+window.addEventListener("storage", (e) => {
+  if (e.key === "firebaseUserId" && e.newValue) { downloadNow().catch(()=>{}); }
+});
+</script>
+
 </body>
 </html>
