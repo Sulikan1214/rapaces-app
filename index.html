@@ -5624,11 +5624,45 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 
-<!-- Background Firebase Sync (RAPACE2, ESM) -->
+<!-- 🔄 Firestore Sync (RAPACE2, ESM) — single-file final -->
+<script>
+// 0) One-time ID capture from query/hash: ?id=1214  (keeps URL clean after)
+(function(){
+  try{
+    const qp = new URLSearchParams(location.search || location.hash.slice(1));
+    const id = qp.get("id");
+    if (id) {
+      localStorage.setItem("firebaseUserId", id);
+      // Clean URL
+      if (history && history.replaceState) history.replaceState(null, "", location.pathname);
+    }
+    const showStatus = qp.get("status") === "1";
+    if (showStatus) localStorage.setItem("showSyncBadge","1");
+  }catch(e){}
+})();
+</script>
+
+<style>
+  /* Tiny status badge (hidden by default). Show with ?status=1 or localStorage.showSyncBadge="1" */
+  #sync-badge {
+    position: fixed; right: 10px; bottom: 10px;
+    background: #0b1222; color: #e5e7eb;
+    border: 1px solid #334155; border-radius: 10px;
+    padding: 6px 10px; font: 12px ui-sans-serif, system-ui;
+    box-shadow: 0 10px 30px rgba(0,0,0,.3);
+    display: none; z-index: 99999;
+  }
+  #sync-badge b { color: #22c55e }
+  #sync-badge .warn { color: #f59e0b }
+  #sync-badge .err { color: #ef4444 }
+</style>
+<div id="sync-badge">🔄 <span id="sync-status" class="warn">init…</span></div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+// RAPACE2 config (pré-intégrée)
 const firebaseConfig = {
   apiKey: "AIzaSyB8wRYLE0weQn9tlCFV7JfjcJg5pdszz7Hk",
   authDomain: "rapace2-e7641.firebaseapp.com",
@@ -5639,9 +5673,23 @@ const firebaseConfig = {
   measurementId: "G-BL923V0D14"
 };
 
+// Optional tiny badge
+const badge = document.getElementById("sync-badge");
+const statusEl = document.getElementById("sync-status");
+try {
+  if (localStorage.getItem("showSyncBadge") === "1") badge.style.display = "inline-flex";
+} catch {}
+
+const setStatus = (txt, cls) => {
+  if (!statusEl) return;
+  statusEl.textContent = txt;
+  statusEl.className = cls || "";
+};
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// Helpers
 const dump = () => {
   const o = {};
   for (let i = 0; i < localStorage.length; i++) {
@@ -5656,33 +5704,41 @@ const restore = (d) => {
     try { localStorage.setItem(k, v); } catch {}
   });
 };
-const uid = () => localStorage.getItem("firebaseUserId") || "";
+const uid = () => {
+  try { return localStorage.getItem("firebaseUserId") || ""; } catch { return ""; }
+};
 const ts = () => {
   const d = new Date(), p = (n) => String(n).padStart(2,"0");
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
 };
-
 const ref = (id) => doc(db, "users", id);
 const bkpCol = (id) => collection(db, "users", id, "backups");
 
 async function uploadNow(){
-  const id = uid(); if (!id) return;
+  const id = uid(); if (!id) { setStatus("ID requis", "warn"); return; }
   const d = dump();
   await setDoc(ref(id), { localStorageDump: d, updatedAt: serverTimestamp() }, { merge: true });
   await setDoc(doc(bkpCol(id), ts()), { dump: d, createdAt: serverTimestamp() });
+  setStatus("sync ok", "");
 }
 
 async function downloadNow(){
-  const id = uid(); if (!id) return;
+  const id = uid(); if (!id) { setStatus("ID requis", "warn"); return; }
   const snap = await getDoc(ref(id));
   if (snap.exists()) {
     const data = snap.data();
     if (data && data.localStorageDump) restore(data.localStorageDump);
+    setStatus("restauré", "");
+  } else {
+    setStatus("premier upload…", "warn");
   }
 }
 
 function startAuto(){
-  setInterval(() => { uploadNow().catch((e)=>console.error("[SYNC upload]", e)); }, 30_000);
+  // immediate upload 30s cadence
+  setInterval(() => {
+    uploadNow().catch((e)=>{ console.error("[SYNC upload]", e); setStatus("erreur", "err"); });
+  }, 30_000);
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -5691,12 +5747,19 @@ window.addEventListener("DOMContentLoaded", async () => {
     startAuto();
   } catch (e) {
     console.error("[SYNC bootstrap]", e);
+    setStatus("erreur", "err");
   }
 });
 
+// React to ID changes (if your app sets it later)
 window.addEventListener("storage", (e) => {
-  if (e.key === "firebaseUserId" && e.newValue) { downloadNow().catch(()=>{}); }
+  if (e.key === "firebaseUserId" && e.newValue) {
+    downloadNow().catch(()=>{});
+  }
 });
+
+// Expose manual actions for debugging if needed
+window.__sync = { uploadNow, downloadNow };
 </script>
 
 </body>
