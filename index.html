@@ -4,222 +4,67 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>index_ok_synced_with_backups – Firebase Sync Debug</title>
-  <style>
-    :root { --bg:#0b1020; --fg:#eaeefb; --muted:#94a3b8; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; }
-    body { margin:0; font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b1020; color:#eaeefb; }
-    header { padding:16px 20px; border-bottom:1px solid #1f2937; background: #0e1428; position: sticky; top:0; z-index:2; }
-    h1 { margin:0; font-size:18px; }
-    main { padding: 20px; max-width: 980px; margin: 0 auto; }
-    section { background:#0e1428; border:1px solid #1f2937; border-radius:12px; padding:16px; margin-bottom:16px; }
-    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
-    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-    .btn { appearance:none; border:1px solid #334155; background:#111827; color:#e5e7eb; padding:8px 12px; border-radius:10px; cursor:pointer; }
-    .btn:hover { background:#0b1220; }
-    .pill { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; }
-    .ok { background: #052e1a; border: 1px solid #14532d; color:#86efac; }
-    .warn { background: #2a1b00; border: 1px solid #92400e; color:#fcd34d; }
-    .err { background: #2a0b0b; border: 1px solid #7f1d1d; color:#fecaca; }
-    #status { position: fixed; right: 14px; bottom: 14px; background:#0b1220; border:1px solid #334155; border-radius:12px; padding:12px 14px; z-index:9999; min-width: 260px; }
-    #status b { display:block; margin-bottom:4px; }
-    .small { color: var(--muted); font-size: 12px; }
-    .log { white-space: pre-wrap; background:#0b1220; border:1px dashed #334155; padding:10px; border-radius:8px; max-height:180px; overflow:auto; }
-    .kbd { border:1px solid #334155; padding:1px 6px; border-radius:6px; background:#0b1220; }
-    .muted { color:#94a3b8; }
-  </style>
 </head>
 <body>
-  <header>
-    <h1>Gestionnaire de Rapaces — Patch de synchronisation Firebase</h1>
-    <div class="small muted">Ce fichier aide à valider et réparer la sync (Auth + Firestore). Il peut remplacer temporairement votre index.</div>
-  </header>
-
-  <main>
-    <section>
-      <h2>1) Renseigner votre <code>firebaseConfig</code></h2>
-      <p>Mettez les valeurs de votre projet Firebase (<code>apiKey</code>, <code>authDomain</code>, <code>projectId</code>, <code>storageBucket</code>, <code>messagingSenderId</code>, <code>appId</code>).</p>
-      <details>
-        <summary>Où trouver ces valeurs ?</summary>
-        <p>Dans <em>Console Firebase → ⚙️ Paramètres du projet → Vos applications Web</em>. Vous pouvez partager ces valeurs ici, elles sont publiques côté client.</p>
-      </details>
-      <div class="row">
-        <button id="btn-edit-config" class="btn">✏️ Coller mon firebaseConfig</button>
-        <button id="btn-test" class="btn">🧪 Lancer les tests (Auth + Firestore)</button>
-        <button id="btn-listen" class="btn">👂 Écouter une collection</button>
-      </div>
-      <p class="small muted">Astuce: si vous aviez des restrictions d’API key, autorisez <code>https://sulikan1214.github.io/*</code> et <code>http://localhost:*</code>.</p>
-    </section>
-
-    <section>
-      <h2>2) Journal</h2>
-      <div id="log" class="log" aria-live="polite"></div>
-    </section>
-
-    <section>
-      <h2>3) Zone d’intégration de votre UI</h2>
-      <p class="small muted">Vous pouvez coller ici votre HTML d’application pendant les tests.</p>
-      <div id="app-slot" style="padding:8px;border:1px dashed #334155;border-radius:8px;"></div>
-    </section>
-  </main>
-
-  <div id="status" role="status" aria-live="polite">
-    <b>État:</b>
-    <div id="status-text" class="pill warn">En attente de configuration</div>
-    <div id="status-sub" class="small"></div>
-  </div>
+  <h1>Gestionnaire de Rapaces — Firebase Sync avec Config Intégrée</h1>
+  <div id="status">Chargement…</div>
+  <pre id="log"></pre>
 
   <script type="module">
-    // ---------------------------
-    // Imports Firebase (SDK v10+)
-    // ---------------------------
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
     import { 
       getFirestore, addDoc, collection, serverTimestamp,
-      getDocs, query, orderBy, limit, onSnapshot 
+      getDocs, query, orderBy, limit
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-    // -------------------------------------------
-    // 1) Renseigner votre configuration Firebase
-    // -------------------------------------------
-    // ✏️ OPTION A: remplacez directement l'objet ci-dessous par vos valeurs
-    let firebaseConfig = {
-      // apiKey: "AI...",
-      // authDomain: "xxx.firebaseapp.com",
-      // projectId: "xxx",
-      // storageBucket: "xxx.appspot.com",
-      // messagingSenderId: "000000000000",
-      // appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxxxx"
-    };
+    const firebaseConfig = {'apiKey': 'AIzaSyBo8WFyLVoe9NtQiFCv7JfjCJg5pdzz7Hk', 'authDomain': 'rapace2-e7641.firebaseapp.com', 'projectId': 'rapace2-e7641', 'storageBucket': 'rapace2-e7641.firebasestorage.app', 'messagingSenderId': '477211338737', 'appId': '1:477211338737:web:ad71cfeea6e0d1ffa2c650', 'measurementId': 'G-76TRDY2KFM'};
 
-    // ✏️ OPTION B: si vous utilisez window.__FIREBASE_CONFIG, laissez l'objet vide ci-dessus
-    if (!firebaseConfig.apiKey && window.__FIREBASE_CONFIG) {
-      firebaseConfig = window.__FIREBASE_CONFIG;
-    }
+    const $ = (id) => document.getElementById(id);
+    function log(...args) { $.log.textContent += args.join(" ") + "\n"; console.log(...args); }
+    function setStatus(msg) { $.status.textContent = msg; }
 
-    // UI helpers
-    const $ = (sel) => document.querySelector(sel);
-    function log(...args) {
-      const el = $("#log");
-      const line = document.createElement("div");
-      line.textContent = args.map(a => (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" ");
-      el.appendChild(line);
-      el.scrollTop = el.scrollHeight;
-      console.log(...args);
-    }
-    function setStatus(text, cls = "warn", sub = "") {
-      $("#status-text").textContent = text;
-      $("#status-text").className = "pill " + cls;
-      $("#status-sub").textContent = sub;
-    }
-
-    // Bouton pour coller la config facilement
-    $("#btn-edit-config").addEventListener("click", async () => {
-      const current = JSON.stringify(firebaseConfig, null, 2);
-      const input = prompt("Collez votre objet firebaseConfig (JSON):", current);
-      try {
-        if (input) {
-          firebaseConfig = JSON.parse(input);
-          log("Config mise à jour ✅");
-          setStatus("Config définie", "ok", "Cliquez sur 'Lancer les tests'");
-        }
-      } catch(e) {
-        log("⚠️ JSON invalide:", e.message);
-        setStatus("Config invalide", "err", e.message);
-      }
-    });
-
-    // Initialisation sûre (évite double init)
     let app, db, auth;
-    function ensureInit() {
-      if (!firebaseConfig.apiKey) {
-        setStatus("Config manquante", "warn", "Cliquez sur 'Coller mon firebaseConfig'");
-        throw new Error("firebaseConfig manquant");
-      }
+    function init() {
       app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
       db = getFirestore(app);
       auth = getAuth(app);
-      return { app, db, auth };
     }
 
-    // Test complet (Auth + Firestore)
-    async function runTests() {
+    async function testSync() {
       try {
-        ensureInit();
-        setStatus("Connexion…", "warn");
-
-        // Auth anonyme si pas connecté
+        init();
+        setStatus("Connexion...");
         const userReady = new Promise((resolve, reject) => {
           const off = onAuthStateChanged(auth, async (user) => {
-            if (!user) {
-              try {
-                await signInAnonymously(auth);
-              } catch (e) {
-                off();
-                reject(e);
-                return;
-              }
-            } else {
-              off();
-              resolve(user);
-            }
+            if (!user) await signInAnonymously(auth);
+            off();
+            resolve(auth.currentUser);
           }, reject);
         });
         const user = await userReady;
-        log("Auth OK ✅ uid:", user?.uid || auth.currentUser?.uid);
+        log("Auth OK uid:", user.uid);
 
-        // Écriture d'un ping
         await addDoc(collection(db, "__healthcheck__"), { when: serverTimestamp(), ua: navigator.userAgent });
-        log("Écriture OK ✅ (__healthcheck__)");
+        log("Écriture OK (__healthcheck__)");
 
-        // Lecture du dernier ping
         const q = query(collection(db, "__healthcheck__"), orderBy("when","desc"), limit(1));
         const snap = await getDocs(q);
         if (!snap.empty) {
-          log("Lecture OK ✅", snap.docs[0].data());
-          setStatus("✅ Sync Firestore OK", "ok", "Auth + RW opérationnels");
+          log("Lecture OK", JSON.stringify(snap.docs[0].data()));
+          setStatus("✅ Sync Firestore OK");
         } else {
-          setStatus("⚠️ Lecture vide", "warn", "Vérifiez vos règles Firestore");
+          setStatus("⚠️ Lecture vide (vérifiez règles Firestore)");
         }
-      } catch (e) {
+      } catch(e) {
         console.error(e);
-        const code = e.code || e.message || String(e);
-        log("❌ Erreur:", code);
-        setStatus("❌ Erreur", "err", code);
+        log("Erreur:", e.message || e);
+        setStatus("❌ Erreur: " + (e.code || e.message));
       }
     }
 
-    // Écoute d'une collection (démo)
-    function startListen() {
-      try {
-        ensureInit();
-        const col = prompt("Nom de la collection à écouter ?", "raptors");
-        if (!col) return;
-        const off = onSnapshot(collection(db, col), {
-          next: (snap) => {
-            log(`👂 ${col}: ${snap.size} documents`);
-            setStatus("Écoute active", "ok", `${col}: ${snap.size} docs`);
-          },
-          error: (err) => {
-            log("onSnapshot error:", err.code || err.message);
-            setStatus("❌ onSnapshot", "err", err.code || err.message);
-          }
-        });
-        log("Écoute démarrée. Fermez l’onglet pour arrêter.");
-      } catch (e) {
-        log("Échec écoute:", e.message);
-        setStatus("❌ Échec écoute", "err", e.message);
-      }
-    }
-
-    $("#btn-test").addEventListener("click", runTests);
-    $("#btn-listen").addEventListener("click", startListen);
-
-    // Message initial
-    if (firebaseConfig.apiKey) {
-      setStatus("Config détectée", "ok", "Cliquez sur 'Lancer les tests'");
-    } else {
-      setStatus("En attente de configuration", "warn", "Cliquez sur 'Coller mon firebaseConfig'");
-    }
+    setStatus("Config chargée, test en cours...");
+    testSync();
   </script>
 </body>
 </html>
