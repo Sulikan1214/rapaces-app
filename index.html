@@ -1460,7 +1460,7 @@ var lastSyncTime = null;
 var syncHistory = [];
 
 // === FIREBASE CONFIGURATION ===
-const firebaseConfig = {"apiKey": "AIzaSyBo8WFyLVoe9NtQiFCv7JfjCJg5pdzz7Hk", "authDomain": "rapace2-e7641.firebaseapp.com", "projectId": "rapace2-e7641", "storageBucket": "rapace2-e7641.firebasestorage.app", "messagingSenderId": "477211338737", "appId": "1:477211338737:web:ad71cfeea6e0d1ffa2c650", "measurementId": "G-76TRDY2KFM"};
+const firebaseConfig = {"apiKey": "AIzaSyBo8WFyLVoe9NtQiFCv7JfjCJg5pdzz7Hk", "authDomain": "rapace2-e7641.firebaseapp.com", "projectId": "rapace2-e7641", "storageBucket": "rapace2-e7641.appspot.com", "messagingSenderId": "477211338737", "appId": "1:477211338737:web:ad71cfeea6e0d1ffa2c650", "measurementId": "G-76TRDY2KFM"};
 
 // Variables Firebase
 var db = null;
@@ -5642,7 +5642,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/fireba
 import { getFirestore, doc, getDoc, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
-const firebaseConfig = {"apiKey": "AIzaSyBo8WFyLVoe9NtQiFCv7JfjCJg5pdzz7Hk", "authDomain": "rapace2-e7641.firebaseapp.com", "projectId": "rapace2-e7641", "storageBucket": "rapace2-e7641.firebasestorage.app", "messagingSenderId": "477211338737", "appId": "1:477211338737:web:ad71cfeea6e0d1ffa2c650", "measurementId": "G-76TRDY2KFM"};
+const firebaseConfig = {"apiKey": "AIzaSyBo8WFyLVoe9NtQiFCv7JfjCJg5pdzz7Hk", "authDomain": "rapace2-e7641.firebaseapp.com", "projectId": "rapace2-e7641", "storageBucket": "rapace2-e7641.appspot.com", "messagingSenderId": "477211338737", "appId": "1:477211338737:web:ad71cfeea6e0d1ffa2c650", "measurementId": "G-76TRDY2KFM"};
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -5726,6 +5726,120 @@ window.addEventListener("DOMContentLoaded", async () => {
 
 window.__sync = { uploadNow, downloadNow };
 </script>
+
+
+<!-- === Firebase Storage Drop-in (simple) === -->
+<script type="module">
+  import { getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
+
+  // Reuse any existing config already declared earlier on the page
+  // Try to find it on window or fallback to a hardcoded one if present in the page.
+  let firebaseConfig = window.firebaseConfig || window.FIREBASE_CONFIG || null;
+  try {
+    // Attempt to parse from any inline script variable if it exists
+    if (!firebaseConfig) {
+      const cfgMatch = document.documentElement.innerHTML.match(/const\s+firebaseConfig\s*=\s*(\{[\s\S]*?\});/);
+      if (cfgMatch) { firebaseConfig = eval("(" + cfgMatch[1] + ")"); }
+    }
+  } catch(e){ /* ignore */ }
+
+  // As a last resort, provide the known project config with correct bucket (won't override existing one).
+  if (!firebaseConfig) {
+    firebaseConfig = {"apiKey":"AIzaSyBo8WFyLVoe9NtQiFCv7JfjCJg5pdzz7Hk","authDomain":"rapace2-e7641.firebaseapp.com","projectId":"rapace2-e7641","storageBucket":"rapace2-e7641.appspot.com","messagingSenderId":"477211338737","appId":"1:477211338737:web:ad71cfeea6e0d1ffa2c650","measurementId":"G-76TRDY2KFM"};
+  }
+  // Ensure correct bucket
+  if (firebaseConfig && firebaseConfig.storageBucket && /firebasestorage\.app$/.test(firebaseConfig.storageBucket)) {
+    firebaseConfig.storageBucket = firebaseConfig.storageBucket.replace("firebasestorage.app", "appspot.com");
+  }
+
+  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const storage = getStorage(app);
+
+  function ensureAuth(){
+    return new Promise((resolve)=>{
+      onAuthStateChanged(auth, (u)=>{ if (u) resolve(u); });
+      signInAnonymously(auth).catch(()=>resolve(null));
+    });
+  }
+
+  async function uploadToStorage(file, prefix="uploads"){
+    if (!file) return null;
+    const u = await ensureAuth();
+    const uid = (u && u.uid) || "anon";
+    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${prefix}/${uid}/${Date.now()}_${safe}`;
+    const ref = sRef(storage, path);
+    await uploadBytes(ref, file);
+    const url = await getDownloadURL(ref);
+    return { url, path };
+  }
+
+  // Auto-bind: any <input type="file" data-fb-prefix="rapaces"> will upload on change
+  // and store the URL in data attribute + hidden input next to it.
+  function bindAutoUpload(input){
+    const prefix = input.getAttribute("data-fb-prefix") || "uploads";
+    input.addEventListener("change", async () => {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      input.disabled = true;
+      input.dataset.fbStatus = "uploading";
+      try{
+        const up = await uploadToStorage(f, prefix);
+        if (up && up.url){
+          input.dataset.fbUrl = up.url;
+          input.dataset.fbPath = up.path;
+          // hidden field to reuse in existing code if needed
+          let hidden = document.getElementById(input.id + "-url");
+          if (!hidden){
+            hidden = document.createElement("input");
+            hidden.type="hidden";
+            hidden.id = input.id + "-url";
+            input.parentNode && input.parentNode.appendChild(hidden);
+          }
+          hidden.value = up.url;
+
+          // preview if an <img id="...-preview"> exists
+          const p = document.getElementById(input.id + "-preview");
+          if (p && p.tagName === "IMG") p.src = up.url;
+
+          // Dispatch an event so existing code can hook into it
+          input.dispatchEvent(new CustomEvent("fb:uploaded", { detail: up }));
+        }
+      }catch(e){
+        console.warn("[Storage upload]", e);
+        input.dataset.fbError = String(e && e.message || e);
+      }finally{
+        input.disabled = false;
+        input.dataset.fbStatus = "done";
+      }
+    }, { passive: true });
+  }
+
+  // Bind known inputs if present, with sensible prefixes
+  const idsAndPrefixes = [
+    ["rapace-photo", "rapaces"],
+    ["chasse-photo", "chasses"],
+    ["affaitage-photo", "affaitage"],
+    ["doc-file", "documents"]
+  ];
+  idsAndPrefixes.forEach(([id, prefix])=>{
+    const el = document.getElementById(id);
+    if (el && el.type === "file"){
+      el.setAttribute("data-fb-prefix", el.getAttribute("data-fb-prefix") || prefix);
+      bindAutoUpload(el);
+    }
+  });
+
+  // Also bind any file input that declares data-fb-prefix
+  document.querySelectorAll('input[type="file"][data-fb-prefix]').forEach(bindAutoUpload);
+
+  // Expose the helper in case you want to call it manually
+  window.__storage = { uploadToStorage };
+</script>
+<!-- === /Firebase Storage Drop-in === -->
 
 </body>
 </html>
