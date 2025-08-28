@@ -5841,5 +5841,271 @@ window.__sync = { uploadNow, downloadNow };
 </script>
 <!-- === /Firebase Storage Drop-in === -->
 
+
+<!-- === Firebase Storage Sync + Upload Overrides (Aug 2025) === -->
+<script type="module">
+  import { getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
+
+  // Try to reuse any existing config on page
+  let firebaseConfig = window.firebaseConfig || window.FIREBASE_CONFIG || null;
+  try {
+    if (!firebaseConfig) {
+      const cfgMatch = document.documentElement.innerHTML.match(/const\s+firebaseConfig\s*=\s*(\{[\s\S]*?\});/);
+      if (cfgMatch) { firebaseConfig = eval("(" + cfgMatch[1] + ")"); }
+    }
+  } catch(e){ /* ignore */ }
+  if (!firebaseConfig) {
+    firebaseConfig = {"apiKey":"AIzaSyBo8WFyLVoe9NtQiFCv7JfjCJg5pdzz7Hk","authDomain":"rapace2-e7641.firebaseapp.com","projectId":"rapace2-e7641","storageBucket":"rapace2-e7641.appspot.com","messagingSenderId":"477211338737","appId":"1:477211338737:web:ad71cfeea6e0d1ffa2c650","measurementId":"G-76TRDY2KFM"};
+  }
+  if (firebaseConfig && firebaseConfig.storageBucket && /firebasestorage\.app$/.test(firebaseConfig.storageBucket)) {
+    firebaseConfig.storageBucket = firebaseConfig.storageBucket.replace("firebasestorage.app", "appspot.com");
+  }
+
+  const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const storage = getStorage(app);
+
+  function ensureAuth(){
+    return new Promise((resolve)=>{
+      onAuthStateChanged(auth, (u)=>{ if (u) resolve(u); });
+      signInAnonymously(auth).catch(()=>resolve(null));
+    });
+  }
+  function uid(){ try{ return (auth.currentUser && auth.currentUser.uid) || localStorage.getItem("firebaseUserId") || "" }catch{ return "" } }
+
+  // LocalStorage dump/restore (same shape as Firestore variant)
+  const dump = () => { const o={}; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); o[k]=localStorage.getItem(k) } return o };
+  const restore = (d)=>{ if(!d||typeof d!=='object') return; Object.entries(d).forEach(([k,v])=>{ try{ localStorage.setItem(k,v) }catch{} }) };
+
+  // UI helpers
+  function setSyncStatus(state){
+    const s = document.getElementById('sync-status');
+    const d = document.getElementById('sync-details');
+    const l = document.getElementById('last-sync-time');
+    if (!s) return;
+    if (state==='connected'){
+      s.textContent = '✅ Firebase Storage connecté';
+      s.style.color = 'green';
+      d && (d.textContent = 'Sauvegarde dans app/<uid>/app.json');
+      d && (d.style.color = '#333');
+      if (l && window.lastSyncTime) l.textContent = 'Dernière sync : ' + new Date(window.lastSyncTime).toLocaleString('fr-FR');
+    } else {
+      s.textContent = '❌ Firebase non connecté';
+      s.style.color = 'red';
+      d && (d.textContent = 'Cliquez sur "Activer Firebase"');
+      d && (d.style.color = '#666');
+    }
+  }
+
+  async function storageUploadAppJson(showToast){
+    const u = await ensureAuth();
+    if (!u) throw new Error('auth');
+    const data = { localStorageDump: dump(), updatedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+    const ref = sRef(storage, `app/${u.uid}/app.json`);
+    await uploadBytes(ref, blob);
+    const url = await getDownloadURL(ref);
+    window.lastSyncTime = Date.now();
+    try { if (typeof window.addSyncHistoryEntry==='function') window.addSyncHistoryEntry('✅ Snapshot envoyé sur Storage'); } catch {}
+    setSyncStatus('connected');
+    try { if (showToast && typeof window.showMiniNotification==='function') window.showMiniNotification('Sauvegarde Storage OK'); } catch {}
+    return url;
+  }
+
+  async function storageDownloadAppJson(){
+    const u = await ensureAuth();
+    if (!u) throw new Error('auth');
+    const ref = sRef(storage, `app/${u.uid}/app.json`);
+    const url = await getDownloadURL(ref);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('fetch ' + resp.status);
+    const json = await resp.json();
+    if (json && json.localStorageDump) restore(json.localStorageDump);
+    window.lastSyncTime = Date.now();
+    try { if (typeof window.addSyncHistoryEntry==='function') window.addSyncHistoryEntry('⬇️ Snapshot restauré depuis Storage'); } catch {}
+    try { if (typeof window.refreshAllData==='function') window.refreshAllData(); } catch {}
+    setSyncStatus('connected');
+  }
+
+  // Wire buttons / API expected by current UI
+  window.initFirebaseSync = async function(){
+    await ensureAuth();
+    window.isFirebaseReady = true;
+    ['manual-sync-btn','force-upload-btn','force-download-btn','refresh-btn','disconnect-drive-btn'].forEach(id=>{
+      const el = document.getElementById(id); if (el) el.style.display = '';
+    });
+    setSyncStatus('connected');
+    try { localStorage.setItem('showSyncBadge','1'); } catch {}
+  };
+  window.manualFirebaseSync = async function(){ try{ await storageUploadAppJson(true); } catch(e){ alert('Erreur Storage: ' + (e && e.message || e)); } };
+  window.forceUploadToFirebase = async function(){ try{ await storageUploadAppJson(true); } catch(e){ alert('Erreur upload: ' + (e && e.message || e)); } };
+  window.forceDownloadFromFirebase = async function(){ try{ await storageDownloadAppJson(); } catch(e){ alert('Aucun snapshot trouvé ou erreur: ' + (e && e.message || e)); } };
+  window.disconnectFirebase = function(){
+    window.isFirebaseReady = false;
+    setSyncStatus('off');
+    try { if (typeof window.showMiniNotification==='function') window.showMiniNotification('Déconnecté de Firebase'); } catch {}
+  };
+
+  // Hook saveAllData to autosync (throttled)
+  const __origSaveAllData = window.saveAllData;
+  let __syncTimer = null;
+  function __scheduleSync(){
+    if (!window.isFirebaseReady) return;
+    const cb = document.getElementById('sync-on-change-enabled');
+    if (cb && cb.checked === false) return;
+    clearTimeout(__syncTimer);
+    __syncTimer = setTimeout(()=>{ storageUploadAppJson().catch(()=>{}); }, 1200);
+  }
+  window.saveAllData = function(){
+    try { if (typeof __origSaveAllData === 'function') __origSaveAllData.apply(this, arguments); }
+    finally { __scheduleSync(); }
+  };
+
+  // Prefer Firebase Storage URLs for file uploads across the app
+  async function useStorageOrDataUrl(fileInput, prefix){
+    const el = fileInput;
+    if (!el) return { url: "" };
+    const urlAuto = el.dataset.fbUrl || ((document.getElementById(el.id + "-url")||{}).value) || "";
+    if (urlAuto) return { url: urlAuto };
+    const f = el.files && el.files[0];
+    if (!f) return { url: "" };
+    try{
+      // Prefer the simple uploader if available
+      if (window.__storage && typeof window.__storage.uploadToStorage === 'function'){
+        const up = await window.__storage.uploadToStorage(f, prefix || "uploads");
+        return { url: up && up.url || "", file: f };
+      }
+      // Fallback to direct Storage API
+      const u = await ensureAuth();
+      const safe = f.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${(prefix||"uploads")}/${u ? u.uid : "anon"}/${Date.now()}_${safe}`;
+      const ref = sRef(storage, path);
+      await uploadBytes(ref, f);
+      const url = await getDownloadURL(ref);
+      return { url, file: f };
+    }catch(e){ console.warn(e); return { url: "" }; }
+  }
+
+  // Override addRapace to store photo URL in Storage
+  window.addRapace = async function(){
+    const name = (document.getElementById('rapace-name').value||'').trim();
+    const species = (document.getElementById('rapace-species').value||'').trim();
+    if (!name || !species){ alert('Veuillez remplir le nom et l\'espèce du rapace.'); return; }
+    const rapace = {
+      id: Date.now(),
+      name,
+      species,
+      bague: (document.getElementById('rapace-bague').value||'').trim(),
+      birthdate: document.getElementById('rapace-birthdate').value || '',
+      sex: document.getElementById('rapace-sex').value || 'forme',
+      poidsPlein: parseInt(document.getElementById('rapace-poids-plein').value||'')||null,
+      poidsVol: parseInt(document.getElementById('rapace-poids-vol').value||'')||null,
+      poidsChasse: parseInt(document.getElementById('rapace-poids-chasse').value||'')||null,
+      dateAdded: new Date().toISOString()
+    };
+    const up = await useStorageOrDataUrl(document.getElementById('rapace-photo'), 'rapaces');
+    if (up.url) rapace.photo = up.url;
+    if (typeof window.finalizeAddRapace==='function') window.finalizeAddRapace(rapace);
+    else { (window.rapaces=window.rapaces||[]).push(rapace); window.saveAllData && window.saveAllData(); }
+  };
+
+  // Override saveRapaceEdit to store photo URL in Storage
+  window.saveRapaceEdit = async function(){
+    if (!window.editingRapaceId) return;
+    const r = (window.rapaces||[]).find(x=>x.id===window.editingRapaceId); if (!r) return;
+    const name = (document.getElementById('edit-name').value||'').trim();
+    const species = (document.getElementById('edit-species').value||'').trim();
+    if (!name || !species){ alert('Veuillez remplir le nom et l\'espèce du rapace.'); return; }
+    r.name = name;
+    r.species = species;
+    r.bague = (document.getElementById('edit-bague').value||'').trim();
+    r.birthdate = document.getElementById('edit-birthdate').value || '';
+    r.sex = document.getElementById('edit-sex').value || 'forme';
+    r.poidsPlein = parseInt(document.getElementById('edit-poids-plein').value||'')||null;
+    r.poidsVol = parseInt(document.getElementById('edit-poids-vol').value||'')||null;
+    r.poidsChasse = parseInt(document.getElementById('edit-poids-chasse').value||'')||null;
+    const up = await useStorageOrDataUrl(document.getElementById('edit-photo'), 'rapaces');
+    if (up.url) r.photo = up.url;
+    if (typeof window.finalizeSaveRapaceEdit==='function') window.finalizeSaveRapaceEdit();
+    else { window.saveAllData && window.saveAllData(); }
+  };
+
+  // Patch addChasse/addAffaitage/addLeurre to prefer Storage URL if a file is selected
+  if (typeof window.addChasse === 'function'){
+    const __origAddChasse = window.addChasse;
+    window.addChasse = async function(){
+      const up = await useStorageOrDataUrl(document.getElementById('chasse-photo'), 'chasses');
+      window.__lastChassePhotoUrl = up.url || '';
+      try { return __origAddChasse.apply(this, arguments); }
+      finally { setTimeout(()=>{ window.__lastChassePhotoUrl=''; }, 0); }
+    };
+    if (typeof window.finalizeAddChasse==='function'){
+      const __origFinCh = window.finalizeAddChasse;
+      window.finalizeAddChasse = function(obj){ if (window.__lastChassePhotoUrl) obj.photo = window.__lastChassePhotoUrl; return __origFinCh(obj); };
+    }
+  }
+
+  if (typeof window.addAffaitage === 'function'){
+    const __origAddAff = window.addAffaitage;
+    window.addAffaitage = async function(){
+      const up = await useStorageOrDataUrl(document.getElementById('affaitage-photo'), 'affaitage');
+      window.__lastAffPhotoUrl = up.url || '';
+      try { return __origAddAff.apply(this, arguments); }
+      finally { setTimeout(()=>{ window.__lastAffPhotoUrl=''; }, 0); }
+    };
+    if (typeof window.finalizeAddAffaitage==='function'){
+      const __origFinAff = window.finalizeAddAffaitage;
+      window.finalizeAddAffaitage = function(obj){ if (window.__lastAffPhotoUrl) obj.photo = window.__lastAffPhotoUrl; return __origFinAff(obj); };
+    }
+  }
+
+  if (typeof window.addLeurre === 'function'){
+    const __origAddLeurre = window.addLeurre;
+    window.addLeurre = async function(){
+      const up = await useStorageOrDataUrl(document.getElementById('leurre-photo'), 'leurres');
+      window.__lastLeurrePhotoUrl = up.url || '';
+      try { return __origAddLeurre.apply(this, arguments); }
+      finally { setTimeout(()=>{ window.__lastLeurrePhotoUrl=''; }, 0); }
+    };
+    if (typeof window.finalizeAddLeurre==='function'){
+      const __origFinLeurre = window.finalizeAddLeurre;
+      window.finalizeAddLeurre = function(obj){ if (window.__lastLeurrePhotoUrl) obj.photo = window.__lastLeurrePhotoUrl; return __origFinLeurre(obj); };
+    }
+  }
+
+  // Replace addDocument to push a Storage URL + metadata
+  if (typeof window.addDocument === 'function'){
+    window.addDocument = async function(){
+      const nom = (document.getElementById('doc-nom').value||'').trim();
+      const categorie = document.getElementById('doc-categorie').value;
+      const rapaceId = document.getElementById('doc-rapace').value;
+      const date = document.getElementById('doc-date').value;
+      const description = (document.getElementById('doc-description').value||'').trim();
+      const input = document.getElementById('doc-file');
+      if (!nom || !categorie){ alert('Veuillez remplir le nom et la catégorie du document.'); return; }
+      const document_obj = {
+        id: Date.now(),
+        nom, categorie,
+        rapaceId: rapaceId ? parseInt(rapaceId) : null,
+        date, description,
+        dateAdded: new Date().toISOString()
+      };
+      const up = await useStorageOrDataUrl(input, 'documents');
+      if (up.url){
+        document_obj.file = up.url;
+        if (up.file){
+          document_obj.fileName = up.file.name;
+          document_obj.fileType = up.file.type;
+          document_obj.fileSize = up.file.size;
+        }
+      }
+      if (typeof window.finalizeAddDocument==='function') window.finalizeAddDocument(document_obj);
+      else { (window.documents=window.documents||[]).push(document_obj); window.saveAllData && window.saveAllData(); }
+    };
+  }
+</script>
+<!-- === /Firebase Storage Sync + Upload Overrides === -->
 </body>
 </html>
