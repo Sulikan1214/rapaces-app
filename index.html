@@ -860,6 +860,13 @@
     <!-- Onglet Chasse -->
     <div id="chasse" class="tab-content">
         <h2>Registre de Chasse</h2>
+<div class="form-group" id="chasse-fauconnier-block" style="margin-top:8px;">
+  <label for="chasse-fauconnier">Fauconnier :</label>
+  <select id="chasse-fauconnier">
+    <option value="">Choisir un fauconnier</option>
+  </select>
+</div>
+
         <div class="form-group">
             <label for="chasse-rapace">Rapace :</label>
             <select id="chasse-rapace" onchange="updatePoidsChaseReference()">
@@ -6107,5 +6114,363 @@ window.__sync = { uploadNow, downloadNow };
   }
 </script>
 <!-- === /Firebase Storage Sync + Upload Overrides === -->
+
+<script>
+// ============ ENTRAÎNEMENT GROUPÉ (sans démarrer de session) ============
+(function(){
+  // Panier d'entraînement en mémoire
+  window.__training = window.__training || { events: [] };
+
+  // -- Utilitaires: capture / restauration de l'état du formulaire (brouillons)
+  var drafts = { nourriture:{}, vol:{}, comportement:{}, sante:{}, entrainement:{} };
+
+  function getVal(id){ var el = document.getElementById(id); return el ? el.value : ''; }
+  function setVal(id, v){ var el = document.getElementById(id); if (el) el.value = v || ''; }
+  function captureDraft(){
+    var tSel = document.getElementById('event-type');
+    var t = tSel ? tSel.value : null;
+    if (!t || !drafts[t]) return;
+    var d = {};
+    d.date = getVal('event-date');
+    d.time = getVal('event-time');
+    d.notes = (document.getElementById('event-notes') || {}).value || '';
+    if (t === 'nourriture') {
+      d.poidsAvant = getVal('poids-avant');
+      d.poidsApres = getVal('poids-apres');
+      d.menu = getVal('detail-nourriture');
+      d.quantite = getVal('quantite-nourriture');
+    } else if (t === 'entrainement') {
+      d.typeEntrainement = getVal('type-entrainement');
+    } else if (t === 'comportement') {
+      var r = document.querySelector('input[name="reactivite"]:checked');
+      d.reactivite = r ? r.value : '';
+    } else if (t === 'sante') {
+      d.etatSante = getVal('etat-sante');
+    } else if (t === 'vol') {
+      d.typeVol = getVal('type-vol');
+    }
+    drafts[t] = d;
+  }
+  function restoreDraftFor(type){
+    var d = drafts[type] || {};
+    setVal('event-date', d.date||'');
+    setVal('event-time', d.time||'');
+    if (document.getElementById('event-notes')) document.getElementById('event-notes').value = d.notes || '';
+    if (type === 'nourriture') {
+      setVal('poids-avant', d.poidsAvant||'');
+      setVal('poids-apres', d.poidsApres||'');
+      setVal('detail-nourriture', d.menu||'');
+      setVal('quantite-nourriture', d.quantite||'');
+      if (typeof calculateWeightDifference === 'function') try{ calculateWeightDifference(); }catch(e){}
+    } else if (type === 'entrainement') {
+      setVal('type-entrainement', d.typeEntrainement||'');
+    } else if (type === 'comportement') {
+      if (d.reactivite) {
+        var id = 'react'+d.reactivite;
+        var r = document.getElementById(id); if (r) r.checked = true;
+      } else {
+        document.querySelectorAll('input[name="reactivite"]').forEach(el => el.checked=false);
+      }
+    } else if (type === 'sante') {
+      setVal('etat-sante', d.etatSante||'');
+    } else if (type === 'vol') {
+      setVal('type-vol', d.typeVol||'');
+    }
+  }
+
+  // Hook: lorsqu'on change de type d'événement, on mémorise puis on restaure
+  if (typeof window.showEventFields === 'function' && !window.__hooked_showEventFields) {
+    window.__hooked_showEventFields = true;
+    var _sf = window.showEventFields;
+    window.showEventFields = function(){
+      captureDraft();
+      _sf.apply(this, arguments);
+      var tSel = document.getElementById('event-type');
+      var t = tSel ? tSel.value : null;
+      setTimeout(function(){ restoreDraftFor(t); }, 0);
+    };
+  }
+  // Enregistrer le brouillon à la volée
+  ['event-date','event-time','event-notes','poids-avant','poids-apres','detail-nourriture','quantite-nourriture','type-entrainement','etat-sante','type-vol'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) { el.addEventListener('input', captureDraft); el.addEventListener('change', captureDraft); }
+  });
+  document.addEventListener('change', function(e){
+    if (e && e.target && e.target.name === 'reactivite') captureDraft();
+  });
+
+  // Hook addEntry: on détourne l'ajout pour remplir le panier au lieu d'enregistrer immédiatement
+  if (typeof window.addEntry === 'function' && !window.__hooked_addEntry_group) {
+    window.__hooked_addEntry_group = true;
+    var _origAdd = window.addEntry;
+    window.addEntry = function(){
+      // Snapshot pour restaurer le formulaire (ne pas vider les champs)
+      var tSel = document.getElementById('event-type'); var curType = tSel ? tSel.value : null;
+      captureDraft(); // s'assure qu'on a la dernière valeur
+      var snapshot = JSON.parse(JSON.stringify(drafts[curType]||{}));
+
+      var before = (window.entries||[]).length;
+      // Appel de la fonction existante (qui ajoutera une entrée simple puis videra les champs)
+      try { _origAdd.apply(this, arguments); } catch(e){ console.warn(e); }
+
+      try {
+        if ((window.entries||[]).length > before) {
+          // Récupère la dernière entrée créée puis la bascule dans le panier
+          var last = window.entries.pop();
+          if (!window.__training) window.__training = { events: [] };
+          window.__training.events.push(last);
+          if (typeof window.saveAllData === 'function') window.saveAllData();
+          updateTrainingPreview();
+        }
+      } catch(e){ console.warn(e); }
+
+      // Restaure le formulaire (garde ce qui était saisi)
+      if (curType) {
+        drafts[curType] = snapshot || {};
+        // Forcer l'affichage du bon bloc puis restaurer
+        if (typeof window.showEventFields === 'function') window.showEventFields();
+        restoreDraftFor(curType);
+      }
+    };
+  }
+
+  // Ajoute un bouton "Enregistrer l’entraînement" et un aperçu du panier
+  function ensureFinalizeUI(){
+    var btn = document.querySelector('button[onclick="addEntry()"]');
+    if (!btn) return;
+    if (!document.getElementById('btn-finalize-training')) {
+      var fin = document.createElement('button');
+      fin.id = 'btn-finalize-training';
+      fin.className = 'btn-success';
+      fin.textContent = 'Enregistrer l’entraînement (1 historique)';
+      fin.style.marginLeft = '8px';
+      fin.onclick = finalizeTraining;
+      btn.parentNode.insertBefore(fin, btn.nextSibling);
+    }
+    if (!document.getElementById('training-preview')) {
+      var preview = document.createElement('div');
+      preview.id = 'training-preview';
+      preview.style.marginTop = '10px';
+      preview.innerHTML = '<h4>Évènements ajoutés :</h4><div id="training-list" style="font-size:14px;color:#333;"></div>';
+      btn.parentNode.insertBefore(preview, document.getElementById('btn-finalize-training').nextSibling);
+    }
+    updateTrainingPreview();
+  }
+  document.addEventListener('DOMContentLoaded', ensureFinalizeUI);
+
+  function formatEvent(ev){
+    var when = [ev.date, ev.time].filter(Boolean).join(' ');
+    var label = ev.type;
+    if (ev.type === 'nourriture') {
+      var parts = [];
+      if (ev.poidsAvant) parts.push('avant: '+ev.poidsAvant+'g');
+      if (ev.poidsApres) parts.push('après: '+ev.poidsApres+'g');
+      label = 'Nourriture — '+(ev.menu||'')+(ev.quantite? ' ('+ev.quantite+')':'');
+      if (parts.length) label += ' — '+parts.join(' | ');
+    } else if (ev.type === 'vol') {
+      label = 'Vol — '+(ev.typeVol||'-');
+    } else if (ev.type === 'comportement') {
+      label = 'Réactivité — '+(ev.reactivite||'-');
+    } else if (ev.type === 'sante') {
+      label = 'Santé — '+(ev.etatSante||'-');
+    } else if (ev.type === 'entrainement') {
+      label = 'Entraînement — '+(ev.typeEntrainement||'-');
+    }
+    return (when||'—')+' — <strong>'+label+'</strong>'+ (ev.notes? ' — '+ev.notes:'');
+  }
+
+  function updateTrainingPreview(){
+    var box = document.getElementById('training-list');
+    if (!box) return;
+    var arr = (window.__training && window.__training.events) ? window.__training.events : [];
+    if (!arr.length) { box.innerHTML = '<p style="color:#666;font-style:italic;">Aucun évènement ajouté.</p>'; return; }
+    box.innerHTML = '<ul style="margin-left:18px;">' + arr.map(e=>'<li>'+formatEvent(e)+'</li>').join('') + '</ul>';
+  }
+
+  function finalizeTraining(){
+    var arr = (window.__training && window.__training.events) ? window.__training.events : [];
+    if (!arr.length) { alert('Aucun évènement dans l’entraînement.'); return; }
+    var rapaceId = document.getElementById('rapace-select') ? document.getElementById('rapace-select').value : '';
+    if (!rapaceId) { alert('Sélectionne un rapace.'); return; }
+    var fsel = document.getElementById('suivi-fauconnier');
+    var fid = fsel && fsel.value ? parseInt(fsel.value) : null;
+
+    var rapace = (window.rapaces||[]).find(r => r.id == rapaceId);
+    var entry = {
+      id: Date.now(),
+      rapaceId: parseInt(rapaceId),
+      rapaceName: rapace ? rapace.name : null,
+      type: 'session',
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toTimeString().slice(0,5),
+      fauconnierId: fid || null,
+      events: arr.slice(),
+      notes: null,
+      weather: (typeof window.currentWeather !== 'undefined') ? window.currentWeather : null,
+      timestamp: new Date().toISOString()
+    };
+    window.entries = window.entries || [];
+    window.entries.unshift(entry);
+    if (typeof window.saveAllData === 'function') window.saveAllData();
+    if (typeof window.updateEntryList === 'function') window.updateEntryList();
+    window.__training.events = [];
+    updateTrainingPreview();
+    alert('Entraînement enregistré (1 entrée dans l’historique).');
+  }
+
+  // ============ Rendu amélioré des sessions dans l'historique ============
+  function renderSessionHistory(entry){
+    var head = '<div class="date">'+ new Date(entry.date+'T'+(entry.time||'00:00')).toLocaleString('fr-FR') +'</div>';
+    var meta = '<p><strong>Session</strong>'
+             + (entry.rapaceName? ' — Rapace: <strong>'+entry.rapaceName+'</strong>':'')
+             + (entry.fauconnierId && window.fauconniers ? (function(){var f=(window.fauconniers||[]).find(x=>x.id===entry.fauconnierId); return f? ' — Fauconnier: '+f.nom : ''})() : '')
+             + '</p>';
+    var evs = (entry.events||[]).map(formatEvent).map(s=>'<li>'+s+'</li>').join('');
+    return '<div class="entry-item session-entry">'+ head +'<div class="content">'+ meta +'<ul style="margin-left:18px;">'+ evs +'</ul></div></div>';
+  }
+
+  // Remplace l'affichage standard par un affichage qui gère aussi les "session"
+  if (typeof window.updateEntryList === 'function' && !window.__hooked_updateEntryList) {
+    window.__hooked_updateEntryList = true;
+    var _origUpd = window.updateEntryList;
+    window.updateEntryList = function(){
+      try { _origUpd.apply(this, arguments); } catch(e){ console.warn(e); }
+      try {
+        var list = document.getElementById('entry-list');
+        if (!list) return;
+        var selectedRapaceId = document.getElementById('rapace-select') ? document.getElementById('rapace-select').value : '';
+        var arr = (window.entries||[]).slice();
+        if (selectedRapaceId) arr = arr.filter(e => e.rapaceId === parseInt(selectedRapaceId));
+        arr.sort(function(a,b){ return new Date(b.date+'T'+(b.time||'00:00')) - new Date(a.date+'T'+(a.time||'00:00')); });
+        if (!arr.length) { list.innerHTML = '<p style="color:#666;font-style:italic;">Aucune entrée trouvée.</p>'; return; }
+
+        var html = '';
+        for (var i=0; i<Math.min(arr.length, 10); i++){
+          var entry = arr[i];
+          if (entry.type === 'session') {
+            html += renderSessionHistory(entry);
+          } else {
+            // Rendu simple pour les entrées classiques (on garde le plus important)
+            var rap = (window.rapaces||[]).find(r => r.id === entry.rapaceId);
+            var rn = rap ? rap.name : 'Rapace';
+            var dateTxt = new Date(entry.date+'T'+(entry.time||'00:00')).toLocaleDateString('fr-FR') + ' à ' + (entry.time||'');
+            var typeLbl = (typeof window.getEventTypeLabel === 'function') ? window.getEventTypeLabel(entry.type) : entry.type;
+            var line = '<div class="entry-item"><div class="date">'+dateTxt+' - '+rn+' ('+typeLbl+')</div><div class="content">';
+            if (entry.type === 'nourriture') {
+              line += '<strong>Menu:</strong> '+(entry.menu||'-');
+              if (entry.quantite) line += ' ('+entry.quantite+')';
+              if (entry.poidsAvant && entry.poidsApres) {
+                var diff = parseFloat(entry.poidsAvant) - parseFloat(entry.poidsApres);
+                line += ' — Poids: '+entry.poidsAvant+'g → '+entry.poidsApres+'g ('+(diff>0?'-'+diff:diff<0?('+'+Math.abs(diff)):0)+'g)';
+              }
+            } else if (entry.type === 'vol') {
+              line += '<strong>Type de vol:</strong> '+(entry.typeVol||'-');
+            } else if (entry.type === 'comportement') {
+              line += '<strong>Réactivité:</strong> '+(entry.reactivite||'-')+'/5';
+            } else if (entry.type === 'sante') {
+              line += '<strong>État:</strong> '+(entry.etatSante||'-');
+            } else if (entry.type === 'entrainement') {
+              line += '<strong>Type:</strong> '+(entry.typeEntrainement||'-');
+            }
+            if (entry.notes) line += ' — '+entry.notes;
+            line += '</div></div>';
+            html += line;
+          }
+        }
+        list.innerHTML = html;
+      } catch(e){ console.warn(e); }
+    };
+  }
+
+  // Calcul de différence de poids tolérant (si un seul champ est rempli, on n'affiche rien)
+  if (typeof window.calculateWeightDifference === 'function' && !window.__patched_calcWeight) {
+    window.__patched_calcWeight = true;
+    var _cw = window.calculateWeightDifference;
+    window.calculateWeightDifference = function(){
+      try{
+        var av = parseFloat(document.getElementById('poids-avant') ? document.getElementById('poids-avant').value : '') || null;
+        var ap = parseFloat(document.getElementById('poids-apres') ? document.getElementById('poids-apres').value : '') || null;
+        var out = document.getElementById('difference-poids');
+        if (out) {
+          if (av!=null && ap!=null) {
+            var difference = av - ap;
+            if (difference > 0) {
+              out.value = '-' + difference + 'g (perte)';
+              out.style.color = '#d73527';
+            } else if (difference < 0) {
+              out.value = '+' + Math.abs(difference) + 'g (gain)';
+              out.style.color = '#28a745';
+            } else {
+              out.value = '0g';
+              out.style.color = '#666';
+            }
+          } else {
+            out.value = '';
+            out.style.color = '#666';
+          }
+        }
+      }catch(e){}
+    };
+  }
+
+  // Mise à jour initiale de l'aperçu (si la page a déjà des événements dans le panier)
+  document.addEventListener('DOMContentLoaded', function(){
+    try { updateTrainingPreview(); } catch(e){}
+  });
+})();
+</script>
+
+
+<script>
+// === Fauconnier dans l'onglet Chasse : synchronisé avec Suivi ===
+(function(){
+  function syncChasseFauconnier(){
+    var src = document.getElementById('suivi-fauconnier'); // source officielle (Suivi)
+    var dst = document.getElementById('chasse-fauconnier');
+    if (!dst) return;
+    var keep = localStorage.getItem('chasseFauconnier') || dst.value;
+    var opts = '<option value="">Choisir un fauconnier</option>';
+    if (src && src.tagName === 'SELECT') {
+      for (var i=0;i<src.options.length;i++){
+        var o = src.options[i];
+        if (!o.text) continue;
+        opts += '<option value="'+(o.value||o.text)+'">'+o.text+'</option>';
+      }
+    } else if (src && src.value && src.value.trim()) {
+      opts += '<option value="'+src.value.trim()+'">'+src.value.trim()+'</option>';
+    } else if (window.fauconniers && Array.isArray(window.fauconniers) && window.fauconniers.length){
+      // fallback: si une liste fauconniers[] existe
+      for (var j=0;j<window.fauconniers.length;j++){
+        var f = window.fauconniers[j];
+        opts += '<option value="'+f.id+'">'+f.name+'</option>';
+      }
+    }
+    dst.innerHTML = opts;
+    if (keep) dst.value = keep;
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    try { syncChasseFauconnier(); } catch(e){}
+    var dst = document.getElementById('chasse-fauconnier');
+    if (dst) {
+      dst.addEventListener('change', function(){ localStorage.setItem('chasseFauconnier', dst.value); });
+    }
+  });
+  // Resync when switching to the Chasse tab (best effort)
+  document.addEventListener('click', function(e){
+    var t = e.target;
+    if (!t) return;
+    if ((t.textContent||'').toLowerCase().indexOf('chasse') !== -1 || t.getAttribute('data-tab') === 'chasse') {
+      setTimeout(syncChasseFauconnier, 50);
+    }
+  });
+  // Also resync whenever Suivi fauconnier changes
+  document.addEventListener('change', function(e){
+    if (e && e.target && e.target.id === 'suivi-fauconnier') {
+      setTimeout(syncChasseFauconnier, 10);
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
