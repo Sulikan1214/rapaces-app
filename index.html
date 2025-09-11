@@ -854,7 +854,15 @@
         <button onclick="addEntry()">Ajouter l'Entrée</button>
 
         <h2 style="margin-top: 40px;">Historique Récent</h2>
-        <div id="entry-list"></div>
+        
+<div id="manv3-tools" style="margin:10px 0 8px 0;background:#f5faff;border:1px solid #cfe7ff;color:#123;padding:8px 10px;border-radius:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  <button id="manv3-activate" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;">Activer la sélection</button>
+  <button id="manv3-master" aria-pressed="false" disabled style="min-width:28px;height:28px;border-radius:8px;border:1px solid #89b9ff;background:#e7f1ff;cursor:not-allowed;">☐</button>
+  <span style="opacity:.7">Tout sélectionner</span>
+  <button id="manv3-del" disabled style="background:#b42318;color:#fff;border:none;border-radius:8px;padding:6px 10px;cursor:not-allowed;">🗑️ Supprimer la sélection</button>
+  <span id="manv3-count" style="color:#456;margin-left:auto"></span>
+</div>
+<div id="entry-list"></div>
     </div>
 
     <!-- Onglet Chasse -->
@@ -6469,6 +6477,145 @@ window.__sync = { uploadNow, downloadNow };
       setTimeout(syncChasseFauconnier, 10);
     }
   });
+})();
+</script>
+
+
+<style>
+/* compact custom check */
+.manv3-wrap{display:flex;align-items:flex-start;gap:8px;}
+.manv3-chk{position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border:1px solid #7aa2ff;border-radius:4px;background:#eef5ff;
+  cursor:pointer;user-select:none;flex:0 0 auto;box-sizing:border-box;
+}
+.manv3-chk input{position:absolute;inset:0;margin:0;padding:0;opacity:0;cursor:pointer;}
+.manv3-chk .tick{font-size:14px;line-height:1;pointer-events:none;}
+.manv3-chk[aria-checked="true"]{background:#dbe9ff;border-color:#4f83ff;}
+.manv3-chk[aria-checked="true"] .tick{content:"✓";}
+/* ensure click-through not blocked */
+.manv3-chk, .manv3-chk *{pointer-events:auto;}
+</style>
+<script>
+/* Manual v3: robust, small, and clickable (uses <input type="checkbox">) */
+(function(){
+  function count(){
+    const total = document.querySelectorAll('[data-manv3]').length;
+    const sel = document.querySelectorAll('[data-manv3][aria-checked="true"]').length;
+    const out = document.getElementById('manv3-count'); if(out) out.textContent = total? `(${sel}/${total})` : '';
+  }
+  function mkChk(attrs={}){
+    const label = document.createElement('label');
+    label.className = 'manv3-chk';
+    label.setAttribute('role','checkbox');
+    label.setAttribute('aria-checked','false');
+    label.setAttribute('data-manv3','');
+    Object.entries(attrs).forEach(([k,v])=>label.setAttribute(k,v));
+    const inp = document.createElement('input');
+    inp.type = 'checkbox';
+    const tick = document.createElement('span');
+    tick.className = 'tick';
+    tick.textContent = '';
+    label.appendChild(inp); label.appendChild(tick);
+    label.addEventListener('click', (ev)=>{
+      // toggle via input checked
+      const c = inp.checked;
+      label.setAttribute('aria-checked', c ? 'true':'false');
+      tick.textContent = c ? '✓' : '';
+      ev.stopPropagation();
+      count();
+    });
+    return label;
+  }
+
+  function activateOnce(){
+    const h = Array.from(document.querySelectorAll('h2,h3')).find(n=>/Historique\s+R(é|e)cent/i.test(n.textContent||''));
+    if (!h){ alert('Section Historique introuvable.'); return; }
+    const root = h.parentElement;
+
+    // events in <li>
+    root.querySelectorAll('li').forEach(li=>{
+      if (li.querySelector('[data-manv3]')) return;
+      const w = document.createElement('span'); w.className='manv3-wrap';
+      const chk = mkChk();
+      const cont = document.createElement('span'); cont.append(...li.childNodes);
+      w.appendChild(chk); w.appendChild(cont);
+      li.appendChild(w);
+    });
+    // lines starting with "• "
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    const nodes=[]; while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(node=>{
+      const t = (node.nodeValue||'');
+      if (!/^\s*•\s+/.test(t)) return;
+      if (node.parentElement && node.parentElement.closest('li')) return; // already handled
+      const wrap = document.createElement('div'); wrap.className='manv3-wrap'; wrap.setAttribute('data-manv3-line','');
+      node.parentElement.insertBefore(wrap, node);
+      wrap.appendChild(mkChk());
+      const span = document.createElement('span'); span.textContent = t;
+      wrap.appendChild(span);
+      node.remove();
+    });
+    // per session header
+    Array.from(root.querySelectorAll('div')).forEach(div=>{
+      if (!/Session\s+—/.test(div.textContent||'')) return;
+      if (div.querySelector('[data-manv3-entry]')) return;
+      const entry = mkChk({'data-manv3-entry':''});
+      entry.addEventListener('click', (ev)=>{
+        const on = entry.getAttribute('aria-checked')==='true';
+        div.querySelectorAll('[data-manv3]').forEach(b=>{
+          if (b===entry) return;
+          const input = b.querySelector('input'); if (!input) return;
+          input.checked = on; b.setAttribute('aria-checked', on?'true':'false'); 
+          const tk=b.querySelector('.tick'); if(tk) tk.textContent = on? '✓' : '';
+        });
+        count();
+        ev.stopPropagation();
+      });
+      div.insertBefore(entry, div.firstChild);
+    });
+
+    const master = document.getElementById('manv3-master');
+    const delBtn = document.getElementById('manv3-del');
+    if (master){
+      master.disabled=false; master.style.cursor='pointer';
+      master.addEventListener('click', ()=>{
+        const next = master.getAttribute('aria-pressed')!=='true';
+        master.setAttribute('aria-pressed', next?'true':'false');
+        master.textContent = next ? '☑' : '☐';
+        document.querySelectorAll('[data-manv3]').forEach(b=>{
+          const i=b.querySelector('input'); const tk=b.querySelector('.tick');
+          if (i){ i.checked = next; }
+          b.setAttribute('aria-checked', next?'true':'false');
+          if (tk) tk.textContent = next? '✓' : '';
+        });
+        count();
+      });
+    }
+    if (delBtn){
+      delBtn.disabled=false; delBtn.style.cursor='pointer';
+      delBtn.addEventListener('click', ()=>{
+        const any = document.querySelector('[data-manv3][aria-checked="true"],[data-manv3-entry][aria-checked="true"]');
+        if (!any){ alert('Rien de sélectionné.'); return; }
+        if (!confirm('Supprimer visuellement la sélection ?')) return;
+        document.querySelectorAll('[data-manv3][aria-checked="true"]').forEach(b=>{
+          const w = b.closest('[data-manv3-line]'); if (w) { w.remove(); return; }
+          const li = b.closest('li'); if (li) li.remove();
+        });
+        document.querySelectorAll('[data-manv3-entry][aria-checked="true"]').forEach(b=> b.parentElement?.remove());
+        count();
+      });
+    }
+    // finalize
+    const act = document.getElementById('manv3-activate');
+    if (act){ act.disabled = true; act.textContent = 'Sélection activée'; act.style.opacity=.7; act.style.cursor='default'; }
+    count();
+  }
+
+  function boot(){
+    const act = document.getElementById('manv3-activate');
+    if (act) act.addEventListener('click', activateOnce);
+  }
+  if (document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', boot); } else { boot(); }
 })();
 </script>
 
