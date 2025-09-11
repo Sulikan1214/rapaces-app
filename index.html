@@ -6619,5 +6619,134 @@ window.__sync = { uploadNow, downloadNow };
 })();
 </script>
 
+
+<script>
+(function(){
+  // Avoid double-injection
+  if (window.__dateFiltersPatched__) return;
+  window.__dateFiltersPatched__ = true;
+
+  function isWithinRange(dateStr, timeStr, startStr, endStr){
+    try {
+      const dt = new Date(dateStr + 'T' + (timeStr || '00:00'));
+      if (startStr) {
+        const s = new Date(startStr + 'T00:00');
+        if (dt < s) return false;
+      }
+      if (endStr) {
+        const e = new Date(endStr + 'T23:59');
+        if (dt > e) return false;
+      }
+      return true;
+    } catch(e){ return true; }
+  }
+
+  function addFilterUI(listId, startId, endId, onChangeJs, resetJs){
+    var list = document.getElementById(listId);
+    if (!list) return;
+    // Build block
+    var wrapper = document.createElement('div');
+    wrapper.className = 'form-row';
+    wrapper.style.margin = '10px 0';
+
+    wrapper.innerHTML = ''
+      + '<div class="form-group">'
+      + '  <label for="'+startId+'">Du :</label>'
+      + '  <input type="date" id="'+startId+'">'
+      + '</div>'
+      + '<div class="form-group">'
+      + '  <label for="'+endId+'">Au :</label>'
+      + '  <input type="date" id="'+endId+'">'
+      + '</div>'
+      + '<div class="form-group" style="max-width:160px;">'
+      + '  <label>&nbsp;</label>'
+      + '  <button class="btn-secondary" type="button">Réinitialiser</button>'
+      + '</div>';
+
+    // Insert before list
+    list.parentNode.insertBefore(wrapper, list);
+
+    // Wire events
+    var startEl = wrapper.querySelector('#'+startId);
+    var endEl   = wrapper.querySelector('#'+endId);
+    var resetBtn = wrapper.querySelector('button');
+
+    var onChange = function(){
+      try { new Function(onChangeJs)(); } catch(e){ /* no-op */ }
+    };
+    startEl.addEventListener('change', onChange);
+    endEl.addEventListener('change', onChange);
+    resetBtn.addEventListener('click', function(){
+      startEl.value = '';
+      endEl.value = '';
+      onChange();
+    });
+  }
+
+  function withTempArray(arrName, filteredArray, fn){
+    var saved = window[arrName];
+    try {
+      window[arrName] = filteredArray;
+      return fn();
+    } finally {
+      window[arrName] = saved;
+    }
+  }
+
+  function patchUpdate(fnName, arrName, startId, endId){
+    var orig = window[fnName];
+    if (typeof orig !== 'function') return; // nothing to patch yet
+    window[fnName] = function(){
+      var startEl = document.getElementById(startId);
+      var endEl   = document.getElementById(endId);
+      var s = startEl ? startEl.value : '';
+      var e = endEl ? endEl.value : '';
+      var arr = Array.isArray(window[arrName]) ? window[arrName] : [];
+
+      if (s || e) {
+        var filtered = arr.filter(function(it){
+          return isWithinRange(it.date, it.time, s, e);
+        });
+        return withTempArray(arrName, filtered, function(){ return orig(); });
+      } else {
+        return orig();
+      }
+    };
+  }
+
+  function tryPatchNow(){
+    // Add UIs
+    addFilterUI('entry-list',      'hist-start',  'hist-end',  'if (typeof updateEntryList===\"function\") updateEntryList();',  '');
+    addFilterUI('chasse-list',     'chasse-start','chasse-end','if (typeof updatechasseList===\"function\") updatechasseList();','');
+    addFilterUI('affaitage-list',  'aff-start',   'aff-end',   'if (typeof updateAffaitageList===\"function\") updateAffaitageList();','');
+
+    // Patch functions (if already defined)
+    patchUpdate('updateEntryList',      'entries',          'hist-start','hist-end');
+    patchUpdate('updatechasseList',     'chasseEntries',    'chasse-start','chasse-end');
+    patchUpdate('updateAffaitageList',  'affaitageEntries', 'aff-start','aff-end');
+  }
+
+  // Run once DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryPatchNow);
+  } else {
+    tryPatchNow();
+  }
+
+  // Also observe globals in case functions are defined later (single-run safety)
+  var tried = false;
+  var iv = setInterval(function(){
+    if (tried) { clearInterval(iv); return; }
+    if (typeof window.updateEntryList === 'function'
+     && typeof window.updatechasseList === 'function'
+     && typeof window.updateAffaitageList === 'function') {
+      tryPatchNow();
+      tried = true;
+      clearInterval(iv);
+    }
+  }, 300);
+})();
+</script>
+
 </body>
 </html>
